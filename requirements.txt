@@ -1,0 +1,3 @@
+# Dépendances du projet OWON XDM1000
+# Ajoutez vos packages ici, par exemple:
+# pyserial>=3.5
