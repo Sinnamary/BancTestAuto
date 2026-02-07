@@ -1,0 +1,126 @@
+"""
+Chargement et sauvegarde de la configuration (config.json).
+Valeurs par défaut si une clé manque ; le JSON prime lorsqu'il est présent.
+"""
+import json
+from pathlib import Path
+from typing import Any
+
+# Emplacement par défaut du fichier de configuration
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+
+# Valeurs par défaut complètes (si clé absente du JSON)
+DEFAULTS = {
+    "serial_multimeter": {
+        "port": "COM3",
+        "baudrate": 9600,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1,
+        "timeout": 2.0,
+        "write_timeout": 2.0,
+        "log_exchanges": False,
+    },
+    "serial_generator": {
+        "port": "COM4",
+        "baudrate": 115200,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1,
+        "timeout": 2.0,
+        "write_timeout": 2.0,
+        "log_exchanges": False,
+    },
+    "measurement": {
+        "default_rate": "F",
+        "default_auto_range": True,
+        "refresh_interval_ms": 500,
+    },
+    "display": {
+        "font_size": "large",
+        "theme": "dark",
+        "secondary_display": False,
+    },
+    "limits": {
+        "history_size": 100,
+        "baudrate_options": [9600, 19200, 38400, 57600, 115200],
+    },
+    "logging": {
+        "output_dir": "./logs",
+        "default_interval_s": 5,
+        "default_duration_min": 60,
+        "duration_unlimited": False,
+    },
+    "generator": {
+        "default_channel": 1,
+        "waveform": 0,
+        "frequency_hz": 1000,
+        "amplitude_v_peak": 1.414,
+        "offset_v": 0,
+    },
+    "filter_test": {
+        "generator_channel": 1,
+        "f_min_hz": 10,
+        "f_max_hz": 100000,
+        "n_points": 50,
+        "scale": "log",
+        "settling_ms": 200,
+        "ue_rms": 1.0,
+    },
+}
+
+
+def _deep_merge(default: dict, loaded: dict) -> dict:
+    """Fusionne loaded dans default (loaded prime). Pas de fusion récursive des listes."""
+    out = dict(default)
+    for key, value in loaded.items():
+        if key in out and isinstance(out[key], dict) and isinstance(value, dict):
+            out[key] = _deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def load_config(path: Path | str | None = None) -> dict[str, Any]:
+    """
+    Charge la configuration depuis le fichier JSON.
+    Si une section ou clé manque, utilise les valeurs par défaut.
+    """
+    path = path or DEFAULT_CONFIG_PATH
+    path = Path(path)
+    if not path.exists():
+        return dict(DEFAULTS)
+
+    with open(path, encoding="utf-8") as f:
+        loaded = json.load(f)
+
+    return _deep_merge(dict(DEFAULTS), loaded)
+
+
+def save_config(config: dict[str, Any], path: Path | str | None = None) -> None:
+    """Sauvegarde la configuration dans le fichier JSON."""
+    path = path or DEFAULT_CONFIG_PATH
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+
+def get_serial_multimeter_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section serial_multimeter (pour la classe série multimètre)."""
+    return config.get("serial_multimeter", DEFAULTS["serial_multimeter"]).copy()
+
+
+def get_serial_generator_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section serial_generator (pour la classe série générateur)."""
+    return config.get("serial_generator", DEFAULTS["serial_generator"]).copy()
+
+
+def get_filter_test_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section filter_test (banc filtre)."""
+    return config.get("filter_test", DEFAULTS["filter_test"]).copy()
+
+
+def get_generator_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section generator (paramètres par défaut générateur)."""
+    return config.get("generator", DEFAULTS["generator"]).copy()

@@ -1,3 +1,4 @@
 # Dépendances du projet Banc de test automatique
 PyQt6>=6.4
 pyserial>=3.5
+pyqtgraph>=0.13

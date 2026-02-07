@@ -1,0 +1,42 @@
+"""
+Constantes et chaînes SCPI (OWON).
+Aucune I/O ; utilisé par scpi_protocol et measurement.
+"""
+# Identification et système
+IDN = "*IDN?"
+RST = "*RST"
+SYST_LOC = "SYST:LOC"
+SYST_REM = "SYST:REM"
+SYST_BEEP_STAT = "SYST:BEEP:STAT"
+
+# Modes de mesure (CONFigure)
+CONF_VOLT_DC = "CONF:VOLT:DC"
+CONF_VOLT_AC = "CONF:VOLT:AC"
+CONF_CURR_DC = "CONF:CURR:DC"
+CONF_CURR_AC = "CONF:CURR:AC"
+CONF_RES = "CONF:RES"
+CONF_FRES = "CONF:FRES"
+CONF_FREQ = "CONF:FREQ"
+CONF_PER = "CONF:PER"
+CONF_CAP = "CONF:CAP"
+CONF_TEMP_RTD = "CONF:TEMP:RTD"
+CONF_DIOD = "CONF:DIOD"
+CONF_CONT = "CONF:CONT"
+
+# Plage et vitesse
+AUTO = "AUTO"
+AUTO_QUERY = "AUTO?"
+RATE_F = "RATE F"
+RATE_M = "RATE M"
+RATE_L = "RATE L"
+
+# Mesure
+MEAS = "MEAS?"
+MEAS1 = "MEAS1?"
+MEAS2 = "MEAS2?"
+FUNC = "FUNC?"
+FUNC2_FREQ = 'FUNC2 "FREQ"'
+FUNC2_NONE = 'FUNC2 "NONe"'
+
+# Banc filtre : tension AC
+CONF_VOLT_AC_MEAS = (CONF_VOLT_AC, MEAS)
