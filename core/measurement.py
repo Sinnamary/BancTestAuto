@@ -19,7 +19,7 @@ class Measurement:
         """Lance une mesure et retourne la chaîne brute (ex. '1.234E+00')."""
         return self._scpi.meas()
 
-    def parse_float(self, value_str: str) -> float | None:
+    def parse_float(self, value_str: str):  # -> Optional[float]
         """Parse la réponse MEAS? en float (V). Retourne None si invalide."""
         try:
             return float(value_str.strip().replace(",", "."))

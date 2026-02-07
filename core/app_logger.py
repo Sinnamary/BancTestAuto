@@ -1,0 +1,71 @@
+"""
+Log global de l'application : un fichier par lancement, niveau (DEBUG, INFO, etc.) depuis config.json.
+
+Utilisation dans les modules :
+    from core.app_logger import get_logger
+    logger = get_logger(__name__)
+    logger.debug("détail technique")
+    logger.info("information")
+    logger.warning("avertissement")
+    logger.error("erreur")
+
+Le niveau (DEBUG, INFO, WARNING, ERROR) est lu dans config.json, section "logging", clé "level".
+Fichier généré : logging.output_dir / app_YYYY-MM-DD_HH-MM-SS.log
+"""
+import logging
+from pathlib import Path
+from datetime import datetime
+from typing import Any
+
+_initialized = False
+_file_handler = None
+
+# Niveaux valides dans le JSON
+LEVELS = {"DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR}
+
+
+def _level_from_config(config: dict[str, Any]) -> int:
+    level_name = (config.get("logging") or {}).get("level", "INFO")
+    return LEVELS.get(str(level_name).upper(), logging.INFO)
+
+
+def init_app_logging(config: dict[str, Any]) -> None:
+    """
+    Initialise le log global : crée un fichier horodaté dans logging.output_dir,
+    applique le niveau depuis config.logging.level, attache le handler au logger racine.
+    À appeler une fois au démarrage (ex. depuis main.py après chargement de la config).
+    """
+    global _initialized, _file_handler
+    if _initialized:
+        return
+
+    log_cfg = config.get("logging") or {}
+    output_dir = Path(log_cfg.get("output_dir", "./logs"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now()
+    log_path = output_dir / f"app_{now:%Y-%m-%d_%H-%M-%S}.log"
+
+    level = _level_from_config(config)
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    _file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    _file_handler.setLevel(level)
+    _file_handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.addHandler(_file_handler)
+
+    _initialized = True
+    root.info("Log initialisé — niveau=%s — fichier=%s", logging.getLevelName(level), log_path)
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    Retourne un logger pour le module (ex. __name__).
+    Utiliser après init_app_logging(config).
+    """
+    return logging.getLogger(name)

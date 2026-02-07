@@ -5,9 +5,11 @@ Branchée sur les classes série après intégration.
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
+    QVBoxLayout,
     QLabel,
     QPushButton,
     QFrame,
+    QProgressBar,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPainter, QPaintEvent
@@ -54,7 +56,11 @@ class ConnectionStatusBar(QWidget):
         self._build_ui()
 
     def _build_ui(self):
-        layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        layout = QHBoxLayout()
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(16)
 
@@ -73,9 +79,30 @@ class ConnectionStatusBar(QWidget):
         layout.addWidget(self._generator_label)
 
         layout.addStretch()
+        self._detect_btn = QPushButton("Détecter")
+        self._detect_btn.setObjectName("detectButton")
+        layout.addWidget(self._detect_btn)
         self._params_btn = QPushButton("Paramètres")
         self._params_btn.setObjectName("paramsButton")
         layout.addWidget(self._params_btn)
+
+        main_layout.addLayout(layout)
+
+        self._progress = QProgressBar()
+        self._progress.setMaximumHeight(6)
+        self._progress.setRange(0, 0)
+        self._progress.setVisible(False)
+        main_layout.addWidget(self._progress)
+
+    def show_detection_progress(self) -> None:
+        self._progress.setVisible(True)
+        self._progress.setRange(0, 0)
+        self._detect_btn.setEnabled(False)
+
+    def hide_detection_progress(self) -> None:
+        self._progress.setVisible(False)
+        self._progress.setRange(0, 100)
+        self._detect_btn.setEnabled(True)
 
     def set_multimeter_status(self, connected: bool, model: str = "", port: str = ""):
         self._multimeter_connected = connected
@@ -95,3 +122,6 @@ class ConnectionStatusBar(QWidget):
 
     def get_params_button(self):
         return self._params_btn
+
+    def get_detect_button(self):
+        return self._detect_btn

@@ -47,6 +47,7 @@ DEFAULTS = {
     },
     "logging": {
         "output_dir": "./logs",
+        "level": "INFO",
         "default_interval_s": 5,
         "default_duration_min": 60,
         "duration_unlimited": False,
@@ -124,3 +125,8 @@ def get_filter_test_config(config: dict[str, Any]) -> dict[str, Any]:
 def get_generator_config(config: dict[str, Any]) -> dict[str, Any]:
     """Retourne la section generator (paramètres par défaut générateur)."""
     return config.get("generator", DEFAULTS["generator"]).copy()
+
+
+def get_logging_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section logging (output_dir, level, etc.)."""
+    return config.get("logging", DEFAULTS["logging"]).copy()

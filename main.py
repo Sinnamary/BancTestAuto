@@ -12,10 +12,15 @@ if str(_root) not in sys.path:
 
 from PyQt6.QtWidgets import QApplication
 
+from config.settings import load_config
+from core.app_logger import init_app_logging
 from ui.main_window import MainWindow
 
 
 def main():
+    config = load_config()
+    init_app_logging(config)
+
     app = QApplication(sys.argv)
     app.setApplicationName("Banc de test automatique")
     main_win = MainWindow()
