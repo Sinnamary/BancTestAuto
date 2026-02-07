@@ -34,17 +34,18 @@ python main.py
 ```
 BancTestAuto/
 ├── main.py
+├── run_maquette.py       # Lanceur optionnel de la maquette (python run_maquette.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
-├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, filter_sweep, bode_calc
+├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, device_detection, etc.
 ├── config/              # settings.py, config.json
 ├── ui/
-│   ├── widgets/         # measurement_display, mode_button, range_selector, math_panel, etc.
-│   ├── dialogs/         # serial_config, save_config
-│   └── views/           # meter_view, generator_view, logging_view, filter_test_view, bode_plot_widget
+│   ├── widgets/         # connection_status (2 indicateurs), measurement_display, mode_button, etc.
+│   ├── dialogs/         # serial_config, save_config, device_detection (Détecter les équipements)
+│   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view (voie générateur), etc.
 └── resources/           # Icônes, thèmes
 ```
 
-**Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Voir [maquette/README.md](maquette/README.md).
+**Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Lancer avec `python maquette/main_maquette.py` ou `python run_maquette.py`. Voir [maquette/README.md](maquette/README.md).
 
 Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELOPPEMENT.md) (arborescence complète et tableau des rôles).
 
@@ -63,12 +64,13 @@ Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELO
 
 ### Générateur FeelTech FY6900
 
-- **Pilotage individuel** (onglet dédié) : forme d’onde (WMW), fréquence (WMF), amplitude (WMA), offset (WMO), sortie ON/OFF (WMN), etc. — toutes les commandes du protocole.
+- **Pilotage individuel** (onglet dédié) : **choix de la voie (Voie 1 / Voie 2)** ; forme d’onde (WMW), fréquence (WMF), amplitude (WMA), offset (WMO), sortie ON/OFF (WMN), etc. — toutes les commandes du protocole.
 - Paramètres par défaut dans `config.json` ; optionnel pour le banc filtre.
 
 ### Banc de test filtre
 
 - Caractérisation d’un filtre au **format Bode** (réponse en fréquence).
+- **Choix de la voie du générateur** (Voie 1 ou 2) pour le balayage.
 - **Balayage modifiable :** f_min, f_max, nombre de points, échelle lin/log, délai de stabilisation.
 - Tableau et courbe **gain (dB) vs fréquence** ; export CSV et graphiques semi-log.
 
@@ -76,6 +78,7 @@ Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
 
 ### Mode enregistrement
 
+- **Enregistrement des mesures du multimètre** uniquement (valeur, unité, mode à chaque intervalle).
 - **Logging longue durée** : intervalle et durée configurables (ou illimité).
 - Fichiers CSV **horodatés** (timestamp, valeur, unité, mode) ; graphique **temps réel**.
 - **Relecture** de fichiers et **comparaison** de plusieurs courbes.
@@ -98,7 +101,8 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `measurement` | Vitesse par défaut, auto-plage, intervalle de rafraîchissement |
 | `display` | Taille de police, thème (clair/sombre), affichage secondaire |
 | `logging` | Dossier de sortie, intervalle et durée par défaut |
-| `filter_test` | f_min, f_max, nombre de points, échelle, délai, tension Ue |
+| `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
+| `filter_test` | Voie générateur (1 ou 2), f_min, f_max, nombre de points, échelle, délai, tension Ue |
 
 Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIER_DES_CHARGES.md).
 
@@ -117,7 +121,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 ## Interface et robustesse
 
-- **Interface** par zones : barre de connexion, modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut**. Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md).
+- **Interface** par zones : **barre de connexion** (une pastille de statut par équipement : multimètre et générateur), menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut**. Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
 - **Robustesse :** timeout série configurable, reconnexion après déconnexion physique, messages d’erreur SCPI, indicateur « en cours » pour les requêtes longues.
 
 ---

@@ -191,6 +191,13 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
     "default_duration_min": 60,
     "duration_unlimited": false
   },
+  "generator": {
+    "default_channel": 1,
+    "waveform": 0,
+    "frequency_hz": 1000,
+    "amplitude_v_peak": 1.414,
+    "offset_v": 0
+  },
   "filter_test": {
     "generator_channel": 1,
     "f_min_hz": 10,
@@ -232,13 +239,19 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | default_interval_s| Intervalle par défaut (s)          | 1 – 86400                           |
 |             | default_duration_min | Durée par défaut (min)          | 1 – 525600 (1 an)                   |
 |             | duration_unlimited| Durée illimitée par défaut         | true, false                         |
-| **filter_test** | generator_channel | Voie du générateur FY6900 (1 ou 2)  | 1, 2                                |
+| **generator** | default_channel  | Voie par défaut (onglet Générateur) | 1, 2                                |
+|             | waveform         | Forme d’onde (0 = sinusoïde FY6900)  | 0                                   |
+|             | frequency_hz     | Fréquence par défaut (Hz)           | 1 – 20e6                            |
+|             | amplitude_v_peak| Amplitude crête (V) — 1,414 ≈ 1 V RMS | 0.01 – 20                        |
+|             | offset_v         | Offset (V)                          | −20 – 20                            |
+| **filter_test** | generator_channel | Voie du générateur pour le banc filtre | 1, 2                              |
 |             | f_min_hz, f_max_hz | Plage de fréquence (Hz)            | 10 – 1 000 000                      |
 |             | n_points        | Nombre de points du balayage        | 20 – 200                            |
 |             | scale           | Échelle fréquence                   | `"log"`, `"lin"`                    |
 |             | settling_ms     | Délai stabilisation après changement f | 100 – 1000                       |
 |             | ue_rms          | Tension entrée filtre (V RMS)       | 1.0                                 |
 
+- **Banc de test filtre — configuration connue :** au démarrage d’un balayage, le banc filtre **applique** la configuration générateur définie dans `config.json` (section `generator` : forme d’onde, amplitude crête, offset ; section `filter_test` : voie, `ue_rms` pour le niveau). Il **ne part pas** de la configuration précédente de l’équipement : on repart toujours d’un état connu et reproductible.
 - **Emplacement** : `config/config.json` ou à la racine du projet.
 - **Sauvegarde JSON** : **le logiciel doit permettre de sauvegarder un JSON** : la configuration (paramètres série, mesure, affichage, banc filtre, etc.) doit pouvoir être enregistrée dans un fichier JSON, sur action de l’utilisateur (ex. bouton « Sauvegarder la configuration » ou « Enregistrer » dans un dialogue de paramètres) et éventuellement à la fermeture de l’application. Le fichier cible est par défaut `config/config.json`, avec possibilité d’exporter vers un autre fichier (sauvegarde sous) si souhaité.
 - **Priorité** : les valeurs du fichier priment sur les valeurs codées en dur au chargement ; après sauvegarde, le fichier JSON reflète l’état courant de la configuration.

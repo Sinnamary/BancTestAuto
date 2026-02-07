@@ -172,21 +172,22 @@ BancTestAuto/
 │   │   ├── rate_selector.py       # Vitesse mesure : Rapide / Moyen / Lent (boutons radio ou liste)
 │   │   ├── math_panel.py          # Panneau fonctions math : Rel, dB, dBm, Moyenne + champs
 │   │   ├── history_table.py       # Tableau des N dernières mesures + Export CSV
-│   │   ├── connection_status.py   # Indicateur connexion (vert/rouge) + modèle + port
+│   │   ├── connection_status.py   # Deux pastilles (multimètre + générateur) + modèle + port + Paramètres
 │   │   ├── secondary_display.py   # Affichage secondaire (ex. fréquence Hz)
 │   │   └── advanced_params.py     # Panneau repliable : température, continuité, buzzer
 │   │
 │   ├── dialogs/
 │   │   ├── __init__.py
 │   │   ├── serial_config_dialog.py # Dialogue port, débit, timeouts (multimètre ou générateur)
-│   │   └── save_config_dialog.py  # Sauvegarde configuration JSON (fichier, « Enregistrer sous »)
+│   │   ├── save_config_dialog.py  # Sauvegarde configuration JSON (fichier, « Enregistrer sous »)
+│   │   └── device_detection_dialog.py # Détecter les équipements (menu Outils), résultat + mise à jour config
 │   │
 │   ├── views/                     # Vues composites (assemblent des widgets)
 │   │   ├── __init__.py
 │   │   ├── meter_view.py          # Vue principale multimètre (modes, affichage, plage, maths, historique)
-│   │   ├── generator_view.py      # Vue générateur FY6900 (forme, fréquence, amplitude, offset, ON/OFF)
-│   │   ├── logging_view.py        # Vue mode enregistrement : config, graphique temps réel, Démarrer/Arrêter
-│   │   ├── filter_test_view.py    # Vue banc filtre : config balayage + tableau + graphique Bode
+│   │   ├── generator_view.py      # Vue générateur FY6900 : choix Voie 1/2 + forme, fréquence, amplitude, offset, ON/OFF
+│   │   ├── logging_view.py        # Vue enregistrement : texte explicatif (multimètre uniquement), config, graphique temps réel
+│   │   ├── filter_test_view.py    # Vue banc filtre : voie générateur (1/2) + config balayage + tableau + graphique Bode
 │   │   ├── filter_config_panel.py # Panneau config balayage (f_min, f_max, N points, échelle, délai, Ue)
 │   │   ├── filter_results_table.py# Tableau résultats : f | Us | Us/Ue | Gain (dB)
 │   │   └── bode_plot_widget.py    # Widget graphique Bode (semi-log, gain dB vs fréquence) — réutilisable
@@ -236,16 +237,17 @@ BancTestAuto/
 | **ui/widgets/rate_selector.py** | Rapide / Moyen / Lent. | meter_view |
 | **ui/widgets/math_panel.py** | Rel, dB, dBm, Moyenne + champs. | meter_view |
 | **ui/widgets/history_table.py** | Tableau mesures + Export CSV. | meter_view |
-| **ui/widgets/connection_status.py** | Indicateur connexion + port. | main_window |
+| **ui/widgets/connection_status.py** | Deux pastilles (multimètre + générateur) + labels + port + bouton Paramètres. | main_window |
 | **ui/widgets/secondary_display.py** | Affichage secondaire (Hz). | meter_view |
 | **ui/widgets/advanced_params.py** | Panneau repliable (temp, continuité, buzzer). | meter_view |
 | **ui/dialogs/serial_config_dialog.py** | Config port série (port, débit, timeouts). | main_window, meter_view |
 | **ui/dialogs/save_config_dialog.py** | Sauvegarde config JSON (chemin, « Enregistrer sous »). | main_window |
+| **ui/dialogs/device_detection_dialog.py** | Détecter les équipements : affichage résultat, Lancer détection, Mettre à jour config.json. Utilise core/device_detection. | main_window (menu Outils) |
 | **ui/views/meter_view.py** | Vue complète multimètre (compose widgets). | main_window |
-| **ui/views/generator_view.py** | Vue complète générateur FY6900. | main_window |
-| **ui/views/logging_view.py** | Vue enregistrement (config + graphique + contrôles). | main_window |
-| **ui/views/filter_test_view.py** | Vue banc filtre (config + tableau + Bode). | main_window |
-| **ui/views/filter_config_panel.py** | Panneau f_min, f_max, N, échelle, délai, Ue. | filter_test_view |
+| **ui/views/generator_view.py** | Vue générateur FY6900 : choix Voie 1 / Voie 2 + paramètres (forme, fréquence, amplitude, offset, sortie). | main_window |
+| **ui/views/logging_view.py** | Vue enregistrement : texte (mesures multimètre uniquement), config + graphique + contrôles. | main_window |
+| **ui/views/filter_test_view.py** | Vue banc filtre : voie générateur (1/2) + config balayage + tableau + Bode. | main_window |
+| **ui/views/filter_config_panel.py** | Panneau voie générateur, f_min, f_max, N, échelle, délai, Ue. | filter_test_view |
 | **ui/views/filter_results_table.py** | Tableau f | Us | Us/Ue | Gain dB. | filter_test_view |
 | **ui/views/bode_plot_widget.py** | Graphique Bode semi-log (réutilisable). | filter_test_view, export image |
 

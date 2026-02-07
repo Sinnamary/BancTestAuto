@@ -22,20 +22,21 @@ maquette/
 ├── main_maquette.py          # Point d’entrée (lance uniquement l’interface)
 ├── ui/
 │   ├── __init__.py
-│   ├── main_window.py        # QMainWindow, menu, barre connexion, onglets
-│   ├── widgets/              # Widgets réutilisables (connexion, affichage, etc.)
+│   ├── main_window.py        # QMainWindow, menu (Outils → Détecter les équipements), barre connexion, onglets
+│   ├── widgets/              # Widgets réutilisables
 │   │   ├── __init__.py
-│   │   └── connection_status.py
+│   │   └── connection_status.py   # Deux pastilles (multimètre + générateur), labels, bouton Paramètres
 │   ├── views/                # Contenu de chaque onglet
 │   │   ├── __init__.py
 │   │   ├── meter_view.py
-│   │   ├── generator_view.py
-│   │   ├── logging_view.py
-│   │   └── filter_test_view.py
+│   │   ├── generator_view.py     # Choix Voie 1 / Voie 2 + paramètres
+│   │   ├── logging_view.py       # Texte explicatif (mesures multimètre uniquement) + config + graphique
+│   │   └── filter_test_view.py   # Voie générateur (1/2) + balayage + tableau + Bode
 │   └── dialogs/
 │       ├── __init__.py
 │       ├── serial_config_dialog.py
-│       └── save_config_dialog.py
+│       ├── save_config_dialog.py
+│       └── device_detection_dialog.py   # Détecter les équipements (squelette)
 └── resources/                # Optionnel : thèmes, icônes pour la maquette
     └── themes/
 ```
@@ -50,10 +51,14 @@ Depuis la racine du projet (avec le même environnement que le logiciel) :
 # Windows (PowerShell)
 .\.venv\Scripts\Activate.ps1
 python maquette/main_maquette.py
+# ou
+python run_maquette.py
 
 # Linux / macOS
 source .venv/bin/activate
 python maquette/main_maquette.py
+# ou
+python run_maquette.py
 ```
 
 Les dépendances sont celles du projet (`PyQt6` dans `requirements.txt`). Aucun module `core/` ou `config/` n’est importé.
@@ -62,11 +67,12 @@ Les dépendances sont celles du projet (`PyQt6` dans `requirements.txt`). Aucun 
 
 ## Données factices
 
-- **Barre de connexion :** texte fixe « Multimètre: XDM2041 — COM3 », « Générateur: FY6900 — COM4 » (ou « Non connecté »). Le bouton « Paramètres » ouvre un dialogue sans ouvrir de port.
+- **Barre de connexion :** **deux pastilles** (vert/rouge), une par équipement ; labels « Multimètre: XDM2041 — COM3 » et « Générateur: FY6900 — COM4 » (ou « Non connecté ») ; bouton « Paramètres » (dialogue sans ouverture de port).
+- **Menu Outils :** « Détecter les équipements » ouvre un dialogue squelette (simulation de détection, pas de scan réel).
 - **Onglet Multimètre :** valeurs d’affichage simulées (ex. « 12.345 V »), listes de plages en dur, pas d’appel SCPI.
-- **Onglet Générateur :** champs éditables, pas d’envoi de commandes.
-- **Onglet Enregistrement :** graphique vide ou courbe factice, pas d’écriture CSV.
-- **Onglet Banc filtre :** tableau et graphique vides ou avec quelques points factices.
+- **Onglet Générateur :** **choix Voie 1 / Voie 2** ; champs éditables, pas d’envoi de commandes.
+- **Onglet Enregistrement :** **texte explicatif** (enregistrement des mesures du multimètre uniquement) ; graphique vide ou factice, pas d’écriture CSV.
+- **Onglet Banc filtre :** **choix de la voie du générateur** (Voie 1 / Voie 2) ; tableau et graphique vides ou factices.
 
 ---
 
@@ -78,10 +84,11 @@ Une fois la maquette validée :
 2. **Adapter** les imports si le point d’entrée n’est plus `maquette` (ex. `from ui.main_window` au lieu de chemins relatifs à la maquette).
 3. **Connecter** les signaux des widgets au `core/` :
    - Barre de connexion → `SerialConnection`, chargement/sauvegarde config.
+   - Menu Outils « Détecter les équipements » → `DeviceDetection` + mise à jour config.
    - Onglet Multimètre → `Measurement`, `ScpiProtocol`, etc.
-   - Onglet Générateur → `Fy6900Protocol`.
+   - Onglet Générateur → `Fy6900Protocol` (voie sélectionnée).
    - Onglet Enregistrement → `DataLogger`.
-   - Onglet Banc filtre → `FilterTest`.
+   - Onglet Banc filtre → `FilterTest` (voie générateur + balayage).
 4. **Remplacer** l’appel dans `main.py` : créer la fenêtre avec `MainWindow` (charger `config.json` au démarrage, connecter les appareils).
 
 Les widgets et vues restent les mêmes ; seules les connexions (signaux/slots, injection des classes métier) sont ajoutées.

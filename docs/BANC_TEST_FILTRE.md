@@ -86,12 +86,14 @@ Formule : `valeur = int(f * 1_000_000)` formatée sur 14 chiffres avec zéros à
 
 ### 2.4 Séquence type pour une mesure
 
-1. WMW0 — sinusoïde
-2. WMA1.414 — amplitude 1 V RMS
-3. WMO0 — offset 0 V
-4. WMF&lt;freq&gt; — fréquence de test
+**Au démarrage du balayage**, le logiciel applique d’abord la configuration connue (depuis config.json), puis à chaque point :
+
+1. WMW0 — sinusoïde (ou valeur depuis `generator.waveform`)
+2. WMA &lt;amplitude_crête&gt; — ex. 1,414 V pour 1 V RMS (depuis `filter_test.ue_rms` ou `generator.amplitude_v_peak`)
+3. WMO0 — offset 0 V (depuis `generator.offset_v`)
+4. WMF&lt;freq&gt; — fréquence de test (balayage)
 5. WMN1 — sortie ON
-6. Attendre stabilisation (ex. 100–500 ms)
+6. Attendre stabilisation (ex. 100–500 ms, `filter_test.settling_ms`)
 7. Lancer mesure multimètre (Us)
 8. (Optionnel) WMN0 — sortie OFF entre deux fréquences
 
@@ -232,12 +234,28 @@ ui/
 
 ### 8.1 Liaisons série et banc filtre
 
-Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (multimètre) et **`serial_generator`** (générateur FY6900). Les classes reprennent ces paramètres à l’initialisation et définissent des paramètres par défaut si une clé manque. Le banc filtre utilise la section **`filter_test`** pour le balayage (f_min, f_max, n_points, etc.) et les classes générateur/multimètre utilisent respectivement `serial_generator` et `serial_multimeter` pour la connexion.
+Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (multimètre) et **`serial_generator`** (générateur FY6900). Les classes reprennent ces paramètres à l’initialisation et définissent des paramètres par défaut si une clé manque. Le banc filtre utilise la section **`filter_test`** pour le balayage (f_min, f_max, n_points, etc.) et les classes générateur/multimètre utilisent respectivement `serial_generator` et `serial_multimeter` pour la connexion. La section **`generator`** définit les **paramètres par défaut du générateur** (forme d’onde, fréquence, amplitude crête, offset), utilisés par l’onglet Générateur et par le banc filtre.
+
+### 8.2 Configuration initiale connue (banc filtre)
+
+**Le banc de test filtre part toujours d’une configuration connue, et non de la configuration précédente de l’équipement.** Au démarrage d’un balayage, le logiciel :
+
+1. **Applique** sur le générateur la configuration définie dans `config.json` : forme d’onde (ex. sinusoïde depuis `generator.waveform`), amplitude crête (déduite de `filter_test.ue_rms` : Ueff × √2), offset (`generator.offset_v`), voie (`filter_test.generator_channel`).
+2. Puis effectue le balayage en fréquence (f_min → f_max) en réglant la fréquence à chaque pas.
+
+Ainsi, le résultat ne dépend pas de l’état dans lequel le générateur était laissé après une utilisation précédente (onglet Générateur ou autre).
 
 Exemple (structure complète dans le cahier des charges § 2.7) :
 
 ```json
 {
+  "generator": {
+    "default_channel": 1,
+    "waveform": 0,
+    "frequency_hz": 1000,
+    "amplitude_v_peak": 1.414,
+    "offset_v": 0
+  },
   "serial_generator": {
     "port": "COM4",
     "baudrate": 115200,
@@ -246,6 +264,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
     "log_exchanges": false
   },
   "filter_test": {
+    "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
     "n_points": 50,

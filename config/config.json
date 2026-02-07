@@ -39,6 +39,13 @@
     "default_duration_min": 60,
     "duration_unlimited": false
   },
+  "generator": {
+    "default_channel": 1,
+    "waveform": 0,
+    "frequency_hz": 1000,
+    "amplitude_v_peak": 1.414,
+    "offset_v": 0
+  },
   "filter_test": {
     "generator_channel": 1,
     "f_min_hz": 10,
