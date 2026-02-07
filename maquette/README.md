@@ -51,14 +51,10 @@ Depuis la racine du projet (avec le même environnement que le logiciel) :
 # Windows (PowerShell)
 .\.venv\Scripts\Activate.ps1
 python maquette/main_maquette.py
-# ou
-python run_maquette.py
 
 # Linux / macOS
 source .venv/bin/activate
 python maquette/main_maquette.py
-# ou
-python run_maquette.py
 ```
 
 Les dépendances sont celles du projet (`PyQt6` dans `requirements.txt`). Aucun module `core/` ou `config/` n’est importé.

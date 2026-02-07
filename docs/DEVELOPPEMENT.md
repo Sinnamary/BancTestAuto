@@ -1,6 +1,6 @@
 # Guide de développement — Banc de test automatique
 
-**Dernière mise à jour :** 7 février 2025
+**Dernière mise à jour :** 7 février 2026
 
 Le développement s’effectue en **petits fichiers**, avec des **classes distinctes pour chaque appareil de mesure** (multimètre OWON, générateur FY6900). Ces classes sont **appelées pour piloter le banc de test** (ex. caractérisation filtre) : le module banc n’orchestre que les appels aux classes d’appareils, sans dupliquer leur logique.
 
@@ -39,9 +39,11 @@ source .venv/bin/activate
 
 ### 1.3 Vérification
 
+Le projet requiert **Python 3.10+** (voir README).
+
 ```bash
-python --version    # Python 3.13.x
-pip --version      # pip 25.x
+python --version    # Python 3.10+
+pip --version      # pip à jour
 ```
 
 ### 1.4 Création (si nécessaire)
@@ -120,7 +122,7 @@ BancTestAuto/
 ├── .gitignore               # Fichiers ignorés par Git
 ├── .venv/                   # Environnement virtuel Python (ignoré)
 ├── main.py                  # Point d'entrée application
-├── run_maquette.py          # Lanceur maquette (optionnel)
+├── clean.py                 # Nettoyage __pycache__, logs (python clean.py)
 ├── config/
 │   ├── __init__.py
 │   ├── config.json          # Config par défaut : multimètre, générateur, banc filtre
@@ -142,8 +144,9 @@ BancTestAuto/
 │   └── device_detection.py
 ├── ui/
 │   ├── main_window.py
-│   ├── widgets/             # connection_status uniquement (autres intégrés dans les vues)
-│   ├── dialogs/             # serial_config, save_config, device_detection, view_config
+│   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
+│   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params
+│   ├── dialogs/             # serial_config, save_config, device_detection, view_config, help_dialog
 │   └── views/               # meter_view, generator_view, logging_view, filter_test_view, bode_plot_widget
 ├── maquette/                # Interface seule (données factices), lancement indépendant
 │   ├── main_maquette.py
@@ -151,10 +154,14 @@ BancTestAuto/
 │   └── ui/                  # Copie légère des vues/dialogs/widgets (sans core/config)
 ├── logs/                    # Fichiers de log application (créé à l'exécution)
 ├── docs/
+│   ├── AIDE.md              # Manuel utilisateur (aide F1)
 │   ├── BANC_TEST_FILTRE.md
 │   ├── CAHIER_DES_CHARGES.md
 │   ├── DEVELOPPEMENT.md     # Ce fichier
+│   ├── DOC_AUDIT.md         # Audit doc/code, plan réduction écarts
+│   ├── FIX_VENV.md          # Dépannage venv
 │   ├── INTERFACE_PYQT6.md   # Conception interface
+│   ├── PLAN_IMPLEMENTATION.md
 │   ├── FY6900_communication_protocol.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
 ├── requirements.txt
@@ -234,10 +241,14 @@ BancTestAuto/
 │   └── themes/                   # Feuilles de style dark.qss, light.qss (voir README § Thème)
 │
 ├── docs/
+│   ├── AIDE.md                    # Manuel utilisateur (aide F1)
 │   ├── BANC_TEST_FILTRE.md
 │   ├── CAHIER_DES_CHARGES.md
-│   ├── DEVELOPPEMENT.md
+│   ├── DEVELOPPEMENT.md           # Ce fichier
+│   ├── DOC_AUDIT.md               # Audit doc/code, plan réduction écarts
+│   ├── FIX_VENV.md                # Dépannage venv (erreur launcher)
 │   ├── INTERFACE_PYQT6.md
+│   ├── PLAN_IMPLEMENTATION.md     # Phases d'implémentation
 │   ├── FY6900_communication_protocol.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
 │

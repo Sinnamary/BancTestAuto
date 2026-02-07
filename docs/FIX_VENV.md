@@ -3,10 +3,10 @@
 Si `pip install -r requirements.txt` affiche :
 
 ```text
-Fatal error in launcher: Unable to create process using '"C:\pa\CursorAI\OWON\.venv\Scripts\python.exe" ...': Le fichier spécifié est introuvable.
+Fatal error in launcher: Unable to create process using '"…\\.venv\\Scripts\\python.exe" ...': Le fichier spécifié est introuvable.
 ```
 
-c’est que le `.venv` a été créé ou copié depuis un autre projet (OWON) : les launchers `pip.exe` / `python.exe` pointent encore vers l’ancien chemin. Il faut **recréer** l’environnement virtuel dans BancTestAuto.
+c’est que le `.venv` a été créé ou copié depuis un autre projet : les launchers `pip.exe` / `python.exe` pointent encore vers l’ancien chemin. Il faut **recréer** l’environnement virtuel dans BancTestAuto.
 
 ## Étapes (PowerShell, à la racine du projet)
 

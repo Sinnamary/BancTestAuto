@@ -34,7 +34,7 @@ python main.py
 ```
 BancTestAuto/
 ├── main.py
-├── run_maquette.py       # Lanceur optionnel de la maquette (python run_maquette.py)
+├── clean.py             # Nettoyage __pycache__, logs (python clean.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
 ├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, device_detection, etc.
 ├── config/              # settings.py, config.json
@@ -45,7 +45,7 @@ BancTestAuto/
 └── resources/           # Icônes, thèmes
 ```
 
-**Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Lancer avec `python maquette/main_maquette.py` ou `python run_maquette.py`. Voir [maquette/README.md](maquette/README.md).
+**Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Lancer avec `python maquette/main_maquette.py`. Voir [maquette/README.md](maquette/README.md).
 
 Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELOPPEMENT.md) (arborescence complète et tableau des rôles).
 
@@ -62,6 +62,18 @@ pytest --cov=config --cov=core --cov-report=term-missing --cov-report=html   # a
 ```
 
 Rapport HTML : `htmlcov/index.html`.
+
+---
+
+## Nettoyage
+
+Pour supprimer les `__pycache__/` et les fichiers dans `logs/` :
+
+```bash
+python clean.py
+```
+
+Avec `python clean.py --all`, supprime aussi le rapport de couverture `htmlcov/`.
 
 ---
 
@@ -159,6 +171,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Guide de développement](docs/DEVELOPPEMENT.md) | Environnement, Git, arborescence, lancement |
 | [Banc de test filtre](docs/BANC_TEST_FILTRE.md) | Caractérisation Bode, balayage, qualification filtre |
 | [Conception interface PyQt6](docs/INTERFACE_PYQT6.md) | Maquette et widgets par vue — à valider avant la programmation |
+| [Audit documentation / code](docs/DOC_AUDIT.md) | Synthèse doc ↔ code, structure cible vs actuelle, redondances |
 
 ---
 

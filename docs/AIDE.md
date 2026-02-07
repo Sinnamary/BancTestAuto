@@ -158,6 +158,7 @@ Tous les réglages sont centralisés dans **`config/config.json`** (ports série
 
 | Raccourci | Action |
 |-----------|--------|
+| **F1** | Aide (manuel utilisateur avec recherche) |
 | **F5** | Mesure unique (onglet Multimètre) |
 | **Ctrl+M** | Mesure continue ON/OFF (onglet Multimètre) |
 | **Ctrl+R** | Reset *RST (onglet Multimètre) |
