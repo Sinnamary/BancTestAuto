@@ -26,15 +26,22 @@
   },
   "display": {
     "font_size": "large",
-    "theme": "dark",
+    "theme": "light",
     "secondary_display": false
   },
   "limits": {
     "history_size": 100,
-    "baudrate_options": [9600, 19200, 38400, 57600, 115200]
+    "baudrate_options": [
+      9600,
+      19200,
+      38400,
+      57600,
+      115200
+    ]
   },
   "logging": {
     "output_dir": "./logs",
+    "level": "INFO",
     "default_interval_s": 5,
     "default_duration_min": 60,
     "duration_unlimited": false

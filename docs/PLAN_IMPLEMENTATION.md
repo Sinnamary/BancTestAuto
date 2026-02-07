@@ -82,12 +82,12 @@
 - Si les raccourcis sont gérés dans `MainWindow`, `MeterView` doit exposer des slots publics ou des signaux : par ex. `trigger_measure()`, `toggle_continuous_measure()`, `trigger_reset()`, `trigger_export_csv()`, appelables depuis la fenêtre principale lorsque l’onglet « Multimètre » est actif.
 
 **Livrables Phase 2 :**
-- [ ] Tous les modes de mesure configurables depuis l’interface et reflétés en SCPI.
-- [ ] Plage (Auto/Manuel) et vitesse (Rapide/Moyenne/Lente) connectées.
-- [ ] Unité affichée cohérente avec le mode (plus de TODO).
-- [ ] Mesure continue opérationnelle (timer + MEAS?).
-- [ ] Reset (*RST) opérationnel.
-- [ ] Raccourcis Phase 1 pleinement fonctionnels sur l’onglet Multimètre.
+- [x] Tous les modes de mesure configurables depuis l’interface et reflétés en SCPI.
+- [x] Plage (Auto/Manuel) et vitesse (Rapide/Moyenne/Lente) connectées.
+- [x] Unité affichée cohérente avec le mode (plus de TODO).
+- [x] Mesure continue opérationnelle (timer + MEAS?).
+- [x] Reset (*RST) opérationnel.
+- [x] Raccourcis Phase 1 pleinement fonctionnels sur l’onglet Multimètre.
 
 ---
 
@@ -117,9 +117,9 @@
 - **UI :** un `QGroupBox` repliable (ou bouton « Afficher / Masquer ») contenant ces contrôles, comme décrit dans INTERFACE_PYQT6 § 3.6.
 
 **Livrables Phase 3 :**
-- [ ] Rel, dB, dBm, Moyenne opérationnels avec champs associés et stats.
-- [ ] Affichage secondaire (Hz) connecté (FUNC2 + MEAS2?).
-- [ ] Panneau « Paramètres avancés » (température, continuité, buzzer) ajouté et connecté.
+- [x] Rel, dB, dBm, Moyenne opérationnels avec champs associés et stats.
+- [x] Affichage secondaire (Hz) connecté (FUNC2 + MEAS2?).
+- [x] Panneau « Paramètres avancés » (température, continuité, buzzer) ajouté et connecté.
 
 ---
 
@@ -160,7 +160,7 @@
 
 ### 5.2 Thème clair
 
-- Fichier `resources/themes/light.qss` et bascule thème depuis la config (menu ou dialogue). Déjà prévu en config (`display.theme`).
+- **Implémenté :** fichier `resources/themes/light.qss` ; menu **Configuration → Thème → Clair / Foncé** (bascule immédiate). La valeur est stockée dans `display.theme` ; **Fichier → Sauvegarder config** pour conserver au prochain lancement. Voir README § Thème d’affichage.
 
 ### 5.3 Module owon_ranges.py (optionnel)
 
@@ -173,7 +173,7 @@
 
 **Livrables Phase 5 :**
 - [ ] (Optionnel) Icônes en place.
-- [ ] (Optionnel) Thème clair sélectionnable.
+- [x] Thème clair sélectionnable (menu Configuration → Thème ; sauvegarde via Fichier → Sauvegarder config).
 - [ ] (Optionnel) `owon_ranges.py` créé et utilisé.
 - [ ] Tests et doc à jour si nécessaire.
 

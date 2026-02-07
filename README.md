@@ -113,12 +113,21 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `serial_multimeter` | Port, débit, timeouts, log des échanges (multimètre) |
 | `serial_generator` | Port, débit, timeouts (générateur FY6900) |
 | `measurement` | Vitesse par défaut, auto-plage, intervalle de rafraîchissement |
-| `display` | Taille de police, thème (clair/sombre), affichage secondaire |
+| `display` | Taille de police, **thème (clair/foncé)**, affichage secondaire |
 | `logging` | Dossier de sortie, intervalle et durée par défaut |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
 | `filter_test` | Voie générateur (1 ou 2), f_min, f_max, nombre de points, échelle, délai, tension Ue |
 
 Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIER_DES_CHARGES.md).
+
+### Thème d’affichage (clair / foncé)
+
+- **Changer le thème :** menu **Configuration → Thème** puis **Clair** ou **Foncé**. L’interface est mise à jour immédiatement.
+- **Sauvegarder le thème pour les prochains lancements :** après avoir choisi un thème, enregistrer la configuration :
+  - **Fichier → Sauvegarder config** pour écrire dans `config/config.json`, ou  
+  - **Fichier → Enregistrer config sous...** pour un autre fichier.
+- La valeur est stockée dans la section `display` sous la clé `theme` : `"light"` (clair) ou `"dark"` (foncé). Au démarrage, l’application charge le thème indiqué dans ce fichier.
+- Fichiers de style : `resources/themes/dark.qss` et `resources/themes/light.qss`.
 
 ---
 
@@ -135,7 +144,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 ## Interface et robustesse
 
-- **Interface** par zones : **barre de connexion** (une pastille de statut par équipement : multimètre et générateur), menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut**. Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
+- **Interface** par zones : **barre de connexion** (une pastille de statut par équipement : multimètre et générateur), menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), **Configuration → Thème** (clair / foncé), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut** ; le thème peut être changé et sauvegardé (voir [§ Thème d’affichage](#thème-daffichage-clair--foncé)). Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
 - **Robustesse :** timeout série configurable, reconnexion après déconnexion physique, messages d’erreur SCPI, indicateur « en cours » pour les requêtes longues.
 
 ---

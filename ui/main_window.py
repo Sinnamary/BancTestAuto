@@ -255,6 +255,8 @@ class MainWindow(QMainWindow):
         meter = self._tabs.widget(0)
         if hasattr(meter, "set_measurement") and self._measurement:
             meter.set_measurement(self._measurement)
+        if hasattr(meter, "load_config") and self._config:
+            meter.load_config(self._config)
         gen = self._tabs.widget(1)
         if hasattr(gen, "set_fy6900") and self._fy6900:
             gen.set_fy6900(self._fy6900)

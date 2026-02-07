@@ -8,6 +8,9 @@ RST = "*RST"
 SYST_LOC = "SYST:LOC"
 SYST_REM = "SYST:REM"
 SYST_BEEP_STAT = "SYST:BEEP:STAT"
+SYST_BEEP_STAT_QUERY = "SYST:BEEP:STAT?"
+SYST_BEEP_ON = "SYST:BEEP:STAT ON"
+SYST_BEEP_OFF = "SYST:BEEP:STAT OFF"
 
 # Modes de mesure (CONFigure)
 CONF_VOLT_DC = "CONF:VOLT:DC"
@@ -30,6 +33,11 @@ RATE_F = "RATE F"
 RATE_M = "RATE M"
 RATE_L = "RATE L"
 
+
+def RANGE_VALUE(value):  # noqa: N802
+    """Commande RANGE avec une valeur (ex. 5, 500E-3)."""
+    return f"RANGE {value}"
+
 # Mesure
 MEAS = "MEAS?"
 MEAS1 = "MEAS1?"
@@ -40,3 +48,42 @@ FUNC2_NONE = 'FUNC2 "NONe"'
 
 # Banc filtre : tension AC
 CONF_VOLT_AC_MEAS = (CONF_VOLT_AC, MEAS)
+
+# CALCulate (math)
+CALC_STAT_OFF = "CALC:STAT OFF"
+CALC_FUNC_NULL = "CALC:FUNC NULL"
+CALC_FUNC_DB = "CALC:FUNC DB"
+CALC_FUNC_DBM = "CALC:FUNC DBM"
+CALC_FUNC_AVERAGE = "CALC:FUNC AVERage"
+
+
+def CALC_NULL_OFFS(value):  # noqa: N802
+    return f"CALC:NULL:OFFS {value}"
+
+
+def CALC_DB_REF(ohm):  # noqa: N802
+    return f"CALC:DB:REF {ohm}"
+
+
+def CALC_DBM_REF(ohm):  # noqa: N802
+    return f"CALC:DBM:REF {ohm}"
+
+
+CALC_AVER_ALL_QUERY = "CALC:AVER:ALL?"
+AVERAGE_QUERY = "AVERage?"
+MAXIMUM_QUERY = "MAXimum?"
+MINIMUM_QUERY = "MINimum?"
+
+# Température RTD
+TEMP_RTD_TYPE_KITS90 = "TEMP:RTD:TYPE KITS90"
+TEMP_RTD_TYPE_PT100 = "TEMP:RTD:TYPE PT100"
+TEMP_RTD_UNIT_C = "TEMP:RTD:UNIT CEL"
+TEMP_RTD_UNIT_F = "TEMP:RTD:UNIT FAR"
+TEMP_RTD_UNIT_K = "TEMP:RTD:UNIT K"
+TEMP_RTD_SHOW_TEMP = "TEMP:RTD:SHOW TEMP"
+TEMP_RTD_SHOW_MEAS = "TEMP:RTD:SHOW MEAS"
+TEMP_RTD_SHOW_ALL = "TEMP:RTD:SHOW ALL"
+
+# Continuité
+def CONT_THRE(value):  # noqa: N802
+    return f"CONT:THRE {value}"

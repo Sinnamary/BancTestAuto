@@ -54,3 +54,67 @@ class TestScpiProtocol:
         conn.write.assert_called_once()
         arg = conn.write.call_args[0][0].decode("utf-8").strip()
         assert "*RST" in arg
+
+    def test_auto_writes_auto(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.auto()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert "AUTO" in arg
+
+    def test_set_range_value_writes_range(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.set_range_value(5)
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert "RANGE" in arg
+        assert "5" in arg
+
+    def test_rate_f_writes_rate_f(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.rate_f()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert arg == "RATE F"
+
+    def test_meas2_asks_meas2(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        conn.readline = MagicMock(return_value=b"123.45\n")
+        scpi = ScpiProtocol(conn)
+        out = scpi.meas2()
+        assert out == "123.45"
+        assert conn.write.called
+
+    def test_func2_freq_writes_freq(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.func2_freq()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "FREQ" in arg
+
+    def test_calc_stat_off_writes_calc(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.calc_stat_off()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "CALC" in arg
+
+    def test_beep_off_writes_beep(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.beep_off()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "BEEP" in arg

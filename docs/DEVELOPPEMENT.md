@@ -195,7 +195,8 @@ BancTestAuto/
 │
 ├── ui/                            # Interface PyQt6
 │   ├── __init__.py
-│   ├── main_window.py             # Fenêtre principale : onglets, barre outil, orchestration des vues
+│   ├── main_window.py             # Fenêtre principale : onglets, barre outil, menu Configuration → Thème
+│   ├── theme_loader.py            # Chargeur QSS (get_theme_stylesheet) pour resources/themes/*.qss
 │   │
 │   ├── widgets/                   # Widgets réutilisables (un fichier = une classe ou un petit groupe)
 │   │   ├── __init__.py
@@ -230,7 +231,7 @@ BancTestAuto/
 │
 ├── resources/                     # Ressources statiques
 │   ├── icons/                    # Icônes (modes, connexion, etc.)
-│   └── themes/                   # Feuilles de style (dark, light)
+│   └── themes/                   # Feuilles de style dark.qss, light.qss (voir README § Thème)
 │
 ├── docs/
 │   ├── BANC_TEST_FILTRE.md
@@ -265,7 +266,8 @@ BancTestAuto/
 | **core/bode_calc.py** | Gain linéaire, gain dB. Pur calcul. | filter_test, bode_plot_widget |
 | **core/device_detection.py** | Parcourir les ports COM, identifier multimètre OWON (SCPI *IDN?) et générateur FY6900, retourner port par équipement ; option mise à jour config.json | main_window (menu Outils), serial_config_dialog |
 | **config/settings.py** | Charger/sauver config.json, appliquer défauts. | main_window, toute vue |
-| **ui/main_window.py** | Fenêtre principale, onglets (multimètre, générateur, logging, banc filtre). | main.py |
+| **ui/main_window.py** | Fenêtre principale, onglets, menu Thème (Configuration → Thème → Clair/Foncé). | main.py |
+| **ui/theme_loader.py** | Charge les feuilles de style (dark.qss, light.qss) ; utilisé par main.py et main_window. | main.py, main_window |
 | **ui/widgets/measurement_display.py** | Affichage valeur + unité (style LCD). | meter_view, logging_view |
 | **ui/widgets/mode_button.py** | Un bouton de mode (état actif/inactif). | mode_bar |
 | **ui/widgets/mode_bar.py** | Barre de boutons de mode (compose ModeButton). | meter_view |

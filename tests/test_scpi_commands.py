@@ -22,3 +22,22 @@ class TestScpiConstants:
         assert SCPI.RATE_F == "RATE F"
         assert SCPI.RATE_M == "RATE M"
         assert SCPI.RATE_L == "RATE L"
+
+    def test_range_value(self):
+        assert "RANGE" in SCPI.RANGE_VALUE(5)
+        assert "5" in SCPI.RANGE_VALUE(5)
+        assert "500E-3" in SCPI.RANGE_VALUE(0.5) or "0.5" in SCPI.RANGE_VALUE(0.5)
+
+    def test_calc_constants(self):
+        assert "CALC" in SCPI.CALC_STAT_OFF
+        assert "OFF" in SCPI.CALC_STAT_OFF
+        assert "NULL" in SCPI.CALC_FUNC_NULL
+        assert "AVERage" in SCPI.CALC_FUNC_AVERAGE
+
+    def test_calc_null_offs(self):
+        assert "CALC" in SCPI.CALC_NULL_OFFS(1.5)
+        assert "1.5" in SCPI.CALC_NULL_OFFS(1.5)
+
+    def test_cont_thre(self):
+        assert "CONT" in SCPI.CONT_THRE(10)
+        assert "10" in SCPI.CONT_THRE(10)
