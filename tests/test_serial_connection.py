@@ -38,16 +38,16 @@ class TestSerialConnection:
     def test_is_open_before_open(self):
         conn = SerialConnection(port="COM99")
         assert conn._serial is None
-        assert conn.is_open is False
+        assert conn.is_open() is False
 
     def test_open_and_is_open(self):
         with patch("core.serial_connection.serial.Serial", MockSerial):
             conn = SerialConnection(port="COM99")
-            assert conn.is_open is False
+            assert conn.is_open() is False
             conn.open()
-            assert conn.is_open is True
+            assert conn.is_open() is True
             conn.close()
-            assert conn.is_open is False
+            assert conn.is_open() is False
 
     def test_write_when_closed_raises(self):
         conn = SerialConnection(port="COM99")
