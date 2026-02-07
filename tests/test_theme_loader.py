@@ -33,6 +33,13 @@ class TestGetThemeStylesheet:
         assert get_theme_stylesheet("") == ""
         assert get_theme_stylesheet("   ") == ""
 
+    def test_light_theme_exists_and_returns_non_empty(self):
+        base = Path(__file__).resolve().parent.parent
+        content = get_theme_stylesheet("light", base_path=base)
+        assert isinstance(content, str)
+        assert len(content) > 0
+        assert "background-color" in content or "QMainWindow" in content
+
     def test_unknown_theme_returns_empty_string(self):
         base = Path(__file__).resolve().parent.parent
         assert get_theme_stylesheet("unknown_theme_xyz", base_path=base) == ""

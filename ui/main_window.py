@@ -13,12 +13,14 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QDialog,
+    QApplication,
 )
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog
+from ui.theme_loader import get_theme_stylesheet
 
 # Import core et config (optionnel si non disponibles)
 try:
@@ -112,6 +114,19 @@ class MainWindow(QMainWindow):
         tools_menu.addAction("Détecter les équipements...", self._on_detect_devices)
 
         config_menu = menubar.addMenu("Configuration")
+        # Sous-menu Thème (clair / foncé)
+        theme_menu = config_menu.addMenu("Thème")
+        self._theme_group = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        self._theme_actions = {}
+        for label, theme_id in (("Clair", "light"), ("Foncé", "dark")):
+            action = QAction(label, self, checkable=True)
+            action.triggered.connect(lambda checked, t=theme_id: self._on_theme(t))
+            self._theme_group.addAction(action)
+            theme_menu.addAction(action)
+            self._theme_actions[theme_id] = action
+        self._update_theme_menu()
+        config_menu.addSeparator()
         log_level_menu = config_menu.addMenu("Niveau de log")
         self._log_level_group = QActionGroup(self)
         self._log_level_group.setExclusive(True)
@@ -350,6 +365,31 @@ class MainWindow(QMainWindow):
     def _on_detection_finished(self):
         self._connection_bar.hide_detection_progress()
         self._detection_worker = None
+
+    def _update_theme_menu(self) -> None:
+        """Coche l’action correspondant au thème actuel (config display.theme)."""
+        current = (self._config.get("display") or {}).get("theme", "dark")
+        current = str(current).strip().lower()
+        if current not in self._theme_actions:
+            current = "dark"
+        for theme_id, action in self._theme_actions.items():
+            action.setChecked(theme_id == current)
+
+    def _on_theme(self, theme_id: str) -> None:
+        """Change le thème (Configuration > Thème > Clair / Foncé) et applique le style."""
+        if "display" not in self._config:
+            self._config["display"] = {}
+        self._config["display"]["theme"] = theme_id
+        stylesheet = get_theme_stylesheet(theme_id)
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(stylesheet or "")
+        self._update_theme_menu()
+        if self.statusBar():
+            self.statusBar().showMessage(
+                f"Thème {'clair' if theme_id == 'light' else 'foncé'}. Enregistrez la config pour conserver."
+            )
+        logger.info("Thème défini à %s", theme_id)
 
     def _update_log_level_menu(self) -> None:
         """Coche l’action correspondant au niveau de log actuel (config ou logger)."""
