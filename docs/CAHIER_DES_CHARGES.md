@@ -187,6 +187,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
   },
   "logging": {
     "output_dir": "./logs",
+    "level": "INFO",
     "default_interval_s": 5,
     "default_duration_min": 60,
     "duration_unlimited": false
@@ -236,6 +237,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 | **limits**  | history_size      | Nombre max de mesures en historique| 10 – 1000                           |
 |             | baudrate_options  | Débits disponibles dans l'UI       | liste de valeurs                    |
 | **logging** | output_dir        | Répertoire des fichiers enregistrés| `"./logs"`                          |
+|             | level             | Niveau de log application          | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` |
 |             | default_interval_s| Intervalle par défaut (s)          | 1 – 86400                           |
 |             | default_duration_min | Durée par défaut (min)          | 1 – 525600 (1 an)                   |
 |             | duration_unlimited| Durée illimitée par défaut         | true, false                         |

@@ -21,6 +21,8 @@ class Measurement:
 
     def parse_float(self, value_str: str):  # -> Optional[float]
         """Parse la réponse MEAS? en float (V). Retourne None si invalide."""
+        if value_str is None:
+            return None
         try:
             return float(value_str.strip().replace(",", "."))
         except (ValueError, TypeError):

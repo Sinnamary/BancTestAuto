@@ -51,6 +51,20 @@ Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELO
 
 ---
 
+## Tests (pytest)
+
+Les tests couvrent les **classes et la logique métier** (`config/`, `core/`) ; l’interface GUI (`ui/`) n’est pas testée.
+
+```bash
+pip install -r requirements.txt   # inclut pytest et pytest-cov
+pytest                             # lancer les tests
+pytest --cov=config --cov=core --cov-report=term-missing --cov-report=html   # avec couverture de code
+```
+
+Rapport HTML : `htmlcov/index.html`.
+
+---
+
 ## Fonctionnalités
 
 ### Multimètre OWON (SCPI)

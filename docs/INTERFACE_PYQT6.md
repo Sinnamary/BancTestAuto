@@ -39,7 +39,7 @@
 
 | Élément | Widget PyQt6 | Rôle |
 |--------|---------------|------|
-| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
+| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, **Voir config JSON (lecture seule)**, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
 | Onglets | `QTabWidget` | 4 onglets : Multimètre, Générateur, Enregistrement, Banc filtre |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |
@@ -279,6 +279,13 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 - **Contenu :** texte d’explication ; zone résultat (`QTextEdit` ou labels) ; bouton « Lancer la détection » ; barre de progression (pendant le scan) ; bouton « Mettre à jour config.json » ; Fermer.
 - **Logique :** déléguée à `core/device_detection.py` (classe `DeviceDetection`).
 
+### 7.4 Voir config JSON (lecture seule) — menu Fichier
+
+- **Classe :** `QDialog` (`ViewConfigDialog`).
+- **Rôle :** afficher le contenu du fichier `config.json` (ou du dictionnaire de config courant) en lecture seule, pour vérification ou debug.
+- **Contenu :** label (chemin du fichier) ; `QPlainTextEdit` en lecture seule (JSON formaté, police monospace) ; bouton Fermer.
+- **Accès :** menu Fichier → « Voir config JSON (lecture seule) ».
+
 ---
 
 ## 8. Thème et apparence
@@ -336,6 +343,7 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 | `dialogs/serial_config_dialog.py` | Port, débit, timeouts, log |
 | `dialogs/save_config_dialog.py` | Chemin fichier, Enregistrer sous |
 | `dialogs/device_detection_dialog.py` | Détecter les équipements : résultat, Lancer détection, Mettre à jour config.json |
+| `dialogs/view_config_dialog.py` | Voir config JSON (lecture seule) — menu Fichier |
 
 ---
 

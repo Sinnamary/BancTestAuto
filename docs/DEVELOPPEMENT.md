@@ -1,6 +1,6 @@
 # Guide de développement — Banc de test automatique
 
-**Dernière mise à jour :** 6 février 2025
+**Dernière mise à jour :** 7 février 2025
 
 Le développement s’effectue en **petits fichiers**, avec des **classes distinctes pour chaque appareil de mesure** (multimètre OWON, générateur FY6900). Ces classes sont **appelées pour piloter le banc de test** (ex. caractérisation filtre) : le module banc n’orchestre que les appels aux classes d’appareils, sans dupliquer leur logique.
 
@@ -119,17 +119,49 @@ BancTestAuto/
 ├── .git/                    # Dépôt Git (interne)
 ├── .gitignore               # Fichiers ignorés par Git
 ├── .venv/                   # Environnement virtuel Python (ignoré)
+├── main.py                  # Point d'entrée application
+├── run_maquette.py          # Lanceur maquette (optionnel)
 ├── config/
-│   └── config.json          # Config par défaut : multimètre, générateur, banc filtre
+│   ├── __init__.py
+│   ├── config.json          # Config par défaut : multimètre, générateur, banc filtre
+│   └── settings.py          # Chargement / sauvegarde config
+├── core/                    # Logique métier (série, SCPI, FY6900, mesure, banc filtre)
+│   ├── __init__.py
+│   ├── app_logger.py        # Logging application (fichiers horodatés)
+│   ├── serial_connection.py
+│   ├── serial_exchange_logger.py  # Log des échanges série (debug)
+│   ├── scpi_protocol.py
+│   ├── scpi_commands.py
+│   ├── measurement.py
+│   ├── fy6900_protocol.py
+│   ├── fy6900_commands.py
+│   ├── data_logger.py
+│   ├── filter_test.py
+│   ├── filter_sweep.py
+│   ├── bode_calc.py
+│   └── device_detection.py
+├── ui/
+│   ├── main_window.py
+│   ├── widgets/             # connection_status uniquement (autres intégrés dans les vues)
+│   ├── dialogs/             # serial_config, save_config, device_detection, view_config
+│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, bode_plot_widget
+├── maquette/                # Interface seule (données factices), lancement indépendant
+│   ├── main_maquette.py
+│   ├── README.md
+│   └── ui/                  # Copie légère des vues/dialogs/widgets (sans core/config)
+├── logs/                    # Fichiers de log application (créé à l'exécution)
 ├── docs/
-│   ├── BANC_TEST_FILTRE.md  # Caractérisation filtre format Bode, balayage modifiable
-│   ├── CAHIER_DES_CHARGES.md # Spécifications complètes du projet
-│   ├── DEVELOPPEMENT.md     # Ce fichier — guide développeur
+│   ├── BANC_TEST_FILTRE.md
+│   ├── CAHIER_DES_CHARGES.md
+│   ├── DEVELOPPEMENT.md     # Ce fichier
+│   ├── INTERFACE_PYQT6.md   # Conception interface
 │   ├── FY6900_communication_protocol.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
-├── requirements.txt         # Dépendances Python
+├── requirements.txt
 └── README.md
 ```
+
+**Note :** `owon_ranges.py` (plages par mode) n’existe pas encore ; les plages peuvent être gérées dans `measurement.py` ou `scpi_commands.py`. Les panneaux `filter_config_panel` et `filter_results_table` sont intégrés dans `filter_test_view.py` (pas de fichiers séparés).
 
 ### 3.2 Structure cible — Arborescence complète (décomposition maximale)
 
@@ -145,7 +177,9 @@ BancTestAuto/
 │   ├── scpi_protocol.py           # Classe ScpiProtocol : envoi/réception SCPI (utilise SerialConnection)
 │   ├── scpi_commands.py           # Constantes et chaînes SCPI (CONF:VOLT:DC, MEAS?, etc.)
 │   ├── measurement.py             # Classe Measurement : logique mesures OWON (utilise ScpiProtocol)
-│   ├── owon_ranges.py              # Plages par mode (listes, valeurs SCPI) — données réutilisables
+│   ├── owon_ranges.py              # (optionnel) Plages par mode — à extraire ou déjà dans measurement/scpi_commands
+│   ├── app_logger.py              # Logging application (niveau, fichiers horodatés)
+│   ├── serial_exchange_logger.py   # Log des échanges série (multimètre / générateur)
 │   ├── fy6900_protocol.py         # Classe Fy6900Protocol : commandes WMW, WMF, WMA, WMN (utilise SerialConnection)
 │   ├── fy6900_commands.py         # Format des commandes FY6900 (WMF 14 chiffres, etc.) — helpers
 │   ├── data_logger.py             # Classe DataLogger : enregistrement CSV horodaté
@@ -180,16 +214,15 @@ BancTestAuto/
 │   │   ├── __init__.py
 │   │   ├── serial_config_dialog.py # Dialogue port, débit, timeouts (multimètre ou générateur)
 │   │   ├── save_config_dialog.py  # Sauvegarde configuration JSON (fichier, « Enregistrer sous »)
-│   │   └── device_detection_dialog.py # Détecter les équipements (menu Outils), résultat + mise à jour config
+│   │   ├── device_detection_dialog.py # Détecter les équipements (menu Outils), résultat + mise à jour config
+│   │   └── view_config_dialog.py  # Affichage config JSON en lecture seule (menu Fichier)
 │   │
 │   ├── views/                     # Vues composites (assemblent des widgets)
 │   │   ├── __init__.py
 │   │   ├── meter_view.py          # Vue principale multimètre (modes, affichage, plage, maths, historique)
 │   │   ├── generator_view.py      # Vue générateur FY6900 : choix Voie 1/2 + forme, fréquence, amplitude, offset, ON/OFF
 │   │   ├── logging_view.py        # Vue enregistrement : texte explicatif (multimètre uniquement), config, graphique temps réel
-│   │   ├── filter_test_view.py    # Vue banc filtre : voie générateur (1/2) + config balayage + tableau + graphique Bode
-│   │   ├── filter_config_panel.py # Panneau config balayage (f_min, f_max, N points, échelle, délai, Ue)
-│   │   ├── filter_results_table.py# Tableau résultats : f | Us | Us/Ue | Gain (dB)
+│   │   ├── filter_test_view.py    # Vue banc filtre : config balayage + tableau + graphique Bode (panneau/tableau intégrés)
 │   │   └── bode_plot_widget.py    # Widget graphique Bode (semi-log, gain dB vs fréquence) — réutilisable
 │   │
 │   └── (optionnel) mixins/
@@ -203,6 +236,7 @@ BancTestAuto/
 │   ├── BANC_TEST_FILTRE.md
 │   ├── CAHIER_DES_CHARGES.md
 │   ├── DEVELOPPEMENT.md
+│   ├── INTERFACE_PYQT6.md
 │   ├── FY6900_communication_protocol.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
 │
@@ -220,7 +254,9 @@ BancTestAuto/
 | **core/scpi_protocol.py** | Envoi/réception SCPI (write/read). Dépend de SerialConnection. | Measurement, toute commande OWON |
 | **core/scpi_commands.py** | Constantes SCPI (chaînes). Aucune I/O. | scpi_protocol, measurement, UI (libellés) |
 | **core/measurement.py** | Logique mesures (mode, plage, MEAS?). Utilise ScpiProtocol. | meter_view, filter_test |
-| **core/owon_ranges.py** | Données plages par mode (listes, valeurs SCPI). | measurement, range_selector |
+| **core/owon_ranges.py** | (optionnel) Données plages par mode. À extraire ou déjà dans measurement. | measurement, range_selector |
+| **core/app_logger.py** | Logging application (niveau, fichiers horodatés dans logs/). | main.py, main_window, device_detection |
+| **core/serial_exchange_logger.py** | Log des échanges série (multimètre / générateur) pour debug. | main_window → serial_connection |
 | **core/fy6900_protocol.py** | Protocole FY6900 (WMW, WMF, WMA, WMN). Utilise SerialConnection. | generator_view, filter_test |
 | **core/fy6900_commands.py** | Format commandes (ex. WMF 14 chiffres). Aucune I/O. | fy6900_protocol |
 | **core/data_logger.py** | Écriture CSV horodaté (timestamp, value, unit, mode). | logging_view |
@@ -243,12 +279,11 @@ BancTestAuto/
 | **ui/dialogs/serial_config_dialog.py** | Config port série (port, débit, timeouts). | main_window, meter_view |
 | **ui/dialogs/save_config_dialog.py** | Sauvegarde config JSON (chemin, « Enregistrer sous »). | main_window |
 | **ui/dialogs/device_detection_dialog.py** | Détecter les équipements : affichage résultat, Lancer détection, Mettre à jour config.json. Utilise core/device_detection. | main_window (menu Outils) |
-| **ui/views/meter_view.py** | Vue complète multimètre (compose widgets). | main_window |
+| **ui/dialogs/view_config_dialog.py** | Affichage config JSON en lecture seule (menu Fichier → Voir config JSON). | main_window |
+| **ui/views/meter_view.py** | Vue complète multimètre (modes, affichage, plage, historique ; widgets intégrés). | main_window |
 | **ui/views/generator_view.py** | Vue générateur FY6900 : choix Voie 1 / Voie 2 + paramètres (forme, fréquence, amplitude, offset, sortie). | main_window |
 | **ui/views/logging_view.py** | Vue enregistrement : texte (mesures multimètre uniquement), config + graphique + contrôles. | main_window |
-| **ui/views/filter_test_view.py** | Vue banc filtre : voie générateur (1/2) + config balayage + tableau + Bode. | main_window |
-| **ui/views/filter_config_panel.py** | Panneau voie générateur, f_min, f_max, N, échelle, délai, Ue. | filter_test_view |
-| **ui/views/filter_results_table.py** | Tableau f | Us | Us/Ue | Gain dB. | filter_test_view |
+| **ui/views/filter_test_view.py** | Vue banc filtre : config balayage + tableau + Bode (panneau et tableau intégrés dans la vue). | main_window |
 | **ui/views/bode_plot_widget.py** | Graphique Bode semi-log (réutilisable). | filter_test_view, export image |
 
 ### 3.4 Principes de développement — petits fichiers et classes par appareil

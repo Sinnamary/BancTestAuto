@@ -33,6 +33,11 @@ wheels/
 *.swo
 *~
 
+# Pytest / couverture
+htmlcov/
+.coverage
+.coverage.*
+
 # Environnement
 .env
 .env.local
