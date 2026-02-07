@@ -1,0 +1,302 @@
+# Banc de test de filtre — Spécifications
+
+**Version :** 1.0  
+**Date :** 6 février 2025  
+**Références :** FY6900_communication_protocol.pdf, XDM1000_Digital_Multimeter_Programming_Manual.pdf
+
+---
+
+## 1. Reformulation du besoin
+
+### 1.1 Objectif
+
+Le **banc de test filtre** permet de **caractériser un filtre au format Bode** (réponse en fréquence). Il fournit :
+
+- Un **balayage en fréquence entièrement modifiable** (f_min, f_max, N points, échelle, délai, Ue) ; valeurs par défaut dans `config.json`, ajustables pour une **bonne qualification du filtre** (passe-bas, coupure, etc.).
+- Un **tableau de résultats** : fréquence (Hz) | Us (V) | Us/Ue | 20×log₁₀(Us/Ue) [dB]
+- Un **graphique au format Bode** (semi-log) : gain en dB vs fréquence, pour analyse et export
+- Une **impression** possible sur papier semi-log
+
+Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individuellement** avec toutes les commandes du matériel (voir cahier des charges).
+
+### 1.2 Schéma fonctionnel
+
+```
+┌─────────────────────┐      ┌─────────────┐      ┌─────────────────┐
+│  Générateur FY6900  │      │   FILTRE    │      │  Multimètre     │
+│  (FeelTech)         │─────▶│   À TESTER  │─────▶│  OWON XDM       │
+│  Ue = 1 V RMS       │      │             │      │  mesure Us      │
+│  sinusoïde          │      │  entrée     │      │  tension AC     │
+└─────────────────────┘      │  sortie     │      └─────────────────┘
+         │                   └─────────────┘               │
+         │                                                  │
+         └──────────────────┬───────────────────────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │   PC        │
+                     │  Application│
+                     │  PyQt6      │
+                     └─────────────┘
+```
+
+- **Ue** : tension d’entrée du filtre = 1 V RMS (fixe, imposée par le générateur)
+- **Us** : tension de sortie du filtre (mesurée par le multimètre en AC)
+- **Gain** : Us/Ue (linéaire) ou 20×log₁₀(Us/Ue) (dB)
+
+### 1.3 Hypothèses
+
+- Générateur FY6900 (FeelTech) : sortie sinusoïdale, amplitude réglable pour obtenir 1 V RMS à l’entrée du filtre
+- Multimètre OWON : mode tension AC, mesure RMS
+- Pour un signal sinusoïdal : **amplitude crête = Ueff × √2** → 1 V RMS ≈ 1,414 V crête → WMA1.414
+
+---
+
+## 2. Protocole générateur FY6900 (FeelTech)
+
+### 2.1 Communication
+
+| Paramètre     | Valeur    |
+|---------------|-----------|
+| Débit         | 115200 bps |
+| Fin de commande | 0x0a (LF) |
+| Réponse       | 0x0a après exécution |
+
+### 2.2 Commandes nécessaires pour le banc filtre
+
+| Commande | Format | Description | Exemple |
+|----------|--------|-------------|---------|
+| **WMW**  | WMWxx + 0x0a | Forme d’onde canal principal | WMW0 = sinusoïde |
+| **WMF**  | WMFxxxxxxxxxxxxxx + 0x0a | Fréquence (14 chiffres, unité µHz) | WMF1000000000 = 100 Hz |
+| **WMA**  | WMAxx.xx + 0x0a | Amplitude crête (V) | WMA1.414 = 1 V RMS |
+| **WMO**  | WMOxx.xx + 0x0a | Offset (V) | WMO0 = 0 V |
+| **WMN**  | WMNx + 0x0a | Sortie ON/OFF | WMN1 = ON, WMN0 = OFF |
+
+### 2.3 Conversion fréquence → commande WMF
+
+Fréquence en Hz → valeur en µHz (14 chiffres) :
+
+| f (Hz) | Valeur WMF |
+|--------|------------|
+| 10     | WMF00010000000 |
+| 100    | WMF00100000000 |
+| 1000   | WMF01000000000 |
+| 10 000 | WMF10000000000 |
+
+Formule : `valeur = int(f * 1_000_000)` formatée sur 14 chiffres avec zéros à gauche.
+
+### 2.4 Séquence type pour une mesure
+
+1. WMW0 — sinusoïde
+2. WMA1.414 — amplitude 1 V RMS
+3. WMO0 — offset 0 V
+4. WMF&lt;freq&gt; — fréquence de test
+5. WMN1 — sortie ON
+6. Attendre stabilisation (ex. 100–500 ms)
+7. Lancer mesure multimètre (Us)
+8. (Optionnel) WMN0 — sortie OFF entre deux fréquences
+
+---
+
+## 3. Protocole multimètre OWON (SCPI)
+
+### 3.1 Commandes utilisées
+
+| Commande | Description |
+|----------|-------------|
+| `CONF:VOLT:AC` | Mode tension AC |
+| `AUTO` | Plage automatique |
+| `MEAS?` ou `MEAS1?` | Mesure tension (V RMS) |
+| `FUNC?` | Vérifier le mode |
+
+### 3.2 Mode de mesure
+
+Tension AC (RMS) sur la sortie du filtre.
+
+---
+
+## 4. Logique de mesure et calculs
+
+### 4.1 Paramètres du balayage (modifiables pour une bonne qualification)
+
+Pour **qualifier correctement le filtre** (pente de coupure, résonance, bande passante, etc.), tous les paramètres du balayage sont **modifiables** dans l'interface ; les valeurs par défaut viennent de `config.json` (section `filter_test`) et peuvent être adaptées à chaque filtre :
+
+| Paramètre | Description | Valeurs typiques | Rôle pour la qualification |
+|-----------|-------------|------------------|-----------------------------|
+| f_min     | Fréquence minimale (Hz) | 10, 20, 50 | Adapter à la plage utile du filtre |
+| f_max     | Fréquence maximale (Hz) | 100 kHz, 1 MHz | Couvrir la bande passante ou la coupure |
+| N_points  | Nombre de points | 20–100 | Résolution du tracé Bode (plus de points = courbe plus lisse) |
+| Échelle   | Linéaire ou logarithmique | Log recommandé | Log pour Bode classique, lin pour zoom sur une bande |
+| Temps stabilisation | Délai après changement de fréquence (ms) | 100–500 | Limiter les erreurs de mesure à chaque pas |
+| Ue        | Tension d’entrée effective (V RMS) | 1,0 (fixe) | Niveau d'excitation du filtre |
+
+### 4.2 Échelle logarithmique des fréquences
+
+Pour un balayage log entre f_min et f_max avec N points :
+
+```
+f[i] = f_min × (f_max / f_min)^(i / (N-1))   pour i = 0, 1, ..., N-1
+```
+
+### 4.3 Calculs
+
+- **Us/Ue** : gain linéaire (Ue = 1 V)
+- **20×log₁₀(Us/Ue)** : gain en dB (limite à −∞ si Us = 0)
+
+---
+
+## 5. Tableau de résultats
+
+| Colonne | Unité | Description |
+|---------|-------|-------------|
+| f       | Hz    | Fréquence |
+| Us      | V     | Tension de sortie mesurée (RMS) |
+| Us/Ue   | —     | Gain linéaire |
+| Gain dB | dB    | 20×log₁₀(Us/Ue) |
+
+### 5.1 Exemple
+
+| f (Hz) | Us (V) | Us/Ue | Gain (dB) |
+|--------|--------|-------|-----------|
+| 10     | 0.998  | 0.998 | −0.02     |
+| 100    | 0.995  | 0.995 | −0.04     |
+| 1000   | 0.707  | 0.707 | −3.01     |
+| 10000  | 0.100  | 0.100 | −20.0     |
+
+---
+
+## 6. Graphique semi-logarithmique
+
+### 6.1 Axes
+
+- **Axe X** : fréquence (Hz) — échelle logarithmique
+- **Axe Y** : gain Us/Ue (linéaire) ou 20×log(Us/Ue) (dB) — échelle linéaire
+
+### 6.2 Courbe de Bode
+
+- **20×log(Us/Ue) en dB** en fonction de **log(f)** : courbe de Bode en gain.
+- Format semi-log : abscisse log, ordonnée linéaire.
+
+### 6.3 Export pour impression
+
+- **CSV** : tableau complet (f, Us, Us/Ue, Gain dB)
+- **Image** (PNG, PDF) : courbe semi-log, prête à imprimer
+- **Papier semi-log** : mise en page compatible avec papier 3 ou 4 décades
+
+---
+
+## 7. Architecture d’implémentation
+
+### 7.1 Nouveaux modules
+
+| Module | Rôle |
+|--------|------|
+| `core/fy6900_protocol.py` | Protocole FY6900 (WMW, WMF, WMA, WMN, etc.) |
+| `core/filter_test.py` | Orchestration : balayage fréquence, mesures, calculs |
+| `ui/filter_test_view.py` | Interface : config, tableau, graphique, export |
+
+### 7.2 Connexions série
+
+- **Port 1** : multimètre OWON (SCPI, ex. 9600 ou 115200 bauds)
+- **Port 2** : générateur FY6900 (115200 bauds, obligatoire)
+
+Les liaisons série sont gérées **par classe** (une instance par port), avec buffers et option de log des échanges (voir cahier des charges § 2.5). Les I/O série sont exécutées dans un **thread dédié** (ex. QThread) pour garder l’interface réactive (cahier des charges § 2.6, DEVELOPPEMENT.md § 3.4).
+
+### 7.3 Dépendances et principe d’appel
+
+- **Classes distinctes par appareil** : chaque appareil de mesure est piloté par sa propre classe (fichiers séparés). Ces classes sont **appelées** par le module banc pour piloter le banc de test.
+- Réutiliser `SerialConnection` pour les deux ports.
+- Réutiliser la classe dédiée OWON (`ScpiProtocol` / couche mesure) pour le multimètre.
+- Classe dédiée FeelTech (`Fy6900Protocol` ou équivalent) pour le générateur.
+- **`filter_test.py`** : n’implémente pas les protocoles ; il **appelle** les classes multimètre et générateur pour orchestrer le balayage en fréquence, les mesures et les calculs (gain, Bode).
+
+### 7.4 Structure proposée
+
+```
+core/
+├── serial_connection.py
+├── scpi_protocol.py        # OWON
+├── fy6900_protocol.py      # FeelTech FY6900 (NOUVEAU)
+├── measurement.py
+├── data_logger.py
+└── filter_test.py          # Banc filtre (NOUVEAU)
+
+ui/
+├── filter_test_view.py     # Vue banc filtre (NOUVEAU)
+└── ...
+```
+
+---
+
+## 8. Configuration (config.json)
+
+### 8.1 Liaisons série et banc filtre
+
+Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (multimètre) et **`serial_generator`** (générateur FY6900). Les classes reprennent ces paramètres à l’initialisation et définissent des paramètres par défaut si une clé manque. Le banc filtre utilise la section **`filter_test`** pour le balayage (f_min, f_max, n_points, etc.) et les classes générateur/multimètre utilisent respectivement `serial_generator` et `serial_multimeter` pour la connexion.
+
+Exemple (structure complète dans le cahier des charges § 2.7) :
+
+```json
+{
+  "serial_generator": {
+    "port": "COM4",
+    "baudrate": 115200,
+    "timeout": 2,
+    "write_timeout": 2,
+    "log_exchanges": false
+  },
+  "filter_test": {
+    "f_min_hz": 10,
+    "f_max_hz": 100000,
+    "n_points": 50,
+    "scale": "log",
+    "settling_ms": 200,
+    "ue_rms": 1.0
+  }
+}
+```
+
+---
+
+## 9. Interface utilisateur
+
+### 9.1 Onglet « Banc de test filtre »
+
+- **Zone config (balayage modifiable)** : f_min, f_max, N_points, échelle (lin/log), délai de stabilisation, Ue — tous modifiables pour **qualifier correctement le filtre** (coupure, pente, bande passante). Valeurs par défaut depuis `config.json`, modifiables à la volée.
+- **Connexions** : port générateur, port multimètre (paramètres existants ou dédiés)
+- **Boutons** : [Démarrer balayage] [Arrêter] [Exporter CSV] [Exporter graphique]
+- **Tableau** : f | Us | Us/Ue | Gain (dB)
+- **Graphique** : courbe de Bode (semi-log) temps réel — gain en dB vs fréquence
+- **Barre de progression** : avancement du balayage
+
+### 9.2 Intégration
+
+- Nouvel onglet à côté de « Mode Enregistrement » et « Mesure »
+- Ou mode dédié accessible depuis le menu
+
+---
+
+## 10. Planning suggéré
+
+| Phase | Contenu |
+|-------|---------|
+| 1 | Module `fy6900_protocol.py` (WMW, WMF, WMA, WMN) |
+| 2 | Module `filter_test.py` (balayage, mesures, calculs) |
+| 3 | Vue `filter_test_view.py` (config, tableau, graphique) |
+| 4 | Export CSV et image semi-log |
+| 5 | Tests avec filtre réel |
+
+---
+
+## 11. Annexes
+
+### 11.1 Référence rapide FY6900
+
+- Document : `docs/FY6900_communication_protocol.pdf`
+- WMW0 = sinusoïde
+- WMF : 14 chiffres, unité µHz (1 Hz = 1 000 000 µHz)
+- WMA : amplitude crête en V (1 V RMS ≈ WMA1.414)
+
+### 11.2 Référence OWON
+
+- Document : `docs/XDM1000_Digital_Multimeter_Programming_Manual.pdf`
+- `CONF:VOLT:AC` + `MEAS?` pour tension AC RMS

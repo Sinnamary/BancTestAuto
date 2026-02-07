@@ -1,0 +1,50 @@
+{
+  "serial_multimeter": {
+    "port": "COM3",
+    "baudrate": 9600,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 2,
+    "write_timeout": 2,
+    "log_exchanges": false
+  },
+  "serial_generator": {
+    "port": "COM4",
+    "baudrate": 115200,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 2,
+    "write_timeout": 2,
+    "log_exchanges": false
+  },
+  "measurement": {
+    "default_rate": "F",
+    "default_auto_range": true,
+    "refresh_interval_ms": 500
+  },
+  "display": {
+    "font_size": "large",
+    "theme": "dark",
+    "secondary_display": false
+  },
+  "limits": {
+    "history_size": 100,
+    "baudrate_options": [9600, 19200, 38400, 57600, 115200]
+  },
+  "logging": {
+    "output_dir": "./logs",
+    "default_interval_s": 5,
+    "default_duration_min": 60,
+    "duration_unlimited": false
+  },
+  "filter_test": {
+    "f_min_hz": 10,
+    "f_max_hz": 100000,
+    "n_points": 50,
+    "scale": "log",
+    "settling_ms": 200,
+    "ue_rms": 1.0
+  }
+}
