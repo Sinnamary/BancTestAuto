@@ -65,7 +65,8 @@ BancTestAuto/
 │   ├── data_logger.py             # Enregistrement CSV horodaté
 │   ├── filter_test.py             # Orchestration banc filtre
 │   ├── filter_sweep.py            # Génération fréquences (log/lin)
-│   └── bode_calc.py               # Calculs gain dB (réutilisable)
+│   ├── bode_calc.py               # Calculs gain dB (réutilisable)
+│   └── device_detection.py       # Détection automatique : quel port pour OWON, quel port pour FY6900
 ├── config/
 │   ├── settings.py                # Chargement / sauvegarde config
 │   └── config.json
@@ -191,6 +192,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
     "duration_unlimited": false
   },
   "filter_test": {
+    "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
     "n_points": 50,
@@ -230,7 +232,8 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | default_interval_s| Intervalle par défaut (s)          | 1 – 86400                           |
 |             | default_duration_min | Durée par défaut (min)          | 1 – 525600 (1 an)                   |
 |             | duration_unlimited| Durée illimitée par défaut         | true, false                         |
-| **filter_test** | f_min_hz, f_max_hz | Plage de fréquence (Hz)            | 10 – 1 000 000                      |
+| **filter_test** | generator_channel | Voie du générateur FY6900 (1 ou 2)  | 1, 2                                |
+|             | f_min_hz, f_max_hz | Plage de fréquence (Hz)            | 10 – 1 000 000                      |
 |             | n_points        | Nombre de points du balayage        | 20 – 200                            |
 |             | scale           | Échelle fréquence                   | `"log"`, `"lin"`                    |
 |             | settling_ms     | Délai stabilisation après changement f | 100 – 1000                       |
@@ -254,7 +257,17 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 | Mode local/distant  | `SYST:LOC` / `SYST:REM` | Indicateur visuel du mode (Local/Remote) |
 | Réinitialisation    | `*RST`        | Bouton « Reset » pour valeurs par défaut |
 
-### 3.2 Sélection des modes de mesure (zone principale)
+### 3.2 Détection automatique des équipements (menu Outils)
+
+Dans le menu **Outils**, une action **« Détecter les équipements »** permet d’identifier automatiquement sur quels ports série sont connectés le **multimètre OWON** et le **générateur FY6900**, puis d’affecter le bon port au bon équipement et de **mettre à jour le fichier `config.json`**.
+
+- **Principe :** le logiciel parcourt l’ensemble des ports COM disponibles (Windows : COM1, COM2, … ; Linux : /dev/ttyUSBx, /dev/ttyACMx, …). Pour chaque port, il tente une communication selon le **protocole adapté** :
+  - **Multimètre OWON :** envoi de la commande SCPI `*IDN?` (débit type 9600 ou 115200) ; si la réponse contient un identifiant OWON / XDM, le port est considéré comme celui du multimètre.
+  - **Générateur FY6900 :** envoi d’une commande du protocole FeelTech (ex. requête de statut ou commande sans effet de bord) ; si la réponse est cohérente avec le protocole FY6900, le port est considéré comme celui du générateur.
+- **Résultat :** affectation du port détecté au bon équipement (multimètre vs générateur). Les champs `serial_multimeter.port` et `serial_generator.port` dans **`config.json`** sont mis à jour avec les ports trouvés ; l’utilisateur n’a plus à choisir manuellement le port pour chaque appareil à chaque démarrage.
+- **Implémentation :** cette logique est encapsulée dans une **classe dédiée** `core/device_detection.py` (ex. `DeviceDetection`), réutilisable et testable, sans dépendance directe à l’interface. Le menu Outils appelle cette classe puis demande la sauvegarde du JSON (ou sauvegarde automatique après détection).
+
+### 3.3 Sélection des modes de mesure (zone principale)
 
 Tous les modes doivent être accessibles via des boutons ou une barre d'icônes.
 
@@ -273,7 +286,7 @@ Tous les modes doivent être accessibles via des boutons ou une barre d'icônes.
 | Diode                | `CONF:DIOD`          | Bouton symbole diode  |
 | Continuité           | `CONF:CONT`          | Bouton symbole son    |
 
-### 3.3 Plages de mesure (ranges)
+### 3.4 Plages de mesure (ranges)
 
 Paramétrage via listes déroulantes ou boutons radio, selon le mode actif.
 
@@ -328,14 +341,14 @@ Plages : 50 mV, 500 mV, 5 V, 50 V, 500 V, 1000 V (shunts).
 | KITS90   | KITS90      |
 | PT100    | PT100       |
 
-### 3.4 Auto-plage et plage manuelle
+### 3.5 Auto-plage et plage manuelle
 
 | Fonction         | Commande    | Interface                          |
 |------------------|-------------|------------------------------------|
 | Plage automatique| `AUTO` / `AUTO?` | Interrupteur / bouton « AUTO » |
 | Plage manuelle   | `RANGE <n>` | Liste déroulante / barre de plages |
 
-### 3.5 Vitesse de mesure (RATE)
+### 3.6 Vitesse de mesure (RATE)
 
 | Vitesse | Commande | Libellé interface |
 |---------|----------|-------------------|
@@ -345,7 +358,7 @@ Plages : 50 mV, 500 mV, 5 V, 50 V, 500 V, 1000 V (shunts).
 
 Contrôle par boutons radio ou liste déroulante.
 
-### 3.6 Affichage principal et secondaire
+### 3.7 Affichage principal et secondaire
 
 #### Affichage principal
 - Grand écran numérique (similaire au LCD du multimètre)
@@ -360,7 +373,7 @@ Contrôle par boutons radio ou liste déroulante.
 
 Contrôle par case à cocher « Affichage secondaire : Fréquence ».
 
-### 3.7 Température (paramètres spécifiques)
+### 3.8 Température (paramètres spécifiques)
 
 | Paramètre   | Commande                     | Interface                |
 |-------------|------------------------------|--------------------------|
@@ -368,13 +381,13 @@ Contrôle par case à cocher « Affichage secondaire : Fréquence ».
 | Unité       | `TEMP:RTD:UNIT`             | Liste : °C / °F / K       |
 | Mode affich.| `TEMP:RTD:SHOW`             | TEMP / MEAS / ALL         |
 
-### 3.8 Seuil de continuité
+### 3.9 Seuil de continuité
 
 | Paramètre        | Commande            | Interface              |
 |------------------|---------------------|------------------------|
 | Seuil (Ω)        | `CONT:THRE <value>` | Champ numérique        |
 
-### 3.9 Fonctions mathématiques (CALCulate)
+### 3.10 Fonctions mathématiques (CALCulate)
 
 | Fonction  | Commande            | Interface                     |
 |-----------|---------------------|-------------------------------|
@@ -392,13 +405,13 @@ Options : 50, 75, 93, 110, 124, 125, 135, 150, 250, 300, 500, 600, 800, 900, 100
 - Affichage : Min, Max, Moyenne, Nombre de mesures
 - Bouton « Réinitialiser stats »
 
-### 3.10 Paramètres système
+### 3.11 Paramètres système
 
 | Paramètre      | Commande            | Interface              |
 |----------------|---------------------|------------------------|
 | Buzzer         | `SYST:BEEP:STAT`    | Case à cocher ON/OFF   |
 
-### 3.11 Acquisition et export des mesures
+### 3.12 Acquisition et export des mesures
 
 | Fonction           | Commandes           | Interface                            |
 |--------------------|---------------------|--------------------------------------|
@@ -408,7 +421,7 @@ Options : 50, 75, 93, 110, 124, 125, 135, 150, 250, 300, 500, 600, 800, 900, 100
 | Historique         | —                   | Tableau des N dernières mesures      |
 | Export CSV         | —                   | Bouton « Exporter »                  |
 
-### 3.12 Mode enregistrement (logging longue durée)
+### 3.13 Mode enregistrement (logging longue durée)
 
 Mode dédié permettant d'enregistrer des mesures à intervalle régulier sur des durées longues (quelques secondes à plusieurs jours), avec affichage graphique et relecture pour comparaison.
 

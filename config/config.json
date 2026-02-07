@@ -40,6 +40,7 @@
     "duration_unlimited": false
   },
   "filter_test": {
+    "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
     "n_points": 50,

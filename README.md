@@ -34,6 +34,7 @@ python main.py
 ```
 BancTestAuto/
 ├── main.py
+├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
 ├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, filter_sweep, bode_calc
 ├── config/              # settings.py, config.json
 ├── ui/
@@ -42,6 +43,8 @@ BancTestAuto/
 │   └── views/           # meter_view, generator_view, logging_view, filter_test_view, bode_plot_widget
 └── resources/           # Icônes, thèmes
 ```
+
+**Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Voir [maquette/README.md](maquette/README.md).
 
 Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELOPPEMENT.md) (arborescence complète et tableau des rôles).
 
@@ -126,6 +129,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Cahier des charges](docs/CAHIER_DES_CHARGES.md) | Spécifications complètes, architecture, config, cas d’usage |
 | [Guide de développement](docs/DEVELOPPEMENT.md) | Environnement, Git, arborescence, lancement |
 | [Banc de test filtre](docs/BANC_TEST_FILTRE.md) | Caractérisation Bode, balayage, qualification filtre |
+| [Conception interface PyQt6](docs/INTERFACE_PYQT6.md) | Maquette et widgets par vue — à valider avant la programmation |
 
 ---
 

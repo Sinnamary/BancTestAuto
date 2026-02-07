@@ -122,6 +122,7 @@ Pour **qualifier correctement le filtre** (pente de coupure, résonance, bande p
 
 | Paramètre | Description | Valeurs typiques | Rôle pour la qualification |
 |-----------|-------------|------------------|-----------------------------|
+| **Voie générateur** | Voie du FY6900 utilisée pour le balayage | 1 ou 2 | Choisir la sortie du générateur (FY6900 a deux voies) |
 | f_min     | Fréquence minimale (Hz) | 10, 20, 50 | Adapter à la plage utile du filtre |
 | f_max     | Fréquence maximale (Hz) | 100 kHz, 1 MHz | Couvrir la bande passante ou la coupure |
 | N_points  | Nombre de points | 20–100 | Résolution du tracé Bode (plus de points = courbe plus lisse) |
@@ -261,7 +262,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 
 ### 9.1 Onglet « Banc de test filtre »
 
-- **Zone config (balayage modifiable)** : f_min, f_max, N_points, échelle (lin/log), délai de stabilisation, Ue — tous modifiables pour **qualifier correctement le filtre** (coupure, pente, bande passante). Valeurs par défaut depuis `config.json`, modifiables à la volée.
+- **Zone config (balayage modifiable)** : **voie générateur (Voie 1 / Voie 2)**, f_min, f_max, N_points, échelle (lin/log), délai de stabilisation, Ue — tous modifiables pour **qualifier correctement le filtre** (coupure, pente, bande passante). Valeurs par défaut depuis `config.json`, modifiables à la volée.
 - **Connexions** : port générateur, port multimètre (paramètres existants ou dédiés)
 - **Boutons** : [Démarrer balayage] [Arrêter] [Exporter CSV] [Exporter graphique]
 - **Tableau** : f | Us | Us/Ue | Gain (dB)

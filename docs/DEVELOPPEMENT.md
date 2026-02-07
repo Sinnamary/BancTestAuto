@@ -151,7 +151,8 @@ BancTestAuto/
 │   ├── data_logger.py             # Classe DataLogger : enregistrement CSV horodaté
 │   ├── filter_test.py             # Classe FilterTest : orchestration banc filtre (appelle Measurement + Fy6900Protocol)
 │   ├── filter_sweep.py            # Génération liste de fréquences (log/lin), pas de balayage
-│   └── bode_calc.py               # Calculs gain linéaire, gain dB (20*log10) — réutilisable sans UI
+│   ├── bode_calc.py               # Calculs gain linéaire, gain dB (20*log10) — réutilisable sans UI
+│   └── device_detection.py        # Détection auto : parcours des ports COM, identification OWON (SCPI *IDN?) et FY6900, mise à jour config
 │
 ├── config/
 │   ├── __init__.py
@@ -225,6 +226,7 @@ BancTestAuto/
 | **core/filter_test.py** | Orchestration : balayage, réglage FY6900, mesure OWON, calcul gain. | filter_test_view |
 | **core/filter_sweep.py** | Génération liste f[] (log/lin). Pur calcul. | filter_test |
 | **core/bode_calc.py** | Gain linéaire, gain dB. Pur calcul. | filter_test, bode_plot_widget |
+| **core/device_detection.py** | Parcourir les ports COM, identifier multimètre OWON (SCPI *IDN?) et générateur FY6900, retourner port par équipement ; option mise à jour config.json | main_window (menu Outils), serial_config_dialog |
 | **config/settings.py** | Charger/sauver config.json, appliquer défauts. | main_window, toute vue |
 | **ui/main_window.py** | Fenêtre principale, onglets (multimètre, générateur, logging, banc filtre). | main.py |
 | **ui/widgets/measurement_display.py** | Affichage valeur + unité (style LCD). | meter_view, logging_view |
