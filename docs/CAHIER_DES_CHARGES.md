@@ -49,32 +49,54 @@ Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au d�
 
 ### 2.2 Structure de l'application
 
+Vue d’ensemble (structure détaillée avec **décomposition maximale** et rôle de chaque fichier : **[Guide de développement § 3.2 et 3.3](DEVELOPPEMENT.md)**).
+
 ```
 BancTestAuto/
-├── main.py                 # Point d'entrée (minimal, assemble les modules)
+├── main.py
+├── core/                          # Logique métier : série, SCPI, FY6900, mesure, banc filtre
+│   ├── serial_connection.py       # Liaison série (port, buffers, log)
+│   ├── scpi_protocol.py           # SCPI (utilise SerialConnection)
+│   ├── scpi_commands.py           # Constantes SCPI
+│   ├── measurement.py             # Logique mesures OWON
+│   ├── owon_ranges.py             # Plages par mode (données)
+│   ├── fy6900_protocol.py         # Protocole FY6900
+│   ├── fy6900_commands.py         # Format commandes FY6900
+│   ├── data_logger.py             # Enregistrement CSV horodaté
+│   ├── filter_test.py             # Orchestration banc filtre
+│   ├── filter_sweep.py            # Génération fréquences (log/lin)
+│   └── bode_calc.py               # Calculs gain dB (réutilisable)
+├── config/
+│   ├── settings.py                # Chargement / sauvegarde config
+│   └── config.json
 ├── ui/
-│   ├── main_window.py      # Fenêtre principale (orchestration)
-│   ├── widgets/            # Widgets réutilisables (un fichier/classe par widget)
+│   ├── main_window.py             # Fenêtre principale, onglets
+│   ├── widgets/                   # Un fichier = un widget réutilisable
 │   │   ├── measurement_display.py
 │   │   ├── mode_button.py
-│   │   └── ...
+│   │   ├── mode_bar.py
+│   │   ├── range_selector.py
+│   │   ├── rate_selector.py
+│   │   ├── math_panel.py
+│   │   ├── history_table.py
+│   │   ├── connection_status.py
+│   │   ├── secondary_display.py
+│   │   └── advanced_params.py
 │   ├── dialogs/
 │   │   ├── serial_config_dialog.py
-│   │   └── ...
-│   ├── logging_view.py     # Vue mode enregistrement (compose des widgets)
-│   └── filter_test_view.py # Vue banc de test filtre (graphique Bode, tableau)
-├── core/
-│   ├── serial_connection.py # Classe liaison série par port (buffers, log échanges activable)
-│   ├── scpi_protocol.py    # Envoi/réception SCPI (utilise SerialConnection)
-│   ├── fy6900_protocol.py  # Protocole générateur FeelTech FY6900 (banc filtre)
-│   ├── measurement.py      # Logique mesures (utilise ScpiProtocol)
-│   ├── data_logger.py      # Enregistrement CSV horodaté
-│   └── filter_test.py      # Banc filtre : appelle les classes OWON et FY6900 pour orchestrer
-├── config/
-│   ├── settings.py         # Chargement/gestion de la config
-│   └── config.json         # Fichier de configuration (valeurs par défaut)
-└── resources/              # Icônes, thèmes
+│   │   └── save_config_dialog.py
+│   └── views/                     # Vues composites (multimètre, générateur, logging, banc filtre)
+│       ├── meter_view.py
+│       ├── generator_view.py
+│       ├── logging_view.py
+│       ├── filter_test_view.py
+│       ├── filter_config_panel.py
+│       ├── filter_results_table.py
+│       └── bode_plot_widget.py
+└── resources/                     # Icônes, thèmes
 ```
+
+Règle : **petits fichiers**, **une responsabilité par module**, **classes facilement réutilisables** (injection, utilisation en UI et par le banc de test). Arborescence complète et tableau des rôles : [DEVELOPPEMENT.md § 3.2–3.3](DEVELOPPEMENT.md).
 
 ### 2.3 Principes de modularité et développement
 

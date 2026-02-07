@@ -300,3 +300,44 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 
 - Document : `docs/XDM1000_Digital_Multimeter_Programming_Manual.pdf`
 - `CONF:VOLT:AC` + `MEAS?` pour tension AC RMS
+
+---
+
+## 12. Évolutions possibles — Mieux caractériser le filtre
+
+Les fonctionnalités suivantes permettraient d’obtenir une **meilleure approche des caractéristiques du filtre** avec le matériel actuel (OWON + FY6900) ou en évolution.
+
+### 12.1 Avec le matériel actuel (gain uniquement)
+
+| Fonctionnalité | Description | Bénéfice |
+|----------------|-------------|----------|
+| **Fréquence(s) de coupure à −3 dB** | Détection automatique des points où Gain = −3 dB (interpolation entre points si besoin). Affichage fc pour passe-bas / passe-haut, fc1/fc2 pour passe-bande. | Qualification directe de la bande passante et des coupures. |
+| **Pente de coupure (roll-off)** | Estimation de la pente en dB/décade dans la zone de transition (régression sur les points entre −1 et −25 dB par exemple). Afficher ex. « −20 dB/déc » (ordre 1), « −40 dB/déc » (ordre 2). | Donne une idée de l’ordre du filtre et de la raideur de la coupure. |
+| **Moyenne par fréquence** | À chaque fréquence du balayage, effectuer N mesures (ex. 3 à 5), afficher la moyenne (et optionnellement l’écart-type). | Réduction du bruit et courbe de Bode plus stable. |
+| **Seuil de bruit / plancher** | Seuil minimal Us (ou gain dB) en dessous duquel la mesure est considérée comme bruit (multimètre). Option : ne pas tracer ou marquer ces points, ou afficher une zone « bruit ». | Évite de surinterpréter la queue de courbe quand le filtre atténue fortement. |
+| **Zoom / balayage ciblé** | Après un premier balayage, permettre de définir une plage [f_min_zoom, f_max_zoom] et relancer un balayage avec plus de points (ex. 100) en échelle lin ou log. | Meilleure résolution autour de fc ou d’un pic de résonance. |
+| **Résumé « Caractéristiques »** | Panneau affichant : fc (−3 dB), pente (dB/déc), gain max (dB), bande passante à −3 dB (pour passe-bande). Rempli automatiquement après le balayage. | Synthèse lisible sans interprétation manuelle. |
+| **Courbe de référence / comparaison** | Superposition d’une courbe théorique (ex. 1er ordre avec fc choisi, 2e ordre Butterworth) ou chargement d’un CSV de référence pour comparer deux filtres ou deux mesures. | Vérification par rapport à un modèle ou à un filtre de référence. |
+| **Sauvegarde / chargement de courbes** | Sauvegarder le résultat (f, Us, gain dB) en JSON/CSV avec métadonnées (date, paramètres du balayage). Recharger pour comparaison ou rapport. | Traçabilité et comparaison avant/après. |
+| **Rapport exportable** | Génération d’un rapport (PDF ou HTML) : graphique Bode, tableau résumé, fc, pente, paramètres du balayage. | Documentation de qualification. |
+
+### 12.2 Indicateurs de qualité (toujours avec matériel actuel)
+
+| Indicateur | Description |
+|------------|-------------|
+| **Stabilité par point** | Si moyenne de N mesures : afficher écart-type ou incertitude par fréquence (optionnel dans le tableau ou en tooltip). |
+| **Cohérence Ue** | Vérification périodique de Ue (mesure sur entrée du filtre si possible, ou rappel de la valeur configurée) pour s’assurer que le niveau d’excitation est constant. |
+
+### 12.3 Évolutions nécessitant des mesures supplémentaires (phase, etc.)
+
+| Fonctionnalité | Description | Limite actuelle |
+|----------------|-------------|------------------|
+| **Phase (déphasage φ)** | Courbe de Bode phase : φ(f) en degrés ou radians. Nécessite mesure de phase (décalage temporel ou analyseur). | Le multimètre RMS seul ne donne pas la phase ; il faudrait un oscillo 2 voies ou un analyseur. |
+| **Délai de groupe** | −dφ/dω pour analyser la linéarité de phase. | Dépend de la mesure de phase. |
+| **Courbe de Bode complète** | Gain + phase sur un même écran (format Bode classique). | Phase non disponible avec OWON seul. |
+
+### 12.4 Priorisation suggérée
+
+- **Priorité haute (qualification immédiate)** : fréquence de coupure −3 dB, pente en dB/décade, résumé « Caractéristiques », moyenne par fréquence.
+- **Priorité moyenne** : zoom / balayage ciblé, courbe de référence ou comparaison, seuil bruit, sauvegarde/chargement courbes.
+- **Priorité plus basse** : rapport PDF/HTML, indicateurs de stabilité détaillés ; phase/délai de groupe en cas d’évolution du matériel.
