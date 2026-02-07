@@ -144,9 +144,9 @@
 - Possibilité de charger plusieurs fichiers et de superposer les courbes (couleurs différentes, légende). Stocker en mémoire les séries (liste de listes (t, value)) et les tracer sur le même graphique avec des styles distincts.
 
 **Livrables Phase 4 :**
-- [ ] Graphique temps réel opérationnel pendant l’enregistrement.
-- [ ] Relecture d’un fichier CSV et affichage de la courbe.
-- [ ] Comparaison d’au moins deux courbes (superposition avec légende ou labels).
+- [x] Graphique temps réel opérationnel pendant l’enregistrement.
+- [x] Relecture d’un fichier CSV et affichage de la courbe.
+- [x] Comparaison d’au moins deux courbes (superposition avec légende ou labels).
 
 ---
 

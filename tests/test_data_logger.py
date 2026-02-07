@@ -53,6 +53,7 @@ class TestDataLogger:
         meas = MagicMock()
         meas.read_value = MagicMock(return_value="2.5")
         meas.parse_float = MagicMock(return_value=2.5)
+        meas.get_unit_for_current_mode = MagicMock(return_value="V")
         logger = DataLogger()
         logger.set_measurement(meas)
         received = []

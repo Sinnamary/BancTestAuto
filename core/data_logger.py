@@ -99,6 +99,8 @@ class DataLogger:
                 elapsed = time.time() - self._start_time
                 ts_iso = datetime.now().isoformat(timespec="milliseconds")
                 unit = "V"
+                if getattr(self._measurement, "get_unit_for_current_mode", None):
+                    unit = self._measurement.get_unit_for_current_mode()
                 row = [ts_iso, f"{elapsed:.2f}", value_str, unit, self._mode_str]
                 if self._writer:
                     self._writer.writerow(row)
