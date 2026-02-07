@@ -135,6 +135,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 | Raccourci | Action |
 |-----------|--------|
+| **F1** | Aide (manuel utilisateur avec recherche) |
 | **F5** | Mesure unique |
 | **Ctrl+M** | Mesure continue ON/OFF |
 | **Ctrl+R** | Reset (*RST) |
@@ -153,6 +154,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 | Document | Description |
 |----------|-------------|
+| **Aide intégrée** | Menu **Aide → Manuel** ou touche **F1** : manuel avec recherche (fichier `docs/AIDE.md`) |
 | [Cahier des charges](docs/CAHIER_DES_CHARGES.md) | Spécifications complètes, architecture, config, cas d’usage |
 | [Guide de développement](docs/DEVELOPPEMENT.md) | Environnement, Git, arborescence, lancement |
 | [Banc de test filtre](docs/BANC_TEST_FILTRE.md) | Caractérisation Bode, balayage, qualification filtre |

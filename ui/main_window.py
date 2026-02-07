@@ -19,7 +19,7 @@ from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
-from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog
+from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, HelpDialog
 from ui.theme_loader import get_theme_stylesheet
 
 # Import core et config (optionnel si non disponibles)
@@ -138,7 +138,8 @@ class MainWindow(QMainWindow):
         self._log_level_actions = {a.text(): a for a in self._log_level_group.actions()}
         self._update_log_level_menu()
 
-        menubar.addMenu("?")
+        help_menu = menubar.addMenu("Aide")
+        help_menu.addAction("Manuel", QKeySequence("F1"), self._on_help)
 
     def _build_central(self):
         central = QWidget()
@@ -466,4 +467,11 @@ class MainWindow(QMainWindow):
             config_dict=self._config,
             parent=self,
         )
+        dlg.exec()
+
+    def _on_help(self):
+        """Ouvre la fenêtre d'aide (manuel utilisateur avec recherche)."""
+        root = Path(__file__).resolve().parent.parent
+        help_path = root / "docs" / "AIDE.md"
+        dlg = HelpDialog(help_path=help_path, parent=self)
         dlg.exec()
