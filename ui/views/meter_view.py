@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 
 
 class MeasureWorker(QThread):
@@ -50,6 +50,9 @@ class MeterView(QWidget):
         self._measurement = None
         self._history = []  # list of (value_str, unit)
         self._history_max = 100
+        self._continuous_timer = QTimer(self)
+        self._continuous_timer.timeout.connect(self._on_measure)
+        self._continuous_interval_ms = 500
         self._build_ui()
 
     def set_measurement(self, measurement):
@@ -137,8 +140,13 @@ class MeterView(QWidget):
         self._measure_btn = QPushButton("Mesure")
         self._measure_btn.clicked.connect(self._on_measure)
         actions.addWidget(self._measure_btn)
-        actions.addWidget(QPushButton("Mesure continue"))
-        actions.addWidget(QPushButton("Reset (*RST)"))
+        self._continuous_btn = QPushButton("Mesure continue")
+        self._continuous_btn.setCheckable(True)
+        self._continuous_btn.clicked.connect(self._on_toggle_continuous)
+        actions.addWidget(self._continuous_btn)
+        self._reset_btn = QPushButton("Reset (*RST)")
+        self._reset_btn.clicked.connect(self._on_reset)
+        actions.addWidget(self._reset_btn)
         self._export_csv_btn = QPushButton("Exporter CSV")
         self._export_csv_btn.clicked.connect(self._on_export_csv)
         actions.addWidget(self._export_csv_btn)
@@ -203,3 +211,36 @@ class MeterView(QWidget):
             QMessageBox.information(self, "Export", f"Fichier enregistré : {path}")
         except Exception as e:
             QMessageBox.warning(self, "Export", str(e))
+
+    def _on_toggle_continuous(self):
+        if self._continuous_btn.isChecked():
+            self._continuous_timer.start(self._continuous_interval_ms)
+        else:
+            self._continuous_timer.stop()
+
+    def _on_reset(self):
+        if self._measurement and hasattr(self._measurement, "reset"):
+            try:
+                self._measurement.reset()
+            except Exception:
+                pass
+
+    # --- Raccourcis clavier (appelés par MainWindow lorsque l'onglet Multimètre est actif) ---
+
+    def trigger_measure(self) -> None:
+        """Déclenche une mesure unique (F5)."""
+        self._on_measure()
+
+    def toggle_continuous_measure(self) -> None:
+        """Bascule mesure continue ON/OFF (Ctrl+M)."""
+        self._continuous_btn.setChecked(not self._continuous_btn.isChecked())
+        # _on_toggle_continuous est déjà appelé par le signal clicked du bouton
+        self._on_toggle_continuous()
+
+    def trigger_reset(self) -> None:
+        """Envoie *RST au multimètre (Ctrl+R)."""
+        self._on_reset()
+
+    def trigger_export_csv(self) -> None:
+        """Ouvre la boîte d'export CSV (Ctrl+E)."""
+        self._on_export_csv()

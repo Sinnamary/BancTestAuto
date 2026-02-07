@@ -41,3 +41,7 @@ class ScpiProtocol:
         """Mode tension AC (pour banc filtre)."""
         self.write(SCPI.CONF_VOLT_AC)
         self.write(SCPI.AUTO)
+
+    def rst(self) -> None:
+        """Réinitialisation appareil (*RST)."""
+        self.write(SCPI.RST)

@@ -45,3 +45,12 @@ class TestScpiProtocol:
         scpi = ScpiProtocol(conn)
         scpi.set_volt_ac()
         assert conn.write.call_count >= 2
+
+    def test_rst_writes_rst_command(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.rst()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert "*RST" in arg

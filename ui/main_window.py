@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QDialog,
 )
-from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
         self._build_menu()
         self._build_central()
         self._connect_connection_bar()
+        self._setup_shortcuts()
         self._setup_core()
         self._update_connection_status()
 
@@ -149,6 +150,43 @@ class MainWindow(QMainWindow):
     def _connect_connection_bar(self):
         self._connection_bar.get_params_button().clicked.connect(self._on_params)
         self._connection_bar.get_detect_button().clicked.connect(self._on_detect_clicked)
+
+    def _setup_shortcuts(self):
+        """Raccourcis clavier : F5 mesure, Ctrl+M mesure continue, Ctrl+R reset, Ctrl+E export CSV."""
+        self._shortcut_measure = QShortcut(QKeySequence("F5"), self)
+        self._shortcut_measure.activated.connect(self._on_shortcut_measure)
+        self._shortcut_continuous = QShortcut(QKeySequence("Ctrl+M"), self)
+        self._shortcut_continuous.activated.connect(self._on_shortcut_continuous)
+        self._shortcut_reset = QShortcut(QKeySequence("Ctrl+R"), self)
+        self._shortcut_reset.activated.connect(self._on_shortcut_reset)
+        self._shortcut_export = QShortcut(QKeySequence("Ctrl+E"), self)
+        self._shortcut_export.activated.connect(self._on_shortcut_export)
+
+    def _meter_view(self):
+        """Onglet Multimètre (index 0) ou None."""
+        if self._tabs.count() > 0:
+            return self._tabs.widget(0)
+        return None
+
+    def _on_shortcut_measure(self):
+        meter = self._meter_view()
+        if meter is not None and hasattr(meter, "trigger_measure"):
+            meter.trigger_measure()
+
+    def _on_shortcut_continuous(self):
+        meter = self._meter_view()
+        if meter is not None and hasattr(meter, "toggle_continuous_measure"):
+            meter.toggle_continuous_measure()
+
+    def _on_shortcut_reset(self):
+        meter = self._meter_view()
+        if meter is not None and hasattr(meter, "trigger_reset"):
+            meter.trigger_reset()
+
+    def _on_shortcut_export(self):
+        meter = self._meter_view()
+        if meter is not None and hasattr(meter, "trigger_export_csv"):
+            meter.trigger_export_csv()
 
     def _setup_core(self):
         """Crée les connexions série et le banc filtre à partir de la config."""

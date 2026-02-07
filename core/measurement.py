@@ -27,3 +27,7 @@ class Measurement:
             return float(value_str.strip().replace(",", "."))
         except (ValueError, TypeError):
             return None
+
+    def reset(self) -> None:
+        """Réinitialisation multimètre (*RST)."""
+        self._scpi.rst()

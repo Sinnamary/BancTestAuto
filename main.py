@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import QApplication
 from config.settings import load_config
 from core.app_logger import init_app_logging
 from ui.main_window import MainWindow
+from ui.theme_loader import get_theme_stylesheet
 
 
 def main():
@@ -23,6 +24,13 @@ def main():
 
     app = QApplication(sys.argv)
     app.setApplicationName("Banc de test automatique")
+
+    # Thème : config display.theme (dark / light)
+    theme = (config.get("display") or {}).get("theme", "dark")
+    stylesheet = get_theme_stylesheet(theme)
+    if stylesheet:
+        app.setStyleSheet(stylesheet)
+
     main_win = MainWindow()
     main_win.setMinimumSize(900, 700)
     main_win.resize(1000, 750)

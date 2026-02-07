@@ -36,3 +36,9 @@ class TestMeasurement:
         m = Measurement(scpi)
         m.set_voltage_ac()
         scpi.set_volt_ac.assert_called_once()
+
+    def test_reset_calls_scpi_rst(self):
+        scpi = MagicMock()
+        m = Measurement(scpi)
+        m.reset()
+        scpi.rst.assert_called_once()
