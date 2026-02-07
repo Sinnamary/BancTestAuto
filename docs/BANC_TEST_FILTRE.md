@@ -169,15 +169,19 @@ f[i] = f_min × (f_max / f_min)^(i / (N-1))   pour i = 0, 1, ..., N-1
 
 ## 6. Graphique semi-logarithmique
 
-### 6.1 Axes
+### 6.1 Axes (point de vue mathématique)
 
-- **Axe X** : fréquence (Hz) — échelle logarithmique
-- **Axe Y** : gain Us/Ue (linéaire) ou 20×log(Us/Ue) (dB) — échelle linéaire
+- **Axe des abscisses (X)** : **fréquence f (Hz)** — **toujours en échelle logarithmique** (log f ou log₁₀ f). C’est le cas standard pour un diagramme de Bode.
+- **Axe des ordonnées (Y)** :
+  - **Si l’on affiche le gain linéaire Us/Ue** : échelle **linéaire** (on trace Us/Ue tel quel).
+  - **Si l’on affiche le gain en dB** : on trace **20×log₁₀(Us/Ue)** ; la grandeur portée en Y est alors **logarithmique** (log du gain linéaire). L’axe Y est en général gradué linéairement en dB (−40 dB, −20 dB, 0 dB, etc.), ce qui correspond à une représentation logarithmique du gain Us/Ue.
+
+En résumé : **fréquence toujours en log** ; **Us/Ue en linéaire** (échelle linéaire) ou **en dB** (représentation logarithmique du gain).
 
 ### 6.2 Courbe de Bode
 
-- **20×log(Us/Ue) en dB** en fonction de **log(f)** : courbe de Bode en gain.
-- Format semi-log : abscisse log, ordonnée linéaire.
+- **20×log(Us/Ue) en dB** en fonction de **log(f)** : courbe de Bode en gain (format classique).
+- Format semi-log : abscisse en log (fréquence), ordonnée soit linéaire (Us/Ue), soit en dB (logarithmique du gain).
 
 ### 6.3 Export pour impression
 

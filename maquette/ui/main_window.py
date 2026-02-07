@@ -36,7 +36,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Enregistrer config sous...", self._on_save_config_as)
         file_menu.addSeparator()
         file_menu.addAction("Quitter", self.close)
-        menubar.addMenu("Édition")
         tools_menu = menubar.addMenu("Outils")
         tools_menu.addAction("Détecter les équipements...", self._on_detect_devices)
         menubar.addMenu("?")

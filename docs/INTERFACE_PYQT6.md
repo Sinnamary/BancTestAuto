@@ -21,7 +21,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │  Banc de test automatique                                    [_] [□] [X]        │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  Fichier   Édition   Outils   ?                                                  │
+│  Fichier   Outils   ?                                                             │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [Barre de connexion : pastille multimètre + label | pastille générateur + label | Paramètres] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -39,7 +39,7 @@
 
 | Élément | Widget PyQt6 | Rôle |
 |--------|---------------|------|
-| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, Quitter), Édition, Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
+| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
 | Onglets | `QTabWidget` | 4 onglets : Multimètre, Générateur, Enregistrement, Banc filtre |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |

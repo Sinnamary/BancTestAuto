@@ -83,8 +83,29 @@ class FilterTestView(QWidget):
         table_layout.addWidget(self._results_table)
         layout.addWidget(table_gb)
 
-        # Graphique Bode factice
-        layout.addWidget(QLabel("Graphique Bode (semi-log)"))
+        # Graphique Bode : rappel des échelles (fréquence toujours en log ; Y = linéaire ou dB)
+        graph_desc = QLabel(
+            "Graphique Bode — Axe X : fréquence (Hz), toujours en échelle logarithmique. "
+            "Axe Y : gain linéaire (Us/Ue) ou gain en dB (20×log₁₀(Us/Ue)), au choix ci‑dessous."
+        )
+        graph_desc.setWordWrap(True)
+        graph_desc.setStyleSheet("color: #666; font-style: italic;")
+        layout.addWidget(graph_desc)
+
+        # Choix de l’ordonnée (linéaire ou dB)
+        y_axis_gb = QGroupBox("Ordonnée (Y) du graphique")
+        y_axis_layout = QHBoxLayout(y_axis_gb)
+        self._y_axis_group = QButtonGroup(self)
+        self._y_linear = QRadioButton("Gain linéaire (Us/Ue) — échelle linéaire")
+        self._y_db = QRadioButton("Gain en dB (20×log₁₀(Us/Ue)) — représentation logarithmique")
+        self._y_db.setChecked(True)
+        self._y_axis_group.addButton(self._y_linear)
+        self._y_axis_group.addButton(self._y_db)
+        y_axis_layout.addWidget(self._y_linear)
+        y_axis_layout.addWidget(self._y_db)
+        layout.addWidget(y_axis_gb)
+
+        # Zone graphique factice
         graph_placeholder = QFrame()
         graph_placeholder.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
         graph_placeholder.setMinimumHeight(200)
@@ -95,3 +116,7 @@ class FilterTestView(QWidget):
     def get_generator_channel(self) -> int:
         """Retourne la voie du générateur utilisée pour le balayage (1 ou 2)."""
         return 2 if self._channel_2.isChecked() else 1
+
+    def is_gain_in_db(self) -> bool:
+        """True si l’ordonnée du graphique est en dB (20×log₁₀(Us/Ue)), False si gain linéaire Us/Ue."""
+        return self._y_db.isChecked()
