@@ -69,3 +69,26 @@ def get_logger(name: str) -> logging.Logger:
     Utiliser après init_app_logging(config).
     """
     return logging.getLogger(name)
+
+
+def set_level(level_name: str) -> None:
+    """
+    Change le niveau de log à la volée (ex. depuis le menu Configuration).
+    level_name : "DEBUG", "INFO", "WARNING", "ERROR"
+    """
+    global _file_handler
+    level = LEVELS.get(str(level_name).upper(), logging.INFO)
+    if _file_handler is not None:
+        _file_handler.setLevel(level)
+    logging.getLogger().setLevel(level)
+
+
+def get_current_level_name() -> str:
+    """Retourne le nom du niveau actuel (ex. "INFO")."""
+    if _file_handler is None:
+        return "INFO"
+    level = _file_handler.level
+    for name, value in LEVELS.items():
+        if value == level:
+            return name
+    return "INFO"

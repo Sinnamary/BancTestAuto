@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QDialog,
 )
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QActionGroup
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
@@ -49,11 +49,15 @@ except ImportError:
     SerialExchangeLogger = None
 
 try:
-    from core.app_logger import get_logger
+    from core.app_logger import get_logger, set_level as set_log_level, get_current_level_name
 except ImportError:
     def get_logger(_name):
         import logging
         return logging.getLogger(_name)
+    def set_log_level(_x):
+        pass
+    def get_current_level_name():
+        return "INFO"
 
 logger = get_logger(__name__)
 
@@ -105,6 +109,19 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Quitter", self.close)
         tools_menu = menubar.addMenu("Outils")
         tools_menu.addAction("Détecter les équipements...", self._on_detect_devices)
+
+        config_menu = menubar.addMenu("Configuration")
+        log_level_menu = config_menu.addMenu("Niveau de log")
+        self._log_level_group = QActionGroup(self)
+        self._log_level_group.setExclusive(True)
+        for level in ("DEBUG", "INFO", "WARNING", "ERROR"):
+            action = QAction(level, self, checkable=True)
+            action.triggered.connect(lambda checked, l=level: self._on_log_level(l))
+            self._log_level_group.addAction(action)
+            log_level_menu.addAction(action)
+        self._log_level_actions = {a.text(): a for a in self._log_level_group.actions()}
+        self._update_log_level_menu()
+
         menubar.addMenu("?")
 
     def _build_central(self):
@@ -295,6 +312,26 @@ class MainWindow(QMainWindow):
     def _on_detection_finished(self):
         self._connection_bar.hide_detection_progress()
         self._detection_worker = None
+
+    def _update_log_level_menu(self) -> None:
+        """Coche l’action correspondant au niveau de log actuel (config ou logger)."""
+        current = (self._config.get("logging") or {}).get("level", "INFO")
+        current = str(current).upper()
+        if current not in self._log_level_actions:
+            current = "INFO"
+        for name, action in self._log_level_actions.items():
+            action.setChecked(name == current)
+
+    def _on_log_level(self, level: str) -> None:
+        """Change le niveau de log (menu Configuration > Niveau de log)."""
+        if "logging" not in self._config:
+            self._config["logging"] = {}
+        self._config["logging"]["level"] = level
+        set_log_level(level)
+        self._update_log_level_menu()
+        if self.statusBar():
+            self.statusBar().showMessage(f"Niveau de log : {level}. Enregistrez la config pour conserver.")
+        logger.info("Niveau de log défini à %s", level)
 
     def _on_detect_devices(self):
         dlg = DeviceDetectionDialog(
