@@ -17,7 +17,7 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 - la **lecture et l'affichage** de fichiers CSV historiques ;
 - une **visualisation de qualité** (échelles, quadrillage, lisibilité) ;
 - le **lissage** des courbes pour réduire le bruit de mesure ;
-- la **recherche et l'affichage de points significatifs** (fréquence de coupure, pics, etc.).
+- une **ligne de référence à -3 dB** (ligne horizontale en pointillé) pour lire les points de coupure sur tout type de filtre (passe-bas, coupe-bande, etc.).
 
 ---
 
@@ -41,6 +41,7 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 | **Courbe principale** | Tracé continu des points (f, gain) | P0 |
 | **Échelles visibles** | Libellés des axes clairs, unités affichées (Hz, dB) | P0 |
 | **Quadrillage** | Grille de référence pour faciliter la lecture des valeurs | P0 |
+| **Fond et couleur courbe** | Choix fond noir/blanc et couleur de la courbe via menus déroulants | P1 |
 | **Réglage des axes** | Possibilité de zoomer, dézoomer, recentrer sur une plage | P0 |
 
 ### 2.3 Quadrillage (grille)
@@ -77,22 +78,21 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 - **Spline cubique** : `scipy.interpolate.UnivariateSpline` avec paramètre de lissage `s` ajustable
 - **Alternative** : filtre Savitzky-Golay (scipy.signal.savgol_filter) pour conserver les pics
 
-### 2.6 Points significatifs
+### 2.6 Ligne de référence -3 dB
 
 | Exigence | Description | Priorité |
 |----------|-------------|----------|
-| **Détection automatique** | Recherche de la fréquence de coupure -3 dB (premier point sous gain_ref - 3 dB) | P0 |
-| **Fréquence de coupure** | Affichage marqué (ligne verticale ou marqueur) + étiquette (ex. « fc = 1250 Hz ») | P0 |
+| **Ligne horizontale -3 dB** | Une ligne de référence au niveau gain = -3 dB, affichée sur toute la largeur du graphique | P0 |
+| **Style** | Ligne en **pointillé** (tirets), couleur **rouge**, bien visible sur fond noir et fond blanc | P0 |
+| **Activation** | Case à cocher « Ligne à -3 dB » pour afficher/masquer la ligne | P0 |
+| **Étiquette** | Libellé « -3 dB » affiché à droite de la ligne (référence coupure) | P1 |
+| **Axe Y linéaire** | En mode gain linéaire (Us/Ue), la ligne est positionnée à 10^(-3/20) ≈ 0,708 | P0 |
 | **Recherche de pics** | Détection des maxima locaux (creux ou pics selon le filtre) | P1 |
-| **Marqueurs cliquables** | Clic sur un point significatif pour afficher (f, gain) dans une infobulle ou panneau | P1 |
 | **Recherche personnalisée** | Saisie d’un gain cible (ex. -6 dB) et affichage des fréquences correspondantes | P2 |
-| **Export des points** | Bouton pour exporter la liste des points significatifs en CSV ou copier dans le presse-papier | P2 |
 
-**Points significatifs typiques :**
-- Fréquence de coupure à -3 dB (filtre passe-bas/haut)
-- Bande passante (-3 dB)
-- Pics et creux (résonance, anti-résonance)
-- Point à 0 dB (fréquence de transition)
+**Intérêt de la ligne horizontale :**
+- Convient à tous les types de filtres : **passe-bas**, **passe-haut**, **coupe-bande** (deux intersections à -3 dB), etc.
+- Les intersections courbe / ligne donnent visuellement les fréquences de coupure à -3 dB.
 
 ### 2.7 Contrôles utilisateur
 
@@ -147,15 +147,16 @@ BodePoint:
 │  Graphique Bode — bancfiltre_2026-02-08_16-06-36.csv                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  [Ordonnée]  ○ Gain linéaire (Us/Ue)  ● Gain en dB                      │
-│  [Affichage]  ☑ Quadrillage  ☑ Lissage [Fenêtre: 5▼]  ☐ Points signif.  │
+│  [Affichage]  Fond [Noir▼]  Couleur courbe [Jaune▼]  ☑ Quadrillage  ☑ Lissage  ☑ Ligne à -3 dB  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │   0 dB ─────────────────────────────────────────────────────────────    │
 │         ╲                                                               │
 │  -10 dB  ╲                                                              │
+│  -3 dB  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   │  ← ligne rouge en pointillé
 │           ╲____                                                         │
 │  -20 dB         ╲_____                                                  │
-│                        ╲____  ← fc ≈ 1250 Hz (marqueur)                 │
+│                        ╲____  (intersections = fréquences de coupure)   │
 │  -40 dB                    ╲___________                                 │
 │         |----|----|----|----|----|----|----|----|----|----|              │
 │        10   100  1k  10k  100k  (f en Hz, échelle log)                  │
@@ -165,13 +166,14 @@ BodePoint:
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 Panneau des points significatifs (optionnel)
+### 4.3 Ligne à -3 dB
 
-| Champ | Description |
-|-------|-------------|
-| fc (-3 dB) | Fréquence de coupure à -3 dB |
-| Bande passante | Plage de fréquence où gain ≥ gain_ref - 3 dB |
-| Autres | Selon type de filtre (pic, creux, etc.) |
+| Élément | Description |
+|--------|-------------|
+| **Ligne** | Horizontale, rouge, en pointillé (bien visible sur fond noir et blanc) |
+| **Position** | Gain = -3 dB (axe Y en dB) ou Us/Ue = 10^(-3/20) (axe Y linéaire) |
+| **Étiquette** | « -3 dB » affichée à droite de la ligne |
+| **Case à cocher** | « Ligne à -3 dB » : affiche ou masque la ligne de référence |
 
 ---
 
@@ -193,7 +195,7 @@ BodePoint:
 | **Phase 1** | Menu Ouvrir CSV + chargement + affichage courbe (déjà implémenté) | P0 ✓ |
 | **Phase 2** | Quadrillage visible, échelles lisibles, export PNG | P0 |
 | **Phase 3** | Lissage de la courbe (moyenne glissante ou spline) | P0 |
-| **Phase 4** | Détection et affichage fc (-3 dB) | P0 |
+| **Phase 4** | Ligne horizontale à -3 dB (pointillé rouge, option afficher/masquer) | P0 ✓ |
 | **Phase 5** | Plage manuelle des axes, bouton Ajuster vue | P1 |
 | **Phase 6** | Détection pics/creux, marqueurs cliquables | P1 |
 | **Phase 7** | Recherche personnalisée (gain cible), export points | P2 |
@@ -205,7 +207,7 @@ BodePoint:
 | Terme | Définition |
 |-------|------------|
 | **Courbe de Bode** | Graphique gain (dB) vs fréquence (Hz), axe X en échelle log |
-| **Fréquence de coupure** | Fréquence à laquelle le gain chute de 3 dB par rapport au gain en bande passante |
+| **Fréquence de coupure** | Fréquence à laquelle le gain chute de 3 dB par rapport au gain en bande passante ; repérée par l’intersection de la courbe avec la ligne horizontale à -3 dB |
 | **Lissage** | Réduction du bruit de mesure par algorithme (moyenne glissante, spline, Savitzky-Golay) |
 | **Quadrillage** | Grille de lignes de référence pour faciliter la lecture des valeurs |
 

@@ -19,7 +19,8 @@ from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView, SerialTerminalView
-from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog, BodeGraphDialog
+from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
+from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
 
 # Import core et config (optionnel si non disponibles)
@@ -535,70 +536,14 @@ class MainWindow(QMainWindow):
                 )
 
     def _on_open_bode_csv(self):
-        """Ouvre un fichier CSV Banc filtre et affiche le graphique Bode."""
+        """Ouvre le visualiseur Bode CSV (module indépendant) avec le fichier sélectionné."""
         default_dir = Path("datas/csv") if Path("datas/csv").exists() else Path(".")
         path, _ = QFileDialog.getOpenFileName(
             self, "Ouvrir CSV Banc filtre", str(default_dir),
             "CSV (*.csv);;Tous (*)"
         )
-        if not path:
-            return
-        try:
-            points = self._load_bode_csv(path)
-            if not points:
-                QMessageBox.warning(
-                    self, "CSV Banc filtre",
-                    "Aucune donnée valide trouvée dans le fichier. Format attendu : f_Hz;Us_V;Us_Ue;Gain_dB",
-                )
-                return
-            dlg = BodeGraphDialog(self, points=points)
-            dlg.setWindowTitle(f"Graphique Bode — {Path(path).name}")
-            dlg.exec()
-        except Exception as e:
-            logger.exception("Chargement CSV Banc filtre")
-            QMessageBox.warning(self, "CSV Banc filtre", f"Erreur lors du chargement : {e}")
-
-    def _load_bode_csv(self, path: str) -> list:
-        """Charge un CSV Banc filtre et retourne une liste de BodePoint."""
-        if BodePoint is None:
-            return []
-        import csv as csv_module
-        points = []
-        with open(path, "r", newline="", encoding="utf-8") as f:
-            reader = csv_module.reader(f, delimiter=";")
-            header = next(reader, None)
-            if not header:
-                return []
-            # Colonnes attendues : f_Hz, Us_V, Us_Ue, Gain_dB
-            col_map = {}
-            for i, col in enumerate(header):
-                c = col.strip().lower().replace(" ", "")
-                if "f_hz" in c or "fhz" in c:
-                    col_map["f_hz"] = i
-                elif "us_v" in c:
-                    col_map["us_v"] = i
-                elif "us_ue" in c or "us/ue" in c or "gain_linear" in c:
-                    col_map["gain_linear"] = i
-                elif "gain_db" in c or ("gain" in c and "db" in c):
-                    col_map["gain_db"] = i
-            if "f_hz" not in col_map or "gain_db" not in col_map:
-                col_map = {"f_hz": 0, "us_v": 1, "gain_linear": 2, "gain_db": 3}
-            for row in reader:
-                if len(row) < 4:
-                    continue
-                try:
-                    idx_f = col_map["f_hz"]
-                    idx_us = col_map.get("us_v", 1)
-                    idx_glin = col_map.get("gain_linear", 2)
-                    idx_gdb = col_map["gain_db"]
-                    f_hz = float(row[idx_f].replace(",", "."))
-                    us_v = float(row[idx_us].replace(",", ".")) if idx_us < len(row) else 0.0
-                    g_db = float(row[idx_gdb].replace(",", "."))
-                    g_lin = float(row[idx_glin].replace(",", ".")) if idx_glin < len(row) else (10 ** (g_db / 20.0) if g_db > -200 else 0.0)
-                    points.append(BodePoint(f_hz=f_hz, us_v=us_v, gain_linear=g_lin, gain_db=g_db))
-                except (ValueError, IndexError, KeyError):
-                    continue
-        return points
+        if path:
+            open_bode_csv_viewer(self, path)
 
     def _on_open_config(self):
         path, _ = QFileDialog.getOpenFileName(self, "Ouvrir la configuration", "", "JSON (*.json)")

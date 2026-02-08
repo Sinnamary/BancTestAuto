@@ -1,10 +1,11 @@
 """
 Tracé des courbes Bode (principale et brute). Module autonome viewer CSV.
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 
 from .model import BodeCsvDataset
 from .smoothing import MovingAverageSmoother
@@ -12,7 +13,8 @@ from .smoothing import MovingAverageSmoother
 
 class BodeCurveDrawer:
     """Dessine la courbe principale (lissée ou brute) sur un PlotItem."""
-    PEN_MAIN = pg.mkPen("#e0c040", width=2)
+    DEFAULT_MAIN_COLOR = "#e0c040"
+    PEN_MAIN = pg.mkPen(DEFAULT_MAIN_COLOR, width=2)
     PEN_RAW = pg.mkPen("#808080", width=1, style=Qt.PenStyle.DotLine)
 
     def __init__(self, plot_item):
@@ -20,6 +22,12 @@ class BodeCurveDrawer:
         self._curve = plot_item.plot(pen=self.PEN_MAIN)
         self._raw_curve = plot_item.plot(pen=self.PEN_RAW)
         self._raw_curve.setVisible(False)
+
+    def set_curve_color(self, color: Union[str, QColor]) -> None:
+        """Change la couleur de la courbe principale (nom, hex ou QColor)."""
+        if isinstance(color, QColor):
+            color = color.name()
+        self._curve.setPen(pg.mkPen(color, width=2))
 
     def set_data(
         self,
