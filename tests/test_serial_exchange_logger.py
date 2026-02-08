@@ -2,6 +2,7 @@
 Tests de core.serial_exchange_logger.SerialExchangeLogger.
 """
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -32,5 +33,16 @@ class TestSerialExchangeLogger:
     def test_close_closes_file(self, tmp_path):
         logger = SerialExchangeLogger(log_dir=str(tmp_path))
         logger.log("m", "TX", "x")
+        logger.close()
+        assert logger._file is None
+
+    def test_close_handles_close_exception(self, tmp_path):
+        """close() ne propage pas si _file.close() lève (couverture 52-53)."""
+        logger = SerialExchangeLogger(log_dir=str(tmp_path))
+        logger.log("m", "TX", "x")
+        real_file = logger._file
+        real_file.close()
+        logger._file = MagicMock()
+        logger._file.close = MagicMock(side_effect=OSError("Device error"))
         logger.close()
         assert logger._file is None

@@ -11,6 +11,9 @@ class TestGainLinear:
         assert gain_linear(2.0, 1.0) == 2.0
         assert gain_linear(0.5, 1.0) == 0.5
 
+    def test_negative_gain(self):
+        assert gain_linear(-2.0, 1.0) == -2.0
+
     def test_ue_zero_returns_zero(self):
         assert gain_linear(1.0, 0.0) == 0.0
 
@@ -28,3 +31,7 @@ class TestGainDb:
     def test_ue_zero_linear_zero_then_floor(self):
         assert gain_linear(1.0, 0.0) == 0.0
         assert gain_db(1.0, 0.0) == -200.0
+
+    def test_negative_us_returns_floor(self):
+        """Si Us <= 0, gain dB retourne -200 (évite -inf)."""
+        assert gain_db(-1.0, 1.0) == -200.0

@@ -39,10 +39,10 @@ BancTestAuto/
 ├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, device_detection, etc.
 ├── config/              # settings.py, config.json
 ├── ui/
-│   ├── widgets/         # connection_status (2 indicateurs), measurement_display, mode_button, etc.
-│   ├── dialogs/         # serial_config, save_config, device_detection (Détecter les équipements)
+│   ├── widgets/         # connection_status (2 indicateurs), measurement_display, mode_bar, range_selector, rate_selector, math_panel, history_table, advanced_params, etc.
+│   ├── dialogs/         # serial_config, save_config, device_detection, view_config, help_dialog (F1)
 │   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view (voie générateur), etc.
-└── resources/           # Icônes, thèmes
+└── resources/           # thèmes (dark.qss, light.qss) ; icônes optionnelles (phase ultérieure)
 ```
 
 **Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Lancer avec `python maquette/main_maquette.py`. Voir [maquette/README.md](maquette/README.md).
@@ -172,6 +172,8 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Banc de test filtre](docs/BANC_TEST_FILTRE.md) | Caractérisation Bode, balayage, qualification filtre |
 | [Conception interface PyQt6](docs/INTERFACE_PYQT6.md) | Maquette et widgets par vue — à valider avant la programmation |
 | [Audit documentation / code](docs/DOC_AUDIT.md) | Synthèse doc ↔ code, structure cible vs actuelle, redondances |
+| [Commandes OWON (multimètre)](docs/COMMANDES_OWON.md) | Tableau des commandes SCPI implémentées pour le multimètre OWON XDM |
+| [Commandes FY6900 (générateur)](docs/COMMANDES_FY6900.md) | Tableau des commandes série implémentées pour le générateur FeelTech FY6900 |
 
 ---
 

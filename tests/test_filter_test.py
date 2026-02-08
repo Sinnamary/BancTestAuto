@@ -77,3 +77,36 @@ class TestFilterTest:
             assert p.f_hz >= 10
             assert p.us_v == 0.707
         gen.set_output.assert_called_with(False)
+
+    def test_run_sweep_when_parse_float_returns_none_uses_zero(self):
+        """Si parse_float retourne None, us = 0.0 puis gain calculé (couverture ligne 101)."""
+        gen = MagicMock()
+        meas = MagicMock()
+        meas.set_voltage_ac = MagicMock()
+        meas.read_value = MagicMock(return_value="OVLD")
+        meas.parse_float = MagicMock(return_value=None)
+        cfg = FilterTestConfig(1, 10, 100, 2, "lin", 5, 1.0)
+        ft = FilterTest(gen, meas, cfg)
+        results = ft.run_sweep()
+        assert len(results) == 2
+        for p in results:
+            assert p.us_v == 0.0
+            assert p.gain_linear == 0.0
+            assert p.gain_db == -200.0
+
+    def test_run_sweep_calls_on_progress(self):
+        """run_sweep(on_progress=...) appelle on_progress à chaque point (couverture 109)."""
+        gen = MagicMock()
+        meas = MagicMock()
+        meas.set_voltage_ac = MagicMock()
+        meas.read_value = MagicMock(return_value="0.5")
+        meas.parse_float = MagicMock(return_value=0.5)
+        cfg = FilterTestConfig(1, 10, 100, 3, "lin", 5, 1.0)
+        ft = FilterTest(gen, meas, cfg)
+        progress_calls = []
+
+        def on_progress(done, total):
+            progress_calls.append((done, total))
+
+        ft.run_sweep(on_progress=on_progress)
+        assert progress_calls == [(1, 3), (2, 3), (3, 3)]

@@ -27,7 +27,7 @@ Ces écarts ne sont pas des erreurs : la doc décrit parfois une **structure cib
 | **CAHIER_DES_CHARGES & DEVELOPPEMENT** | Widgets cible : `measurement_display.py`, `mode_button.py`, `mode_bar.py`, `range_selector.py`, `rate_selector.py`, `math_panel.py`, `history_table.py`, `secondary_display.py`, `advanced_params.py` dans `ui/widgets/` | **Tous extraits sauf** `mode_button` et `secondary_display` (optionnels / intégrés dans MeasurementDisplay). `ui/widgets/` : connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params. |
 | **DEVELOPPEMENT § 3.1** | Liste des fichiers dans `docs/` | Inclus dans § 3.1 et § 3.2 (Niveau 1) : `AIDE.md`, `FIX_VENV.md`, `PLAN_IMPLEMENTATION.md`, `DOC_AUDIT.md`. |
 | **DEVELOPPEMENT § 3.1** | Arborescence racine (fichiers à la racine) | Inclus : `main.py`, `clean.py` (aligné README). |
-| **README** | « resources/ : Icônes, thèmes » | Seul `resources/themes/` existe ; pas de `resources/icons/` (optionnel, Phase 5 du plan). |
+| **README** | Structure § dialogs / widgets / resources | ✅ Aligné 100 % : dialogs (serial_config, save_config, device_detection, view_config, help_dialog), widgets (liste complète), resources (thèmes ; icônes optionnelles). |
 | **DEVELOPPEMENT § 1.3** | Version Python | Corrigé : **Python 3.10+** explicite en § 1.3 (aligné README). |
 
 ### 1.3 Règle à retenir
@@ -78,6 +78,8 @@ Ce n’est **pas** une redondance à supprimer : la maquette sert au prototypage
 | **FIX_VENV.md** | Dépannage venv (erreur launcher). |
 | **INTERFACE_PYQT6.md** | Conception interface, maquette, widgets. |
 | **PLAN_IMPLEMENTATION.md** | Phases d’implémentation et jalons. |
+| **COMMANDES_OWON.md** | Commandes SCPI implémentées pour le multimètre OWON (tableau). |
+| **COMMANDES_FY6900.md** | Commandes série implémentées pour le générateur FeelTech FY6900 (tableau). |
 | **FY6900_communication_protocol.pdf** | Protocole FeelTech. |
 | **XDM1000_Digital_Multimeter_Programming_Manual.pdf** | SCPI multimètre OWON. |
 

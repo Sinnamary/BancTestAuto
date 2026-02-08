@@ -3,7 +3,7 @@ Tests de core.data_logger.DataLogger : start, stop, is_running, callback.
 """
 import time
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,6 +19,19 @@ class TestDataLogger:
         logger = DataLogger()
         assert logger.start() is None
         assert logger.start(output_dir="/tmp") is None
+
+    def test_start_with_mode_str_writes_mode_in_csv(self, tmp_path):
+        """start(mode_str=...) enregistre le mode dans le fichier (couverture ligne 55)."""
+        meas = MagicMock()
+        meas.read_value = MagicMock(return_value="1.0")
+        meas.parse_float = MagicMock(return_value=1.0)
+        logger = DataLogger()
+        logger.set_measurement(meas)
+        path_str = logger.start(output_dir=str(tmp_path), interval_s=10.0, mode_str="V~")
+        assert path_str is not None
+        logger.stop()
+        content = Path(path_str).read_text(encoding="utf-8")
+        assert "V~" in content
 
     def test_start_creates_file_and_returns_path(self, tmp_path):
         meas = MagicMock()
@@ -48,6 +61,32 @@ class TestDataLogger:
         logger.start(output_dir=str(tmp_path), interval_s=10.0)
         logger.stop()
         assert logger.is_running() is False
+
+    def test_start_returns_none_when_open_fails(self, tmp_path):
+        """Si open() lève, start retourne None (couverture 67-68)."""
+        meas = MagicMock()
+        logger = DataLogger()
+        logger.set_measurement(meas)
+        with patch("builtins.open", side_effect=OSError("Permission denied")):
+            path_str = logger.start(output_dir=str(tmp_path), interval_s=1.0)
+        assert path_str is None
+        assert logger.is_running() is False
+
+    def test_stop_handles_close_exception(self, tmp_path):
+        """stop() ne propage pas si file.close() lève (couverture 84-85)."""
+        meas = MagicMock()
+        meas.read_value = MagicMock(return_value="1.0")
+        meas.parse_float = MagicMock(return_value=1.0)
+        logger = DataLogger()
+        logger.set_measurement(meas)
+        logger.start(output_dir=str(tmp_path), interval_s=10.0)
+        real_file = logger._file
+        real_file.close()
+        logger._file = MagicMock()
+        logger._file.close = MagicMock(side_effect=OSError("Device error"))
+        logger.stop()
+        assert logger.is_running() is False
+        assert logger._file is None
 
     def test_on_point_callback_called(self, tmp_path):
         meas = MagicMock()

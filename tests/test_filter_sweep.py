@@ -45,3 +45,11 @@ class TestSweepFrequencies:
 
     def test_log_f_max_zero_returns_empty(self):
         assert sweep_frequencies(10, 0, 5, scale="log") == []
+
+    def test_default_scale_is_log(self):
+        """Sans scale, l'échelle par défaut est log."""
+        got = sweep_frequencies(10, 1000, 3)
+        assert len(got) == 3
+        assert got[0] == pytest.approx(10.0)
+        assert got[2] == pytest.approx(1000.0)
+        assert got[1] == pytest.approx(100.0)

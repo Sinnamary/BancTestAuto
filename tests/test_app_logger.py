@@ -61,6 +61,18 @@ class TestSetLevelAndGetCurrentLevelName:
         with patch("core.app_logger._file_handler", None):
             assert get_current_level_name() == "INFO"
 
+    def test_get_current_level_name_after_init_returns_configured_level(self, tmp_path):
+        """Après init, get_current_level_name() parcourt LEVELS et retourne le nom du niveau (couverture 90-94)."""
+        config = {"logging": {"output_dir": str(tmp_path), "level": "INFO"}}
+        init_app_logging(config)
+        assert get_current_level_name() == "INFO"
+
+    def test_get_current_level_name_after_set_level(self, tmp_path):
+        config = {"logging": {"output_dir": str(tmp_path), "level": "DEBUG"}}
+        init_app_logging(config)
+        set_level("WARNING")
+        assert get_current_level_name() == "WARNING"
+
     def test_set_level_changes_handler_level(self):
         with patch("core.app_logger._file_handler") as mock_fh:
             mock_fh.level = logging.INFO

@@ -38,6 +38,14 @@ class TestScpiConstants:
         assert "CALC" in SCPI.CALC_NULL_OFFS(1.5)
         assert "1.5" in SCPI.CALC_NULL_OFFS(1.5)
 
+    def test_calc_db_ref(self):
+        assert "CALC" in SCPI.CALC_DB_REF(600)
+        assert "600" in SCPI.CALC_DB_REF(600)
+
+    def test_calc_dbm_ref(self):
+        assert "CALC" in SCPI.CALC_DBM_REF(50)
+        assert "50" in SCPI.CALC_DBM_REF(50)
+
     def test_cont_thre(self):
         assert "CONT" in SCPI.CONT_THRE(10)
         assert "10" in SCPI.CONT_THRE(10)
