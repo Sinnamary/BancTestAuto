@@ -17,10 +17,10 @@
 Développer une application PyQt6 permettant de **commander individuellement chaque appareil** du banc de test :
 
 - **Multimètre OWON** XDM1041/XDM2041 : pilotage via liaison série (USB/SCPI) avec **l’ensemble des commandes implantées dans le matériel** (modes de mesure, plages, vitesse, fonctions math, etc.).
-- **Générateur de signaux** FeelTech FY6900 : pilotage via liaison série avec **toutes les commandes du protocole** (forme d’onde, fréquence, amplitude, offset, sortie ON/OFF, etc.).
+- **Générateur de signaux** FeelTech FY6900 : pilotage via liaison série avec **toutes les commandes du protocole** (forme d’onde, fréquence, amplitude, offset, rapport cyclique, phase, sortie ON/OFF ; lecture de la réponse 0x0a entre chaque commande).
 - **Alimentation stabilisée** Rockseed RS305P : pilotage via Modbus RTU (onglet autonome, connexion gérée dans l'onglet, aucun paramètre dans `config.json`).
 
-Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au démarrage depuis le fichier **`config/config.json`**. Chaque appareil peut ainsi être utilisé seul ou dans le cadre du banc de test filtre.
+Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au démarrage depuis le fichier **`config/config.json`**. **Aucun port série n’est ouvert à l’ouverture de l’application** : les connexions multimètre et générateur sont établies après « Charger config » ou « Détecter les équipements » (ou validation des paramètres). Un **onglet Terminal série** permet d’envoyer et recevoir des commandes sur un port au choix (indépendant). Chaque appareil peut ainsi être utilisé seul ou dans le cadre du banc de test filtre.
 
 ### 1.2 Pilotage individuel et configuration par défaut
 
@@ -87,13 +87,15 @@ BancTestAuto/
 │   ├── dialogs/
 │   │   ├── serial_config_dialog.py
 │   │   └── save_config_dialog.py
-│   └── views/                     # Vues composites (multimètre, générateur, logging, banc filtre)
+│   └── views/                     # Vues composites (multimètre, générateur, logging, banc filtre, alimentation, terminal série)
 │       ├── meter_view.py
 │       ├── generator_view.py
 │       ├── logging_view.py
 │       ├── filter_test_view.py
 │       ├── filter_config_panel.py
 │       ├── filter_results_table.py
+│       ├── power_supply_view.py
+│       ├── serial_terminal_view.py
 │       └── bode_plot_widget.py
 └── resources/                     # Icônes, thèmes
 ```

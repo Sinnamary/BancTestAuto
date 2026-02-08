@@ -13,10 +13,11 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 5. [Onglet Enregistrement](#onglet-enregistrement)
 6. [Onglet Banc filtre](#onglet-banc-filtre)
 7. [Onglet Alimentation](#onglet-alimentation)
-8. [Configuration et thème](#configuration-et-thème)
-9. [Raccourcis clavier](#raccourcis-clavier)
-10. [Fichiers et export](#fichiers-et-export)
-11. [Dépannage](#dépannage)
+8. [Onglet Terminal série](#onglet-terminal-série)
+9. [Configuration et thème](#configuration-et-thème)
+10. [Raccourcis clavier](#raccourcis-clavier)
+11. [Fichiers et export](#fichiers-et-export)
+12. [Dépannage](#dépannage)
 
 ---
 
@@ -25,7 +26,7 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 1. **Branchez** le multimètre et le générateur en USB (ports COM sous Windows, `/dev/ttyUSBx` sous Linux).
 2. Lancez l’application : `python main.py` (après activation du venv et `pip install -r requirements.txt`).
 3. Ouvrez le menu **Outils → Détecter les équipements** (ou cliquez sur **Détecter** dans la barre de connexion) pour identifier automatiquement les ports du multimètre et du générateur.
-4. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation).
+4. **Aucun port n'est ouvert au démarrage** : cliquez sur **Charger config** ou **Détecter** pour connecter le multimètre et le générateur. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
 
 **Prérequis :** Python 3.10+, PyQt6, pyserial. Voir `requirements.txt`.
 
@@ -103,7 +104,13 @@ Les dernières mesures apparaissent dans un **tableau**. Le bouton **Exporter CS
 
 ## Onglet Générateur
 
-Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, forme d’onde, fréquence, amplitude, offset, sortie ON/OFF. Toutes les commandes du protocole sont accessibles (WMW, WMF, WMA, WMO, WMN, etc.). Les valeurs par défaut sont chargées depuis `config.json` ; vous pouvez les modifier et sauvegarder la configuration.
+Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, forme d’onde, fréquence, amplitude, offset, sortie ON/OFF. Toutes les commandes du protocole sont accessibles (WMW, WMF, WMA, WMO, WMD, WMP, WMN, etc.). Rapport cyclique et phase disponibles. Le logiciel lit la réponse (0x0a) après chaque commande avant la suivante. Les valeurs par défaut sont chargées depuis `config.json` ; vous pouvez les modifier et sauvegarder la configuration.
+
+---
+
+## Onglet Terminal série
+
+Connexion sur un **port série au choix** (indépendant du multimètre et du générateur) : envoi et réception de commandes. Cases à cocher **CR** et **LF** pour la fin de chaîne (FY6900 : cocher LF). Bouton **Effacer** pour vider la ligne à envoyer. Si « port déjà utilisé », déconnectez l'onglet Alimentation ou utilisez un autre port.
 
 ---
 

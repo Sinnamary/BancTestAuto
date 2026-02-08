@@ -25,7 +25,7 @@
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [Barre de connexion : pastille multimètre + label | pastille générateur + label | Paramètres] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Alimentation ]  │
+│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Alimentation ]  [ Terminal série ]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  (Contenu de l’onglet sélectionné)                                               │
@@ -41,7 +41,7 @@
 |--------|---------------|------|
 | Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, **Voir config JSON (lecture seule)**, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
-| Onglets | `QTabWidget` | 5 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation |
+| Onglets | `QTabWidget` | 6 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |
 
 **Menu Outils :** au moins une action **« Détecter les équipements »** : parcourt les ports COM, identifie le multimètre OWON (SCPI *IDN?) et le générateur FY6900 par protocole, affecte le bon port à chaque équipement et met à jour `config.json` (voir cahier des charges § 3.2). Implémentation côté logique : `core/device_detection.py`.
@@ -176,8 +176,10 @@ Commande individuelle du FeelTech FY6900 (deux voies). Les paramètres s’appli
 | **Voie** | `QRadioButton` Voie 1 / Voie 2 | FY6900 a deux voies ; les paramètres ci‑dessous s’appliquent à la voie choisie |
 | Forme d’onde | `QComboBox` | Sinus, Triangle, Carré, etc. (WMW) |
 | Fréquence | `QDoubleSpinBox` ou `QLineEdit` + validateur | Min/max selon FY6900, unité Hz (conversion vers µHz pour WMF) |
-| Amplitude | `QDoubleSpinBox` | Crête en V (WMA) |
+| Amplitude | `QDoubleSpinBox` | Crête en V, 3 décimales (WMA/WFA) |
 | Offset | `QDoubleSpinBox` | WMO |
+| Rapport cyclique | `QDoubleSpinBox` | % (WMD/WFD) |
+| Phase | `QDoubleSpinBox` | ° (WMP/WFP) |
 | Sortie ON/OFF | `QRadioButton` ou 2× `QPushButton` | WMN 1 / 0 |
 | Appliquer | `QPushButton` | Envoie les paramètres au générateur |
 
@@ -257,7 +259,13 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 
 ---
 
-## 7. Dialogues
+## 7. Onglet « Terminal série »
+
+Terminal série **indépendant** (port au choix, sans lien avec multimètre/générateur) : envoi et réception de commandes. **Cases à cocher CR / LF** en fin de chaîne (ex. FY6900 : LF). Boutons **Envoyer** et **Effacer** (ligne à envoyer). Zone réception avec **Vider**. À la connexion, affichage du port et du débit ; en cas d’erreur « port déjà utilisé », message invitant à déconnecter l’onglet Alimentation ou à choisir un autre port.
+
+---
+
+## 8. Dialogues
 
 ### 7.1 Configuration série (multimètre et/ou générateur)
 
@@ -288,7 +296,7 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 
 ---
 
-## 8. Thème et apparence
+## 9. Thème et apparence
 
 ### 8.1 Thème par défaut : sombre
 
@@ -317,7 +325,7 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 
 ---
 
-## 9. Récapitulatif des widgets PyQt6 par fichier cible
+## 10. Récapitulatif des widgets PyQt6 par fichier cible
 
 À utiliser comme checklist pour l’implémentation (voir [DEVELOPPEMENT.md §3.2–3.3](DEVELOPPEMENT.md)).
 
@@ -334,12 +342,13 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 | `widgets/secondary_display.py` | `QCheckBox` + `QLabel` Hz |
 | `widgets/advanced_params.py` | Panneau repliable, temp/continuité/buzzer |
 | `views/meter_view.py` | Assemblage des widgets multimètre |
-| `views/generator_view.py` | **Choix Voie 1 / Voie 2** + forme, fréquence, amplitude, offset, sortie |
+| `views/generator_view.py` | **Choix Voie 1 / Voie 2** + forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie |
 | `views/logging_view.py` | **Texte explicatif** (mesures multimètre uniquement) + config + graphique + contrôles + relecture |
 | `views/filter_test_view.py` | **Voie générateur (1/2)** + config balayage + tableau + Bode + progression |
 | `views/filter_config_panel.py` | Voie générateur (1/2), f_min, f_max, N, échelle, délai, Ue |
 | `views/filter_results_table.py` | `QTableWidget` f | Us | Us/Ue | Gain dB |
 | `views/bode_plot_widget.py` | Graphique semi-log (pyqtgraph) |
+| `views/serial_terminal_view.py` | Terminal série : port, débit, Connexion/Déconnexion, CR/LF, envoi/réception |
 | `dialogs/serial_config_dialog.py` | Port, débit, timeouts, log |
 | `dialogs/save_config_dialog.py` | Chemin fichier, Enregistrer sous |
 | `dialogs/device_detection_dialog.py` | Détecter les équipements : résultat, Lancer détection, Mettre à jour config.json |
@@ -347,13 +356,13 @@ Caractérisation Bode : balayage en fréquence, tableau, courbe gain (dB) vs fr�
 
 ---
 
-## 10. Ordre de réalisation suggéré (interface seule)
+## 11. Ordre de réalisation suggéré (interface seule)
 
-1. **Fenêtre vide** : `QMainWindow`, menu bar (dont Outils → Détecter les équipements), barre de statut, `QTabWidget` avec 4 onglets vides.
+1. **Fenêtre vide** : `QMainWindow`, menu bar (dont Outils → Détecter les équipements), barre de statut, `QTabWidget` avec 6 onglets (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
 2. **Barre de connexion** : **deux pastilles** (multimètre + générateur) + labels + séparateur + bouton Paramètres (sans logique série).
 3. **Onglet Multimètre** : zones une par une (modes → affichage → plage/vitesse → math → avancés → historique → boutons).
 4. **Dialogues** : configuration série, sauvegarde JSON, **Détecter les équipements** (squelette).
-5. **Onglet Générateur** : **choix Voie 1 / Voie 2** + formulaire complet.
+5. **Onglet Générateur** : **choix Voie 1 / Voie 2** + formulaire complet (forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie).
 6. **Onglet Enregistrement** : **texte explicatif** (multimètre uniquement) + config + zone graphique (données factices) + boutons.
 7. **Onglet Banc filtre** : **voie générateur (1/2)** + config + tableau vide + graphique vide + barre de progression.
 8. **Thème et polices** : QSS sombre, police LCD pour l’affichage mesure.
@@ -362,7 +371,7 @@ Une fois cette maquette validée (et ce document mis à jour si besoin), la prog
 
 ---
 
-## 11. Répertoire maquette (définir puis intégrer)
+## 12. Répertoire maquette (définir puis intégrer)
 
 Pour **définir uniquement l’interface** et la valider avant de coder la logique métier, le projet dispose d’un répertoire **`maquette/`** :
 

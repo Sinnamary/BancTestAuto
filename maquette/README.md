@@ -70,6 +70,8 @@ Les dépendances sont celles du projet (`PyQt6` dans `requirements.txt`). Aucun 
 - **Onglet Enregistrement :** **texte explicatif** (enregistrement des mesures du multimètre uniquement) ; graphique vide ou factice, pas d’écriture CSV.
 - **Onglet Banc filtre :** **choix de la voie du générateur** (Voie 1 / Voie 2) ; tableau et graphique vides ou factices.
 
+L’application complète comporte en outre les onglets **Alimentation** (RS305P) et **Terminal série** (port au choix, envoi/réception).
+
 ---
 
 ## Intégration dans le logiciel principal

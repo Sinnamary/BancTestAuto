@@ -148,7 +148,7 @@ BancTestAuto/
 │   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
 │   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params
 │   ├── dialogs/             # serial_config, save_config, device_detection, view_config, help_dialog
-│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, power_supply_view, bode_plot_widget
+│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, power_supply_view, serial_terminal_view, bode_plot_widget
 ├── maquette/                # Interface seule (données factices), lancement indépendant
 │   ├── main_maquette.py
 │   ├── README.md
@@ -230,10 +230,11 @@ BancTestAuto/
 │   ├── views/                     # Vues composites (assemblent des widgets)
 │   │   ├── __init__.py
 │   │   ├── meter_view.py          # Vue principale multimètre (modes, affichage, plage, maths, historique)
-│   │   ├── generator_view.py      # Vue générateur FY6900 : choix Voie 1/2 + forme, fréquence, amplitude, offset, ON/OFF
+│   │   ├── generator_view.py      # Vue générateur FY6900 : Voie 1/2, forme, fréquence, amplitude, offset, rapport cyclique, phase, ON/OFF
 │   │   ├── logging_view.py        # Vue enregistrement : texte explicatif (multimètre uniquement), config, graphique temps réel
 │   │   ├── filter_test_view.py    # Vue banc filtre : config balayage + tableau + graphique Bode (panneau/tableau intégrés)
 │   │   ├── power_supply_view.py   # Vue alimentation RS305P (connexion série gérée dans l'onglet)
+│   │   ├── serial_terminal_view.py  # Terminal série : port au choix, envoi/réception, CR/LF en fin de chaîne
 │   │   └── bode_plot_widget.py    # Widget graphique Bode (semi-log, gain dB vs fréquence) — réutilisable
 │   │
 │   └── (optionnel) mixins/
@@ -272,7 +273,7 @@ BancTestAuto/
 | **core/owon_ranges.py** | (optionnel) Données plages par mode. À extraire ou déjà dans measurement. | measurement, range_selector |
 | **core/app_logger.py** | Logging application (niveau, fichiers horodatés dans logs/). | main.py, main_window, device_detection |
 | **core/serial_exchange_logger.py** | Log des échanges série (multimètre / générateur) pour debug. | main_window → serial_connection |
-| **core/fy6900_protocol.py** | Protocole FY6900 (WMW, WMF, WMA, WMN). Utilise SerialConnection. | generator_view, filter_test |
+| **core/fy6900_protocol.py** | Protocole FY6900 (WMW, WMF, WMA, WMO, WMD, WMP, WMN ; lecture ack 0x0a entre commandes). | generator_view, filter_test |
 | **core/fy6900_commands.py** | Format commandes (ex. WMF 14 chiffres). Aucune I/O. | fy6900_protocol |
 | **core/data_logger.py** | Écriture CSV horodaté (timestamp, value, unit, mode). | logging_view |
 | **core/filter_test.py** | Orchestration : balayage, réglage FY6900, mesure OWON, calcul gain. | filter_test_view |
@@ -297,10 +298,11 @@ BancTestAuto/
 | **ui/dialogs/device_detection_dialog.py** | Détecter les équipements : affichage résultat, Lancer détection, Mettre à jour config.json. Utilise core/device_detection. | main_window (menu Outils) |
 | **ui/dialogs/view_config_dialog.py** | Affichage config JSON en lecture seule (menu Fichier → Voir config JSON). | main_window |
 | **ui/views/meter_view.py** | Vue complète multimètre (modes, affichage, plage, historique ; widgets intégrés). | main_window |
-| **ui/views/generator_view.py** | Vue générateur FY6900 : choix Voie 1 / Voie 2 + paramètres (forme, fréquence, amplitude, offset, sortie). | main_window |
+| **ui/views/generator_view.py** | Vue générateur FY6900 : Voie 1/2, forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie. | main_window |
 | **ui/views/logging_view.py** | Vue enregistrement : texte (mesures multimètre uniquement), config + graphique + contrôles. | main_window |
 | **ui/views/filter_test_view.py** | Vue banc filtre : config balayage + tableau + Bode (panneau et tableau intégrés dans la vue). | main_window |
 | **ui/views/bode_plot_widget.py** | Graphique Bode semi-log (réutilisable). | filter_test_view, export image |
+| **ui/views/serial_terminal_view.py** | Terminal série : connexion port au choix, envoi/réception, cases CR/LF. | main_window |
 
 ### 3.4 Principes de développement — petits fichiers et classes par appareil
 

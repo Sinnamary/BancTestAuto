@@ -59,15 +59,15 @@ Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individue
 |---------------|-----------|
 | Débit         | 115200 bps |
 | Fin de commande | 0x0a (LF) |
-| Réponse       | 0x0a après exécution |
+| Réponse       | 0x0a après exécution ; **lire cette réponse avant d’envoyer la commande suivante** |
 
 ### 2.2 Commandes nécessaires pour le banc filtre
 
 | Commande | Format | Description | Exemple |
 |----------|--------|-------------|---------|
 | **WMW**  | WMWxx + 0x0a | Forme d’onde canal principal | WMW0 = sinusoïde |
-| **WMF**  | WMFxxxxxxxxxxxxxx + 0x0a | Fréquence (14 chiffres, unité µHz) | WMF1000000000 = 100 Hz |
-| **WMA**  | WMAxx.xx + 0x0a | Amplitude crête (V) | WMA1.414 = 1 V RMS |
+| **WMF**  | WMFxxxxxxxxxxxxxx + 0x0a | Fréquence (14 chiffres, unité µHz) | 1000 Hz → WMF00010000000000 |
+| **WMA**  | WMAx.xxx + 0x0a | Amplitude crête (V), 3 décimales | WMA1.414 = 1 V RMS |
 | **WMO**  | WMOxx.xx + 0x0a | Offset (V) | WMO0 = 0 V |
 | **WMN**  | WMNx + 0x0a | Sortie ON/OFF | WMN1 = ON, WMN0 = OFF |
 
@@ -75,14 +75,14 @@ Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individue
 
 Fréquence en Hz → valeur en µHz (14 chiffres) :
 
-| f (Hz) | Valeur WMF |
-|--------|------------|
-| 10     | WMF00010000000 |
-| 100    | WMF00100000000 |
-| 1000   | WMF01000000000 |
-| 10 000 | WMF10000000000 |
+| f (Hz) | Valeur WMF (14 chiffres, µHz) |
+|--------|------------------------------|
+| 10     | WMF00000010000000 |
+| 100    | WMF00000100000000 |
+| 1000   | WMF00010000000000 |
+| 10 000 | WMF00100000000000 |
 
-Formule : `valeur = int(f * 1_000_000)` formatée sur 14 chiffres avec zéros à gauche.
+Formule : `valeur = int(round(f * 1_000_000))` (µHz), formatée sur 14 chiffres avec zéros à gauche.
 
 ### 2.4 Séquence type pour une mesure
 

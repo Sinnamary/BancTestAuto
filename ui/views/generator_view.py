@@ -24,22 +24,36 @@ class GeneratorApplyWorker(QThread):
     done = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, fy6900, waveform: int, freq_hz: float, amp_peak: float, offset_v: float, channel: int = 1):
+    def __init__(
+        self,
+        fy6900,
+        waveform: int,
+        freq_hz: float,
+        amp_peak: float,
+        offset_v: float,
+        duty_percent: float,
+        phase_deg: float,
+        channel: int = 1,
+    ):
         super().__init__()
         self._fy6900 = fy6900
         self._waveform = waveform
         self._freq_hz = freq_hz
         self._amp_peak = amp_peak
         self._offset_v = offset_v
+        self._duty_percent = duty_percent
+        self._phase_deg = phase_deg
         self._channel = channel
 
     def run(self):
         try:
             ch = self._channel
             self._fy6900.set_waveform(self._waveform, channel=ch)
-            self._fy6900.set_frequency_hz(self._freq_hz, channel=ch)
             self._fy6900.set_amplitude_peak_v(self._amp_peak, channel=ch)
             self._fy6900.set_offset_v(self._offset_v, channel=ch)
+            self._fy6900.set_frequency_hz(self._freq_hz, channel=ch)
+            self._fy6900.set_duty_cycle_percent(self._duty_percent, channel=ch)
+            self._fy6900.set_phase_deg(self._phase_deg, channel=ch)
             self.done.emit()
         except Exception as e:
             self.error.emit(str(e))
@@ -116,6 +130,20 @@ class GeneratorView(QWidget):
         self._offset_spin.setValue(0)
         self._offset_spin.setDecimals(2)
         form.addRow("Offset (V)", self._offset_spin)
+        self._duty_spin = QDoubleSpinBox()
+        self._duty_spin.setRange(0, 100)
+        self._duty_spin.setValue(50)
+        self._duty_spin.setDecimals(1)
+        self._duty_spin.setSuffix(" %")
+        self._duty_spin.setToolTip("Rapport cyclique (surtout pour forme carrée/triangle)")
+        form.addRow("Rapport cyclique", self._duty_spin)
+        self._phase_spin = QDoubleSpinBox()
+        self._phase_spin.setRange(0, 360)
+        self._phase_spin.setValue(0)
+        self._phase_spin.setDecimals(1)
+        self._phase_spin.setSuffix(" °")
+        self._phase_spin.setToolTip("Phase en degrés (0–360)")
+        form.addRow("Phase", self._phase_spin)
         layout.addWidget(form_gb)
 
         # État sortie par voie (lecture seule dans l'UI ; modifié par les boutons Sortie ON/OFF)
@@ -161,9 +189,13 @@ class GeneratorView(QWidget):
         freq = self._freq_spin.value()
         amp = self._amplitude_spin.value()
         offset = self._offset_spin.value()
+        duty = self._duty_spin.value()
+        phase = self._phase_spin.value()
         channel = self.get_selected_channel()
         self._apply_btn.setEnabled(False)
-        self._worker = GeneratorApplyWorker(self._fy6900, waveform, freq, amp, offset, channel)
+        self._worker = GeneratorApplyWorker(
+            self._fy6900, waveform, freq, amp, offset, duty, phase, channel
+        )
         self._worker.done.connect(self._on_apply_done)
         self._worker.error.connect(self._on_apply_error)
         self._worker.finished.connect(lambda: self._apply_btn.setEnabled(True))

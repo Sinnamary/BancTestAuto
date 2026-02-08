@@ -20,9 +20,11 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 | Commande | Format envoyé           | Rôle              | Notes |
 |----------|-------------------------|-------------------|--------|
 | **WMW**  | `WMW<n>\n`              | Forme d’onde      | `n` = type. **0** = sinusoïde, 1 = triangle, 2 = carré, etc. (voir manuel). |
-| **WMF**  | `WMF<valeur>\n`        | Fréquence         | Fréquence en **Hz avec 6 décimales**. Ex. `WMF12345678.901234`. |
-| **WMA**  | `WMA<valeur>\n`         | Amplitude crête   | Amplitude en **V** (crête à crête ou crête selon modèle). 2 décimales. Ex. `WMA5.00`. |
+| **WMF**  | `WMF<valeur>\n`        | Fréquence         | Fréquence en **µHz**, **14 chiffres** (zéros à gauche). Ex. 1000 Hz → `WMF00010000000000`. |
+| **WMA**  | `WMA<valeur>\n`         | Amplitude crête   | Amplitude en **V**. 3 décimales. Ex. `WMA4.000`, `WMA1.414`. |
 | **WMO**  | `WMO<valeur>\n`         | Offset            | Tension de décalage en **V**. 2 décimales. Ex. `WMO0.00`. |
+| **WMD**  | `WMD<valeur>\n`         | Rapport cyclique  | Pourcentage 0–100 %. 2 décimales. Ex. `WMD50.00`. Surtout pour carré/triangle. |
+| **WMP**  | `WMP<valeur>\n`         | Phase             | Phase en degrés (0–360). 2 décimales. Ex. `WMP90.00`. |
 | **WMN**  | `WMN<0\|1>\n`           | Sortie ON/OFF     | **1** = sortie activée, **0** = sortie désactivée. |
 
 ---
@@ -32,9 +34,11 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 | Commande | Format envoyé           | Rôle              | Notes |
 |----------|-------------------------|-------------------|--------|
 | **WFW**  | `WFW<n>\n`              | Forme d’onde      | Même codage que WMW (0 = sinusoïde, etc.). |
-| **WFF**  | `WFF<valeur>\n`          | Fréquence         | Fréquence en **Hz avec 6 décimales** (même format que WMF). |
-| **WFA**  | `WFA<valeur>\n`          | Amplitude crête   | Amplitude en **V**, 2 décimales (même format que WMA). |
+| **WFF**  | `WFF<valeur>\n`          | Fréquence         | Fréquence en **µHz**, 14 chiffres (même format que WMF). |
+| **WFA**  | `WFA<valeur>\n`          | Amplitude crête   | Amplitude en **V**, 3 décimales (même format que WMA). |
 | **WFO**  | `WFO<valeur>\n`          | Offset            | Offset en **V**, 2 décimales (même format que WMO). |
+| **WFD**  | `WFD<valeur>\n`          | Rapport cyclique  | Pourcentage 0–100 % (même format que WMD). |
+| **WFP**  | `WFP<valeur>\n`          | Phase             | Phase en degrés 0–360 (même format que WMP). |
 | **WFN**  | `WFN<0\|1>\n`            | Sortie ON/OFF     | **1** = sortie voie 2 activée, **0** = désactivée. |
 
 ---
@@ -44,8 +48,11 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 | Élément     | Détail | Notes |
 |-------------|--------|--------|
 | Fin de ligne | `\n` (0x0A) | Toutes les commandes se terminent par LF. |
-| **Fréquence (WMF / WFF)** | Hz, 6 décimales | Ex. 1000 Hz → `WMF1000.000000`, 12345678.901234 Hz → `WMF12345678.901234`. |
-| **Amplitude (WMA / WFA)** | Décimal, 2 décimales | Ex. `WMA5.00`, `WFA3.50`. |
+| Réponse appareil | 0x0a après exécution | Lire cette réponse avant d'envoyer la commande suivante. |
+| **Fréquence (WMF / WFF)** | µHz, 14 chiffres | Doc FY6900 Rev 1.8 : valeur = freq_Hz × 10⁶. Ex. 1000 Hz → `WMF00010000000000`. |
+| **Amplitude (WMA / WFA)** | Décimal, 3 décimales | Ex. `WMA4.000`, `WMA1.414`. |
+| **Rapport cyclique (WMD / WFD)** | Pourcentage 0–100, 2 décimales | Ex. `WMD50.00`. |
+| **Phase (WMP / WFP)** | Degrés 0–360, 2 décimales | Ex. `WMP90.00`. |
 | **Offset (WMO / WFO)**   | Décimal, 2 décimales | Ex. `WMO0.00`, `WFO1.50`. |
 | **Forme d’onde (WMW / WFW)** | Entier | 0 = sinusoïde, 1 = triangle, 2 = carré, 3 = dent de scie (codes selon manuel FY6900). |
 | **Sortie (WMN / WFN)**   | 0 ou 1 | 0 = OFF, 1 = ON. |
@@ -57,12 +64,18 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 Pour un point du **banc de test filtre** (voie choisie dans la config, ex. voie 1) :
 
 1. `WMW0` (ou `WFW0` si voie 2) — sinusoïde  
-2. `WMA1.41` (ou `WFA1.41`) — amplitude crête (2 décimales)  
+2. `WMA1.414` (ou `WFA1.414`) — amplitude crête (3 décimales)  
 3. `WMO0.00` (ou `WFO0.00`) — offset 0 V  
-4. `WMF<fréquence µHz>` (ou `WFF<...>`) — fréquence du point  
+4. `WMF<fréquence en µHz, 14 chiffres>` (ou `WFF<...>`) — ex. 1000 Hz → WMF00010000000000  
 5. `WMN1` (ou `WFN1`) — sortie ON  
 
 À la fin du balayage : `WMN0` ou `WFN0` pour couper la sortie.
+
+---
+
+## Succession de commandes
+
+D'après la documentation FY6900 : l'appareil **renvoie 0x0a (LF)** après exécution de chaque commande. Pour une succession de commandes, il faut **lire cette réponse** avant d'envoyer la suivante. L'implémentation (`core/fy6900_protocol.py`) fait donc : envoi → `readline()` (lecture de l'ack) → envoi de la commande suivante.
 
 ---
 

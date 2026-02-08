@@ -49,7 +49,7 @@ BancTestAuto/
 │   ├── dialogs/         # serial_config, save_config, device_detection, view_config, view_log,
 │   │                    # help_dialog (F1), about_dialog
 │   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view,
-│                        # bode_plot_widget, power_supply_view (Alimentation RS305P)
+│                        # bode_plot_widget, power_supply_view (Alimentation RS305P), serial_terminal_view (Terminal série)
 └── resources/themes/    # dark.qss, light.qss (thèmes clair/foncé)
 ```
 
@@ -132,7 +132,7 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 
 ### Générateur FeelTech FY6900
 
-- **Pilotage individuel** (onglet dédié) : **choix de la voie (Voie 1 / Voie 2)** ; forme d’onde (WMW), fréquence (WMF), amplitude (WMA), offset (WMO), sortie ON/OFF (WMN), etc. — toutes les commandes du protocole.
+- **Pilotage individuel** (onglet dédié) : **choix de la voie (Voie 1 / Voie 2)** ; forme d’onde (WMW), fréquence (WMF), amplitude (WMA, 3 décimales), offset (WMO), rapport cyclique (WMD/WFD), phase (WMP/WFP), sortie ON/OFF (WMN). Succession de commandes : lecture de la réponse (0x0a) après chaque envoi (voir docs/COMMANDES_FY6900.md).
 - Paramètres par défaut dans `config.json` ; optionnel pour le banc filtre.
 
 ### Banc de test filtre
@@ -143,6 +143,10 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 - Tableau et courbe **gain (dB) vs fréquence** ; export CSV et graphiques semi-log.
 
 Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
+
+### Terminal série
+
+- **Onglet dédié** : connexion sur un port série au choix (indépendant du multimètre/générateur), envoi et réception de commandes. **Cases à cocher CR/LF** pour ajouter `\r` et/ou `\n` en fin de chaîne à l'envoi. Aucune vérification d'appareil ; utile pour tester des commandes (ex. FY6900) ou tout équipement série. Voir message d'aide si le port est déjà utilisé (ex. par l'onglet Alimentation).
 
 ### Alimentation Rockseed RS305P
 
@@ -207,7 +211,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 ## Interface et robustesse
 
-- **Interface** par zones : **barre de connexion** (une pastille de statut par équipement : multimètre et générateur), menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), **Configuration → Thème** (clair / foncé), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut** ; le thème peut être changé et sauvegardé (voir [§ Thème d’affichage](#thème-daffichage-clair--foncé)). Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
+- **Interface** par zones : **barre de connexion** (une pastille par équipement : multimètre et générateur) — **aucun port ouvert au démarrage**, utiliser **Charger config** ou **Détecter** pour connecter ; menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), **Configuration → Thème** (clair / foncé), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut** ; le thème peut être changé et sauvegardé (voir [§ Thème d’affichage](#thème-daffichage-clair--foncé)). Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
 - **Robustesse :** timeout série configurable, reconnexion après déconnexion physique, messages d’erreur SCPI, indicateur « en cours » pour les requêtes longues.
 
 ---
