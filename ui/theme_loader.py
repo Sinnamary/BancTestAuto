@@ -33,13 +33,14 @@ def get_theme_stylesheet(theme_name: str, base_path: Path | None = None) -> str:
         return ""
     try:
         content = path.read_text(encoding="utf-8")
-        # Remplacer le placeholder par l'URL du dossier themes (pour les icônes spinbox)
+        # Chemin absolu du dossier themes (slashes) pour les SVG spinbox — pas de file://
+        # pour éviter que Qt concatène avec le CWD (ex. CWD + "file:/C:/..." → chemin invalide)
         try:
-            theme_url = themes_dir.resolve().as_uri() + "/"
+            theme_dir_path = str(themes_dir.resolve()).replace("\\", "/") + "/"
         except Exception:
-            theme_url = ""
-        if theme_url and "{{THEME_DIR}}" in content:
-            content = content.replace("{{THEME_DIR}}", theme_url)
+            theme_dir_path = ""
+        if theme_dir_path and "{{THEME_DIR}}" in content:
+            content = content.replace("{{THEME_DIR}}", theme_dir_path)
         return content
     except OSError:
         return ""

@@ -120,7 +120,7 @@ QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
     background-color: #505050;
 }
-/* Flèches en SVG (fichiers dans resources/themes, chemin injecté au chargement) */
+/* Flèches des spinbox : zone cliquable + triangle (fichiers SVG ou fallback) */
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
     image: url({{THEME_DIR}}arrow-up.svg);
     width: 12px;

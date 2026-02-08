@@ -17,7 +17,7 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 - la **lecture et l'affichage** de fichiers CSV historiques ;
 - une **visualisation de qualité** (échelles, quadrillage, lisibilité) ;
 - le **lissage** des courbes pour réduire le bruit de mesure ;
-- une **ligne de référence à -3 dB** (ligne horizontale en pointillé) pour lire les points de coupure sur tout type de filtre (passe-bas, coupe-bande, etc.).
+- une **recherche gain cible** (ligne horizontale + intersections) pour lire les points de coupure à -3 dB ou tout autre niveau, sur tout type de filtre (passe-bas, coupe-bande, etc.).
 
 ---
 
@@ -78,21 +78,20 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 - **Spline cubique** : `scipy.interpolate.UnivariateSpline` avec paramètre de lissage `s` ajustable
 - **Alternative** : filtre Savitzky-Golay (scipy.signal.savgol_filter) pour conserver les pics
 
-### 2.6 Ligne de référence -3 dB
+### 2.6 Ligne de référence et recherche gain cible
 
 | Exigence | Description | Priorité |
 |----------|-------------|----------|
-| **Ligne horizontale -3 dB** | Une ligne de référence au niveau gain = -3 dB, affichée sur toute la largeur du graphique | P0 |
-| **Style** | Ligne en **pointillé** (tirets), couleur **rouge**, bien visible sur fond noir et fond blanc | P0 |
-| **Activation** | Case à cocher « Ligne à -3 dB » pour afficher/masquer la ligne | P0 |
+| **Recherche gain cible** | Saisie d'un gain (dB), bouton « Rechercher » : ligne horizontale (pointillé) + fréquences d'intersection (lignes verticales + étiquettes fc) | P0 |
+| **Intersections** | Affichage des fréquences où la courbe coupe le niveau choisi (ex. -3 dB par défaut) | P0 |
 | **Étiquette** | Libellé « -3 dB » affiché à droite de la ligne (référence coupure) | P1 |
 | **Axe Y linéaire** | En mode gain linéaire (Us/Ue), la ligne est positionnée à 10^(-3/20) ≈ 0,708 | P0 |
 | **Recherche de pics** | Détection des maxima locaux (creux ou pics selon le filtre) | P1 |
-| **Recherche personnalisée** | Saisie d’un gain cible (ex. -6 dB) et affichage des fréquences correspondantes | P2 |
 
-**Intérêt de la ligne horizontale :**
-- Convient à tous les types de filtres : **passe-bas**, **passe-haut**, **coupe-bande** (deux intersections à -3 dB), etc.
-- Les intersections courbe / ligne donnent visuellement les fréquences de coupure à -3 dB.
+**Intérêt de la recherche gain cible :**
+- **Un seul outil** pour -3 dB (valeur par défaut) et tout autre gain (ex. -6 dB) : plus flexible et plus intéressant qu'une case dédiée.
+- Convient à tous les types de filtres : **passe-bas**, **passe-haut**, **coupe-bande** (plusieurs intersections), etc.
+- Les intersections courbe / ligne donnent visuellement les fréquences de coupure au niveau choisi.
 
 ### 2.7 Contrôles utilisateur
 
@@ -122,14 +121,16 @@ f_Hz;Us_V;Us_Ue;Gain_dB
 - **En-tête** : obligatoire
 - **Valeurs** : notation anglo-saxonne (`.` pour la virgule décimale)
 
-### 3.2 Structure BodePoint (interne)
+### 3.2 Structure de point Bode (interne)
+
+Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes champs :
 
 ```python
-BodePoint:
-  f_hz: float      # Fréquence en Hz
-  us_v: float      # Tension de sortie en V
+# BodeCsvPoint / équivalent BodePoint
+  f_hz: float         # Fréquence en Hz
+  us_v: float         # Tension de sortie en V
   gain_linear: float  # Us/Ue
-  gain_db: float   # Gain en dB
+  gain_db: float      # Gain en dB
 ```
 
 ---
@@ -147,34 +148,32 @@ BodePoint:
 │  Graphique Bode — bancfiltre_2026-02-08_16-06-36.csv                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  [Ordonnée]  ○ Gain linéaire (Us/Ue)  ● Gain en dB                      │
-│  [Affichage]  Fond [Noir▼]  Couleur courbe [Jaune▼]  ☑ Quadrillage  ☑ Lissage  ☑ Ligne à -3 dB  │
-│  [Échelles / Zoom]  F min (Hz)  F max (Hz)  Gain min  Gain max  [Appliquer les limites]  ☐ Zoom sur zone │
+│  [Affichage]  Fond [Noir▼]  Couleur [Jaune▼]  ☑ Quadrillage  ☑ Mineur  ☑ Lissage  Fenêtre [5▼] Algo [Moyenne glissante▼]  ☑ Courbe brute+lissée  ☑ Pics/creux  │
+│  [Recherche gain cible]  Gain (dB) [-3]  [Rechercher]  → f = … (résultat) │
+│  [Échelles / Zoom]  F min  F max  Gain min  Gain max  [Appliquer les limites]  ☐ Zoom sur zone (glisser) │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │   0 dB ─────────────────────────────────────────────────────────────    │
 │         ╲                                                               │
-│  -10 dB  ╲                                                              │
-│  -3 dB  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   │  ← ligne rouge en pointillé
-│           ╲____                                                         │
+│  -3 dB  - - - - (ligne gain cible, cyan, si « Rechercher » activé)       │
+│           ╲____     fc = … (marqueurs verticaux aux intersections)       │
 │  -20 dB         ╲_____                                                  │
-│                        ╲____  (intersections = fréquences de coupure)   │
-│  -40 dB                    ╲___________                                 │
 │         |----|----|----|----|----|----|----|----|----|----|              │
 │        10   100  1k  10k  100k  (f en Hz, échelle log)                  │
-│                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
-│  [Ajuster vue]  [Exporter PNG]  [Fermer]                                │
+│  fc = …  |  G_max = … dB  |  N = … points                               │
+│  [Ajuster vue]  [Exporter en PNG]  [Exporter les points CSV]  [Fermer]   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 Ligne à -3 dB
+### 4.3 Ligne de référence et recherche de gain (dont -3 dB)
 
 | Élément | Description |
 |--------|-------------|
-| **Ligne** | Horizontale, rouge, en pointillé (bien visible sur fond noir et blanc) |
-| **Position** | Gain = -3 dB (axe Y en dB) ou Us/Ue = 10^(-3/20) (axe Y linéaire) |
-| **Étiquette** | « -3 dB » affichée à droite de la ligne |
-| **Case à cocher** | « Ligne à -3 dB » : affiche ou masque la ligne de référence |
+| **Recherche gain cible** | Saisie d’un gain (dB), bouton « Rechercher » : affiche une **ligne horizontale** (couleur cyan, pointillé) à ce niveau et les **fréquences d’intersection** (lignes verticales + étiquettes). Par défaut -3 dB pour retrouver le comportement « ligne à -3 dB ». |
+| **Position** | Gain = valeur saisie (axe Y en dB) ; en mode gain linéaire (Us/Ue), la courbe reste en dB en interne, les intersections correspondent au même niveau. |
+| **Étiquette** | Libellé du gain cible (ex. « -3.0 dB ») à droite de la ligne. |
+| **Panneau d’infos** | Sous le graphique : fc (-3 dB), G_max, N points (calculés automatiquement). |
 
 ---
 
@@ -197,10 +196,10 @@ BodePoint:
 | **Phase 1** | Menu Ouvrir CSV + chargement + affichage courbe (déjà implémenté) | P0 ✓ |
 | **Phase 2** | Quadrillage visible, échelles lisibles, export PNG | P0 |
 | **Phase 3** | Lissage de la courbe (moyenne glissante ou spline) | P0 |
-| **Phase 4** | Ligne horizontale à -3 dB (pointillé rouge, option afficher/masquer) | P0 ✓ |
+| **Phase 4** | Ligne de référence (ex. -3 dB) : via Recherche gain cible (ligne + intersections) | P0 ✓ |
 | **Phase 5** | Plage manuelle des axes (F min, F max, gain min/max), bouton Appliquer les limites, bouton Ajuster vue | P1 ✓ |
 | **Phase 6** | Détection pics/creux, marqueurs cliquables | P1 |
-| **Phase 7** | Recherche personnalisée (gain cible), export points | P2 |
+| **Phase 7** | Recherche gain cible (tout niveau), export points | P2 |
 
 ---
 
@@ -231,19 +230,19 @@ BodePoint:
 | Axe X log, axe Y dB ou linéaire, courbe principale, quadrillage, libellés | ✓ |
 | Fond noir/blanc, couleur courbe, courbe brute + lissée | ✓ |
 | Lissage moyenne glissante (fenêtre 3–11), option activer/désactiver | ✓ |
-| Ligne horizontale -3 dB (pointillé rouge, option, étiquette « -3 dB ») | ✓ |
+| Référence -3 dB : **Recherche gain cible** (ligne + intersections) ; panneau fc, G_max, N | ✓ |
 | Plage manuelle (F min/max, gain min/max), Appliquer les limites, Ajuster vue | ✓ |
 | Zoom molette, zoom sur zone (glisser), pan | ✓ |
-| Export PNG | ✓ |
+| Export PNG, export points CSV | ✓ |
 
-### 8.2 Améliorations pour mieux étudier la courbe de réponse
+### 8.2 Améliorations déjà en place (étude de la courbe)
 
 | Piste | Priorité | Statut |
 |-------|----------|--------|
 | **Marqueurs des fréquences de coupure** | P1 | ✓ Implémenté (lignes verticales + étiquettes fc, fc1/fc2) |
 | **Coordonnées au survol** | P1 | ✓ Implémenté (f, G au survol du graphique) |
 | **Panneau d’infos** | P1 | ✓ Implémenté (fc, G_max, N points) |
-| **Recherche gain cible** | P2 | Saisie d’un gain cible (ex. -6 dB) et affichage des fréquences correspondantes (intersections). |
+| **Recherche gain cible** | P2 | ✓ Implémenté (gain saisi, bouton Rechercher, fréquences d’intersection) |
 | **Détection pics/creux** | P1 (spec Phase 6) | ✓ Implémenté (case « Pics/creux », marqueurs jaune/bleu) |
 | **Lissage Savitzky-Golay** | P2 | ✓ Implémenté (option Algo, nécessite scipy) |
 | **Quadrillage mineur** | P1 (spec) | ✓ Implémenté (case « Quadrillage mineur ») |
