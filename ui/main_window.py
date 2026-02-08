@@ -108,8 +108,8 @@ class MainWindow(QMainWindow):
         self._build_central()
         self._connect_connection_bar()
         self._setup_shortcuts()
-        self._setup_core()
-        self._inject_views()
+        # Pas d'ouverture de ports au démarrage : utiliser "Charger config" ou "Détecter" pour connecter
+        self._init_views_without_connections()
         self._update_connection_status()
 
     def _build_menu(self):
@@ -298,8 +298,19 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
 
+    def _init_views_without_connections(self):
+        """Initialise les vues sans créer ni ouvrir de connexion série (aucun port ouvert au démarrage)."""
+        if self._config and self._filter_test_view:
+            self._filter_test_view.load_config(self._config)
+            self._filter_test_view.set_filter_test(None)
+        logging_view = self._tabs.widget(2) if self._tabs.count() > 2 else None
+        if logging_view and hasattr(logging_view, "load_config") and self._config:
+            logging_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
+            self._serial_terminal_view.load_config(self._config)
+
     def _reconnect_serial(self):
-        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils."""
+        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Charger config / Détecter / Paramètres OK)."""
         if self._multimeter_conn:
             self._multimeter_conn.close()
         if self._generator_conn:

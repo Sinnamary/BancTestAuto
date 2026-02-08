@@ -94,6 +94,10 @@ class SerialTerminalView(QWidget):
         self._send_btn.clicked.connect(self._send_command)
         self._send_btn.setEnabled(False)
         send_layout.addWidget(self._send_btn)
+        self._clear_cmd_btn = QPushButton("Effacer")
+        self._clear_cmd_btn.clicked.connect(self._command_edit.clear)
+        self._clear_cmd_btn.setToolTip("Efface la ligne à envoyer")
+        send_layout.addWidget(self._clear_cmd_btn)
         layout.addWidget(send_gb)
 
         # --- Réception ---
@@ -137,16 +141,17 @@ class SerialTerminalView(QWidget):
             return
         try:
             import serial
+            # Avec pyserial, le constructeur Serial(port=...) ouvre le port immédiatement ;
+            # ne pas appeler .open() ensuite (sinon "Port is already open").
             self._serial = serial.Serial(
                 port=port,
                 baudrate=baud,
                 timeout=0.05,
                 write_timeout=2.0,
             )
-            self._serial.open()
             self._read_timer.start(50)
-            self._update_connection_state(True)
-            self._append_received("[Connecté]\n")
+            self._update_connection_state(True, port=port, baud=baud)
+            self._append_received(f"[Connecté sur {port} @ {baud} bauds]\n")
         except Exception as e:
             if self._serial:
                 try:
@@ -157,14 +162,17 @@ class SerialTerminalView(QWidget):
             msg = str(e).strip()
             if "already open" in msg.lower() or "déjà ouvert" in msg.lower():
                 detail = (
-                    "Ce port est déjà utilisé.\n\n"
-                    "• Soit par le Multimètre ou le Générateur dans cette application "
-                    "(voir Paramètres / config).\n"
-                    "• Soit par un autre programme (autre logiciel, autre instance).\n\n"
-                    "Choisissez un autre port (ex. COM3, COM4) ou fermez l’utilisation actuelle du port."
+                    f"Connexion à {port} @ {baud} bauds : ce port est déjà utilisé.\n\n"
+                    "Si Multimètre, Générateur et Alimentation sont tous déconnectés (points rouges), "
+                    "le port est alors utilisé par un autre programme : fermez tout logiciel qui peut "
+                    "utiliser ce port (autre terminal série, Arduino IDE, PuTTY, autre instance de cette app), "
+                    "ou redémarrez l'application, ou essayez un autre port (ex. COM3, COM4).\n\n"
+                    "Sinon, vérifiez aussi :\n"
+                    "• Onglet Alimentation : déconnectez-vous si vous utilisez le même port.\n"
+                    "• Multimètre / Générateur : après « Charger config » ou « Détecter », déconnectez ou utilisez un autre port."
                 )
             else:
-                detail = f"Impossible de se connecter : {e}"
+                detail = f"Impossible de se connecter sur {port} @ {baud} bauds : {e}"
             QMessageBox.warning(self, "Terminal série", detail)
 
     def _disconnect(self):
@@ -178,8 +186,11 @@ class SerialTerminalView(QWidget):
         self._update_connection_state(False)
         self._append_received("[Déconnecté]\n")
 
-    def _update_connection_state(self, connected: bool):
-        self._status_label.setText("Connecté" if connected else "Déconnecté")
+    def _update_connection_state(self, connected: bool, port: str = "", baud: int = 0):
+        if connected and port and baud:
+            self._status_label.setText(f"Connecté ({port} @ {baud} bauds)")
+        else:
+            self._status_label.setText("Connecté" if connected else "Déconnecté")
         self._connect_btn.setText("Déconnexion" if connected else "Connexion")
         self._port_combo.setEnabled(not connected)
         self._baud_combo.setEnabled(not connected)
@@ -199,7 +210,6 @@ class SerialTerminalView(QWidget):
         try:
             self._serial.write(data)
             self._append_received(f"> {text}\n")
-            self._command_edit.clear()
         except Exception as e:
             QMessageBox.warning(self, "Terminal série", f"Erreur envoi : {e}")
 
