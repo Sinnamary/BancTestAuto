@@ -21,7 +21,7 @@ _TICK_LABEL_FONT_SIZE = 10
 from .model import BodeCsvDataset
 from .plot_grid import BodePlotGrid
 from .plot_curves import BodeCurveDrawer
-from .plot_cutoff_viz import CutoffMarkerViz, LEVEL_DB, LEVEL_LINEAR
+from .plot_cutoff_viz import CutoffMarkerViz
 from .cutoff import Cutoff3DbFinder
 
 try:
@@ -76,7 +76,6 @@ class BodeCsvPlotWidget(QWidget):
         self._y_linear = False
         self._smooth_window = 0
         self._show_raw = False
-        self._show_cutoff = False
         self._background_dark = True  # Noir par défaut
         self._apply_axis_fonts()
         self._apply_background_style()
@@ -236,14 +235,12 @@ class BodeCsvPlotWidget(QWidget):
             self._cutoff_viz.set_target_gain(gain_db, f"{gain_db:.1f} dB")
             self._cutoff_viz.set_target_gain_frequencies(fc_hz_list or [])
 
-    def set_cutoff_visible(self, visible: bool) -> None:
-        self._show_cutoff = visible
-        self._refresh_cutoff()
 
     def _refresh(self) -> None:
         if not self._dataset or self._dataset.is_empty():
             self._curves.clear()
             self._cutoff_viz.set_level(None)
+            self._cutoff_viz.set_cutoff_frequencies([])
             return
         self._curves.set_data(
             self._dataset,
@@ -257,16 +254,9 @@ class BodeCsvPlotWidget(QWidget):
         self._cutoff_viz.update_label_position()
 
     def _refresh_cutoff(self) -> None:
-        if not self._show_cutoff or not self._dataset or self._dataset.is_empty():
-            self._cutoff_viz.set_level(None)
-            self._cutoff_viz.set_cutoff_frequencies([])
-            return
-        level = LEVEL_LINEAR if self._y_linear else LEVEL_DB
-        self._cutoff_viz.set_level(level)
-        # Marqueurs des fréquences de coupure -3 dB (en espace dB)
-        finder = Cutoff3DbFinder()
-        cutoffs = finder.find_all(self._dataset)
-        self._cutoff_viz.set_cutoff_frequencies([r.fc_hz for r in cutoffs])
+        # Ligne fixe -3 dB supprimée : remplacée par « Recherche gain cible » (ligne cyan au gain choisi)
+        self._cutoff_viz.set_level(None)
+        self._cutoff_viz.set_cutoff_frequencies([])
         self._cutoff_viz.update_label_position()
 
     def _refresh_peaks(self) -> None:

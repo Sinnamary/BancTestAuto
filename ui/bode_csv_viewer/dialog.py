@@ -116,11 +116,6 @@ class BodeCsvViewerDialog(QDialog):
         self._raw_cb = QCheckBox("Courbe brute + lissée")
         self._raw_cb.toggled.connect(self._apply_options)
         disp_layout.addWidget(self._raw_cb)
-        self._cutoff_cb = QCheckBox("Ligne à -3 dB")
-        self._cutoff_cb.setToolTip("Affiche une ligne horizontale rouge au niveau -3 dB (référence coupure)")
-        self._cutoff_cb.setChecked(True)
-        self._cutoff_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._cutoff_cb)
         self._peaks_cb = QCheckBox("Pics/creux")
         self._peaks_cb.setToolTip("Marqueurs sur les maxima et minima locaux")
         self._peaks_cb.toggled.connect(self._apply_options)
@@ -134,7 +129,7 @@ class BodeCsvViewerDialog(QDialog):
         self._target_gain_spin = QDoubleSpinBox()
         self._target_gain_spin.setRange(-100, 50)
         self._target_gain_spin.setDecimals(1)
-        self._target_gain_spin.setValue(-6)
+        self._target_gain_spin.setValue(-3)
         self._target_gain_spin.setSingleStep(1)
         search_layout.addWidget(self._target_gain_spin)
         self._search_target_btn = QPushButton("Rechercher")
@@ -231,7 +226,6 @@ class BodeCsvViewerDialog(QDialog):
 
     def _apply_options(self) -> None:
         self._options.grid_visible = self._grid_cb.isChecked()
-        self._options.show_cutoff = self._cutoff_cb.isChecked()
         window = self._smooth_combo.currentData() if self._smooth_cb.isChecked() else 0
         if window is None:
             window = 5
@@ -256,7 +250,6 @@ class BodeCsvViewerDialog(QDialog):
             self._options.show_raw_curve,
             use_savgol=use_savgol,
         )
-        self._plot.set_cutoff_visible(self._options.show_cutoff)
         self._plot.set_y_linear(self._options.y_linear)
         self._plot.set_peaks_visible(self._peaks_cb.isChecked())
         self._plot.set_minor_grid_visible(self._grid_minor_cb.isChecked())

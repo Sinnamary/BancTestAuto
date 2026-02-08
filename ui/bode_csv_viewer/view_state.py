@@ -11,7 +11,6 @@ class BodeViewOptions:
     grid_visible: bool = True
     smooth_window: int = 0
     show_raw_curve: bool = False
-    show_cutoff: bool = True
     y_linear: bool = False
     plot_background_dark: bool = True  # True = noir, False = blanc
     curve_color: str = "#e0c040"  # couleur courbe principale (hex)
