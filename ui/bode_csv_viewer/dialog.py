@@ -4,6 +4,8 @@ Fenêtre de visualisation Bode CSV. Totalement indépendante du banc de test et 
 from pathlib import Path
 from typing import Optional
 
+from core.app_logger import get_logger
+
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -25,6 +27,8 @@ from .model import BodeCsvDataset
 from .csv_loader import BodeCsvFileLoader
 from .plot_widget import BodeCsvPlotWidget
 from .view_state import BodeViewOptions
+
+logger = get_logger(__name__)
 
 
 class BodeCsvViewerDialog(QDialog):
@@ -200,6 +204,10 @@ class BodeCsvViewerDialog(QDialog):
         """Met à jour les spinboxes avec la plage actuelle de la vue."""
         try:
             x_min, x_max, y_min, y_max = self._plot.get_view_range()
+            logger.debug(
+                "Bode dialog _sync_scale_spins_from_view: F min/max=%.6g / %.6g Hz, Gain min/max=%.6g / %.6g → spinboxes",
+                x_min, x_max, y_min, y_max,
+            )
             self._f_min_spin.setValue(x_min)
             self._f_max_spin.setValue(x_max)
             self._gain_min_spin.setValue(y_min)
@@ -218,6 +226,10 @@ class BodeCsvViewerDialog(QDialog):
         if gain_min >= gain_max:
             gain_max = gain_min + 1
             self._gain_max_spin.setValue(gain_max)
+        logger.debug(
+            "Bode dialog Appliquer les limites: F min=%.6g, F max=%.6g Hz, Gain min=%.6g, Gain max=%.6g",
+            f_min, f_max, gain_min, gain_max,
+        )
         self._plot.set_view_range(f_min, f_max, gain_min, gain_max)
 
     def _on_zoom_zone_toggled(self, checked: bool) -> None:

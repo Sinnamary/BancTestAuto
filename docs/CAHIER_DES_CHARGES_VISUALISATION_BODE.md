@@ -1,6 +1,6 @@
 # Cahier des charges — Visualisation Bode (Banc filtre)
 
-**Version :** 1.0  
+**Version :** 1.1  
 **Date :** 8 février 2026  
 **Référence :** Banc de test automatique — Banc filtre
 
@@ -59,8 +59,8 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 |----------|-------------|----------|
 | **Échelle X (fréquence)** | Log10 ; plage adaptée automatiquement aux données (f_min, f_max) | P0 |
 | **Échelle Y (gain)** | Linéaire ; plage adaptée avec marge (ex. min - 5 dB, max + 5 dB) | P0 |
-| **Plage manuelle** | Saisie de f_min, f_max, gain_min, gain_max pour forcer les limites | P1 |
-| **Auto-ajustement** | Bouton « Ajuster vue » pour recadrer sur toutes les données | P1 |
+| **Plage manuelle** | Saisie de F min, F max (Hz), gain min, gain max ; bouton « Appliquer les limites » pour forcer les bornes des axes | P1 ✓ |
+| **Auto-ajustement** | Bouton « Ajuster vue » pour recadrer sur toutes les données | P1 ✓ |
 | **Mise en évidence des échelles** | Graduations lisibles, pas de chevauchement avec la courbe | P1 |
 
 ### 2.5 Lissage de la courbe
@@ -148,6 +148,7 @@ BodePoint:
 ├─────────────────────────────────────────────────────────────────────────┤
 │  [Ordonnée]  ○ Gain linéaire (Us/Ue)  ● Gain en dB                      │
 │  [Affichage]  Fond [Noir▼]  Couleur courbe [Jaune▼]  ☑ Quadrillage  ☑ Lissage  ☑ Ligne à -3 dB  │
+│  [Échelles / Zoom]  F min (Hz)  F max (Hz)  Gain min  Gain max  [Appliquer les limites]  ☐ Zoom sur zone │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │   0 dB ─────────────────────────────────────────────────────────────    │
@@ -185,6 +186,7 @@ BodePoint:
 | **Compatibilité** | PyQt6, Python 3.10+ |
 | **Performances** | Gestion fluide de courbes jusqu’à ~10 000 points |
 | **Thème** | Respect du thème clair/foncé (display.theme) |
+| **Axe X logarithmique** | En mode log, la ViewBox pyqtgraph attend la plage en **log10(Hz)** (exposants), pas en Hz. L’implémentation convertit les bornes F min / F max (Hz) en log10 avant d’appliquer la plage, et interprète la plage renvoyée par la vue en Hz pour les champs F min / F max, afin que « Appliquer les limites » et « Ajuster vue » affichent une échelle de fréquences correcte (0,1 ; 1 ; 10 ; 100 ; … Hz). |
 
 ---
 
@@ -196,7 +198,7 @@ BodePoint:
 | **Phase 2** | Quadrillage visible, échelles lisibles, export PNG | P0 |
 | **Phase 3** | Lissage de la courbe (moyenne glissante ou spline) | P0 |
 | **Phase 4** | Ligne horizontale à -3 dB (pointillé rouge, option afficher/masquer) | P0 ✓ |
-| **Phase 5** | Plage manuelle des axes, bouton Ajuster vue | P1 |
+| **Phase 5** | Plage manuelle des axes (F min, F max, gain min/max), bouton Appliquer les limites, bouton Ajuster vue | P1 ✓ |
 | **Phase 6** | Détection pics/creux, marqueurs cliquables | P1 |
 | **Phase 7** | Recherche personnalisée (gain cible), export points | P2 |
 
