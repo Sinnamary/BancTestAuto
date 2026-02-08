@@ -38,6 +38,7 @@ BancTestAuto/
 ├── bump_version.py      # Incrément de version (patch|minor|major) dans core/version.py
 ├── build_exe.py         # Construction de l'exécutable (PyInstaller, à lancer depuis le venv)
 ├── serve_htmlcov.py     # Serveur local + ouverture du rapport de couverture (htmlcov) dans le navigateur
+├── BancTestAuto.spec    # Spécification PyInstaller (utilisée par build_exe.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
 ├── core/                # app_logger, app_paths, bode_calc, data_logger, device_detection, filter_sweep,
 │                        # filter_test, fy6900_commands, fy6900_protocol, measurement, rs305p_protocol,

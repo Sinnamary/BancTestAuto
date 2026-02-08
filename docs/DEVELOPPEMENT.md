@@ -1,6 +1,6 @@
 # Guide de développement — Banc de test automatique
 
-**Dernière mise à jour :** 7 février 2026
+**Dernière mise à jour :** 8 février 2026
 
 Le développement s’effectue en **petits fichiers**, avec des **classes distinctes pour chaque appareil de mesure** (multimètre OWON, générateur FY6900). Ces classes sont **appelées pour piloter le banc de test** (ex. caractérisation filtre) : le module banc n’orchestre que les appels aux classes d’appareils, sans dupliquer leur logique.
 
@@ -121,8 +121,12 @@ BancTestAuto/
 ├── .git/                    # Dépôt Git (interne)
 ├── .gitignore               # Fichiers ignorés par Git
 ├── .venv/                   # Environnement virtuel Python (ignoré)
-├── main.py                  # Point d'entrée application
-├── clean.py                 # Nettoyage __pycache__, logs (python clean.py)
+├── main.py                  # Point d'entrée : config, logging, thème, MainWindow
+├── clean.py                 # Nettoyage __pycache__, logs (python clean.py [--all])
+├── bump_version.py          # Incrément version (patch|minor|major) dans core/version.py
+├── build_exe.py             # Construction exécutable PyInstaller (depuis le venv)
+├── serve_htmlcov.py         # Serveur local + ouverture rapport couverture (htmlcov)
+├── BancTestAuto.spec        # Spécification PyInstaller
 ├── config/
 │   ├── __init__.py
 │   ├── config.json          # Config par défaut : multimètre, générateur, banc filtre
@@ -130,6 +134,7 @@ BancTestAuto/
 ├── core/                    # Logique métier (série, SCPI, FY6900, RS305P, mesure, banc filtre)
 │   ├── __init__.py
 │   ├── app_logger.py        # Logging application (fichiers horodatés)
+│   ├── app_paths.py         # Chemins config/logs (compatible exe PyInstaller)
 │   ├── serial_connection.py
 │   ├── serial_exchange_logger.py  # Log des échanges série (debug)
 │   ├── scpi_protocol.py
@@ -142,13 +147,17 @@ BancTestAuto/
 │   ├── filter_test.py
 │   ├── filter_sweep.py
 │   ├── bode_calc.py
-│   └── device_detection.py
+│   ├── device_detection.py
+│   └── version.py           # __version__, __version_date__, get_version_date()
 ├── ui/
+│   ├── __init__.py
 │   ├── main_window.py
 │   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
 │   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params
-│   ├── dialogs/             # serial_config, save_config, device_detection, view_config, help_dialog
+│   ├── dialogs/             # serial_config, save_config, device_detection, view_config, view_log, help_dialog, about_dialog
 │   └── views/               # meter_view, generator_view, logging_view, filter_test_view, power_supply_view, serial_terminal_view, bode_plot_widget
+├── resources/
+│   └── themes/              # dark.qss, light.qss (thèmes clair/foncé)
 ├── maquette/                # Interface seule (données factices), lancement indépendant
 │   ├── main_maquette.py
 │   ├── README.md
@@ -157,13 +166,18 @@ BancTestAuto/
 ├── docs/
 │   ├── AIDE.md              # Manuel utilisateur (aide F1)
 │   ├── BANC_TEST_FILTRE.md
+│   ├── BUILD_EXE.md         # Création de l'exécutable
 │   ├── CAHIER_DES_CHARGES.md
+│   ├── COMMANDES_FY6900.md  # Commandes série générateur FeelTech FY6900
+│   ├── COMMANDES_OWON.md    # Commandes SCPI multimètre OWON
+│   ├── COMMANDES_RS305P.md  # Protocole Modbus alimentation RS305P
 │   ├── DEVELOPPEMENT.md     # Ce fichier
 │   ├── DOC_AUDIT.md         # Audit doc/code, plan réduction écarts
 │   ├── FIX_VENV.md          # Dépannage venv
 │   ├── INTERFACE_PYQT6.md   # Conception interface
 │   ├── PLAN_IMPLEMENTATION.md
 │   ├── FY6900_communication_protocol.pdf
+│   ├── Modbus.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
 ├── requirements.txt
 └── README.md
@@ -272,6 +286,8 @@ BancTestAuto/
 | **core/measurement.py** | Logique mesures (mode, plage, MEAS?). Utilise ScpiProtocol. | meter_view, filter_test |
 | **core/owon_ranges.py** | (optionnel) Données plages par mode. À extraire ou déjà dans measurement. | measurement, range_selector |
 | **core/app_logger.py** | Logging application (niveau, fichiers horodatés dans logs/). | main.py, main_window, device_detection |
+| **core/app_paths.py** | Chemins config et logs (compatible exécutable PyInstaller). | config/settings, app_logger |
+| **core/version.py** | Version et date (__version__, __version_date__, get_version_date()). | about_dialog, bump_version.py |
 | **core/serial_exchange_logger.py** | Log des échanges série (multimètre / générateur) pour debug. | main_window → serial_connection |
 | **core/fy6900_protocol.py** | Protocole FY6900 (WMW, WMF, WMA, WMO, WMD, WMP, WMN ; lecture ack 0x0a entre commandes). | generator_view, filter_test |
 | **core/fy6900_commands.py** | Format commandes (WMF/WFF µHz 14 chiffres, WMW/WFW 2 chiffres). Aucune I/O. | fy6900_protocol |
@@ -297,6 +313,8 @@ BancTestAuto/
 | **ui/dialogs/save_config_dialog.py** | Sauvegarde config JSON (chemin, « Enregistrer sous »). | main_window |
 | **ui/dialogs/device_detection_dialog.py** | Détecter les équipements : affichage résultat, Lancer détection, Mettre à jour config.json. Utilise core/device_detection. | main_window (menu Outils) |
 | **ui/dialogs/view_config_dialog.py** | Affichage config JSON en lecture seule (menu Fichier → Voir config JSON). | main_window |
+| **ui/dialogs/view_log_dialog.py** | Affichage des fichiers de log application. | main_window |
+| **ui/dialogs/about_dialog.py** | À propos : nom, version, date (Aide → À propos...). | main_window |
 | **ui/views/meter_view.py** | Vue complète multimètre (modes, affichage, plage, historique ; widgets intégrés). | main_window |
 | **ui/views/generator_view.py** | Vue générateur FY6900 : Voie 1/2, forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie. | main_window |
 | **ui/views/logging_view.py** | Vue enregistrement : texte (mesures multimètre uniquement), config + graphique + contrôles. | main_window |
