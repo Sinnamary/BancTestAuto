@@ -97,6 +97,41 @@ QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox {
     padding: 2px 6px;
 }
 
+/* Flèches des spinbox : zone cliquable + triangle visible */
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    min-width: 20px;
+    border-left: 1px solid #505050;
+    background-color: #404040;
+    border-top-right-radius: 3px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    min-width: 20px;
+    border-left: 1px solid #505050;
+    background-color: #404040;
+    border-bottom-right-radius: 3px;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #505050;
+}
+/* Flèches en SVG (fichiers dans resources/themes, chemin injecté au chargement) */
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url({{THEME_DIR}}arrow-up.svg);
+    width: 12px;
+    height: 8px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url({{THEME_DIR}}arrow-down.svg);
+    width: 12px;
+    height: 8px;
+}
+
 QTableWidget {
     background-color: #2d2d2d;
     gridline-color: #404040;

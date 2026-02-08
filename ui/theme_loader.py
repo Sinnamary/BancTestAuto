@@ -32,6 +32,14 @@ def get_theme_stylesheet(theme_name: str, base_path: Path | None = None) -> str:
     if not path.is_file():
         return ""
     try:
-        return path.read_text(encoding="utf-8")
+        content = path.read_text(encoding="utf-8")
+        # Remplacer le placeholder par l'URL du dossier themes (pour les icônes spinbox)
+        try:
+            theme_url = themes_dir.resolve().as_uri() + "/"
+        except Exception:
+            theme_url = ""
+        if theme_url and "{{THEME_DIR}}" in content:
+            content = content.replace("{{THEME_DIR}}", theme_url)
+        return content
     except OSError:
         return ""

@@ -12,6 +12,8 @@ datas = [
     ("config/config.json", "config"),
     ("resources/themes/dark.qss", "resources/themes"),
     ("resources/themes/light.qss", "resources/themes"),
+    ("resources/themes/arrow-up.svg", "resources/themes"),
+    ("resources/themes/arrow-down.svg", "resources/themes"),
     ("docs/AIDE.md", "docs"),
 ]
 
