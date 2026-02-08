@@ -1,27 +1,26 @@
 """
 Fenêtre de visualisation Bode CSV. Totalement indépendante du banc de test et des autres dialogs.
+Lit/écrit la section config["bode_viewer"] pour persister les options (sauvegarde via Fichier → Sauvegarder config).
 """
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from core.app_logger import get_logger
+
+try:
+    from config.settings import get_bode_viewer_config
+except ImportError:
+    def get_bode_viewer_config(c: dict) -> dict:
+        return (c.get("bode_viewer") or {}).copy()
 
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
-    QHBoxLayout,
-    QGroupBox,
-    QRadioButton,
-    QButtonGroup,
-    QPushButton,
-    QCheckBox,
-    QComboBox,
     QLabel,
-    QDoubleSpinBox,
     QFileDialog,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt
 
 from .model import BodeCsvDataset
 from .csv_loader import BodeCsvFileLoader
@@ -29,15 +28,14 @@ from .plot_widget import BodeCsvPlotWidget
 from .view_state import BodeViewOptions
 from .cutoff import Cutoff3DbFinder
 from .smoothing import has_savgol
+from .formatters import format_freq_hz
+from .panel_y_axis import build_y_axis_panel
+from .panel_display import build_display_panel
+from .panel_search import build_search_panel
+from .panel_scale import build_scale_panel
+from .panel_buttons import build_buttons_layout
 
 logger = get_logger(__name__)
-
-
-def _fmt_freq(hz: float) -> str:
-    """Ex. 1234.5 -> '1,23 kHz'."""
-    if hz >= 1000:
-        return f"{hz / 1000:.2f} kHz"
-    return f"{hz:.1f} Hz"
 
 
 class BodeCsvViewerDialog(QDialog):
@@ -56,173 +54,38 @@ class BodeCsvViewerDialog(QDialog):
         self.setMinimumSize(640, 480)
         self.resize(800, 500)
         self._csv_path = csv_path
+        self._config: Optional[dict] = config  # config mutable : on y écrit bode_viewer à la fermeture
         self._dataset: BodeCsvDataset = dataset if dataset is not None else BodeCsvDataset([])
         if csv_path and dataset is None:
             self._load_csv(csv_path)
         self._options = BodeViewOptions.default()
-        # Fond noir par défaut (l'utilisateur peut choisir Blanc dans Affichage)
         self._build_ui()
+        # Appliquer la config bode_viewer si fournie (sauvegardée via Fichier → Sauvegarder config)
+        if self._config:
+            self._apply_bode_viewer_config(get_bode_viewer_config(self._config))
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
-        y_gb = QGroupBox("Ordonnée (Y)")
-        y_layout = QHBoxLayout(y_gb)
-        self._y_group = QButtonGroup(self)
-        self._y_linear = QRadioButton("Gain linéaire (Us/Ue)")
-        self._y_db = QRadioButton("Gain en dB")
-        self._y_db.setChecked(True)
-        self._y_group.addButton(self._y_linear)
-        self._y_group.addButton(self._y_db)
-        y_layout.addWidget(self._y_linear)
-        y_layout.addWidget(self._y_db)
-        y_layout.addStretch()
-        layout.addWidget(y_gb)
-
-        disp_gb = QGroupBox("Affichage")
-        disp_layout = QHBoxLayout(disp_gb)
-        disp_layout.addWidget(QLabel("Fond:"))
-        self._background_combo = QComboBox()
-        for label, dark in BodeViewOptions.BACKGROUND_CHOICES:
-            self._background_combo.addItem(label, dark)
-        self._background_combo.setCurrentIndex(0 if self._options.plot_background_dark else 1)
-        self._background_combo.currentIndexChanged.connect(self._apply_options)
-        disp_layout.addWidget(self._background_combo)
-        disp_layout.addWidget(QLabel("Couleur courbe:"))
-        self._curve_color_combo = QComboBox()
-        for label, hex_color in BodeViewOptions.CURVE_COLOR_CHOICES:
-            self._curve_color_combo.addItem(label, hex_color)
-        self._curve_color_combo.currentIndexChanged.connect(self._apply_options)
-        disp_layout.addWidget(self._curve_color_combo)
-        self._grid_cb = QCheckBox("Quadrillage")
-        self._grid_cb.setChecked(True)
-        self._grid_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._grid_cb)
-        self._grid_minor_cb = QCheckBox("Quadrillage mineur")
-        self._grid_minor_cb.setToolTip("Lignes intermédiaires pour lecture fine")
-        self._grid_minor_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._grid_minor_cb)
-        self._smooth_cb = QCheckBox("Lissage")
-        self._smooth_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._smooth_cb)
-        disp_layout.addWidget(QLabel("Fenêtre:"))
-        self._smooth_combo = QComboBox()
-        for w in BodeViewOptions.SMOOTH_WINDOW_CHOICES:
-            self._smooth_combo.addItem(str(w), w)
-        self._smooth_combo.setCurrentIndex(1)
-        self._smooth_combo.currentIndexChanged.connect(self._apply_options)
-        disp_layout.addWidget(self._smooth_combo)
-        disp_layout.addWidget(QLabel("Algo:"))
-        self._smooth_method_combo = QComboBox()
-        for label, use_savgol in BodeViewOptions.SMOOTH_METHODS:
-            if use_savgol and not has_savgol():
-                continue
-            self._smooth_method_combo.addItem(label, use_savgol)
-        self._smooth_method_combo.currentIndexChanged.connect(self._apply_options)
-        disp_layout.addWidget(self._smooth_method_combo)
-        self._raw_cb = QCheckBox("Courbe brute + lissée")
-        self._raw_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._raw_cb)
-        self._peaks_cb = QCheckBox("Pics/creux")
-        self._peaks_cb.setToolTip("Marqueurs sur les maxima et minima locaux")
-        self._peaks_cb.toggled.connect(self._apply_options)
-        disp_layout.addWidget(self._peaks_cb)
-        disp_layout.addStretch()
-        layout.addWidget(disp_gb)
-
-        search_gb = QGroupBox("Recherche gain cible")
-        search_layout = QHBoxLayout(search_gb)
-        search_layout.addWidget(QLabel("Gain (dB):"))
-        self._target_gain_spin = QDoubleSpinBox()
-        self._target_gain_spin.setRange(-100, 50)
-        self._target_gain_spin.setDecimals(1)
-        self._target_gain_spin.setValue(-3)
-        self._target_gain_spin.setSingleStep(1)
-        self._target_gain_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        search_layout.addWidget(self._target_gain_spin)
-        self._search_target_btn = QPushButton("Rechercher")
-        self._search_target_btn.setToolTip("Affiche les fréquences où la courbe coupe ce gain")
-        self._search_target_btn.clicked.connect(self._on_search_target_gain)
-        search_layout.addWidget(self._search_target_btn)
-        self._clear_target_btn = QPushButton("Effacer la ligne")
-        self._clear_target_btn.setToolTip("Supprime la ligne de gain cible et les marqueurs de fréquence")
-        self._clear_target_btn.clicked.connect(self._on_clear_target_gain)
-        search_layout.addWidget(self._clear_target_btn)
-        self._target_result_label = QLabel("")
-        self._target_result_label.setStyleSheet("color: gray; font-size: 10px;")
-        search_layout.addWidget(self._target_result_label)
-        search_layout.addStretch()
-        layout.addWidget(search_gb)
-
-        scale_gb = QGroupBox("Échelles / Zoom")
-        scale_layout = QHBoxLayout(scale_gb)
-        scale_layout.addWidget(QLabel("F min (Hz):"))
-        self._f_min_spin = QDoubleSpinBox()
-        self._f_min_spin.setRange(0.1, 1e9)
-        self._f_min_spin.setDecimals(2)
-        self._f_min_spin.setValue(10)
-        self._f_min_spin.setSingleStep(10)
-        self._f_min_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        scale_layout.addWidget(self._f_min_spin)
-        scale_layout.addWidget(QLabel("F max (Hz):"))
-        self._f_max_spin = QDoubleSpinBox()
-        self._f_max_spin.setRange(0.1, 1e9)
-        self._f_max_spin.setDecimals(2)
-        self._f_max_spin.setValue(100000)
-        self._f_max_spin.setSingleStep(1000)
-        self._f_max_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        scale_layout.addWidget(self._f_max_spin)
-        scale_layout.addWidget(QLabel("Gain min:"))
-        self._gain_min_spin = QDoubleSpinBox()
-        self._gain_min_spin.setRange(-300, 100)
-        self._gain_min_spin.setDecimals(2)
-        self._gain_min_spin.setValue(-50)
-        self._gain_min_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        scale_layout.addWidget(self._gain_min_spin)
-        scale_layout.addWidget(QLabel("Gain max:"))
-        self._gain_max_spin = QDoubleSpinBox()
-        self._gain_max_spin.setRange(-300, 100)
-        self._gain_max_spin.setDecimals(2)
-        self._gain_max_spin.setValue(5)
-        self._gain_max_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        scale_layout.addWidget(self._gain_max_spin)
-        self._apply_scale_btn = QPushButton("Appliquer les limites")
-        self._apply_scale_btn.setToolTip("Appliquer les valeurs ci-dessus aux axes du graphique")
-        self._apply_scale_btn.clicked.connect(self._on_apply_scale)
-        scale_layout.addWidget(self._apply_scale_btn)
-        self._zoom_zone_cb = QCheckBox("Zoom sur zone (glisser)")
-        self._zoom_zone_cb.setToolTip("Coché : glisser sur le graphique pour sélectionner une zone et zoomer. Décoché : glisser = déplacer la vue. Molette = zoom toujours actif.")
-        self._zoom_zone_cb.toggled.connect(self._on_zoom_zone_toggled)
-        scale_layout.addWidget(self._zoom_zone_cb)
-        scale_layout.addStretch()
-        layout.addWidget(scale_gb)
+        layout.addWidget(build_y_axis_panel(self))
+        layout.addWidget(build_display_panel(self, self._apply_options))
+        layout.addWidget(build_search_panel(self, self._on_search_target_gain, self._on_clear_target_gain))
+        layout.addWidget(build_scale_panel(self, self._on_apply_scale, self._on_zoom_zone_toggled))
 
         self._plot = BodeCsvPlotWidget()
-        self._plot.setMinimumHeight(280)
+        self._plot.setMinimumHeight(300)
         layout.addWidget(self._plot)
 
         self._info_label = QLabel("")
-        self._info_label.setStyleSheet("color: gray; font-size: 11px;")
+        self._info_label.setStyleSheet(
+            "color: #606060; font-size: 11px; font-weight: 500; padding: 4px 0;"
+        )
         self._info_label.setToolTip("Résumé des données pour l'étude de la courbe")
         layout.addWidget(self._info_label)
 
-        btn_layout = QHBoxLayout()
-        self._adjust_btn = QPushButton("Ajuster vue")
-        self._adjust_btn.setToolTip("Recadrer la vue sur toutes les données")
-        self._adjust_btn.clicked.connect(self._on_adjust_view)
-        btn_layout.addWidget(self._adjust_btn)
-        btn_layout.addStretch()
-        self._export_btn = QPushButton("Exporter en PNG")
-        self._export_btn.clicked.connect(self._on_export)
-        btn_layout.addWidget(self._export_btn)
-        self._export_csv_btn = QPushButton("Exporter les points CSV")
-        self._export_csv_btn.setToolTip("Enregistre f_Hz, Us_V, Us_Ue, Gain_dB")
-        self._export_csv_btn.clicked.connect(self._on_export_csv)
-        btn_layout.addWidget(self._export_csv_btn)
-        close_btn = QPushButton("Fermer")
-        close_btn.clicked.connect(self.accept)
-        btn_layout.addWidget(close_btn)
-        layout.addLayout(btn_layout)
+        layout.addLayout(build_buttons_layout(self, self._on_adjust_view, self._on_export, self._on_export_csv))
 
         self._y_linear.toggled.connect(self._on_y_changed)
         self._y_db.toggled.connect(self._on_y_changed)
@@ -230,6 +93,67 @@ class BodeCsvViewerDialog(QDialog):
         self._apply_options()
         self._sync_scale_spins_from_view()
         self._update_info_panel()
+
+    def _apply_bode_viewer_config(self, d: dict[str, Any]) -> None:
+        """Applique la section bode_viewer de la config aux widgets (chargement)."""
+        if not d:
+            return
+        self._background_combo.setCurrentIndex(0 if d.get("plot_background_dark", True) else 1)
+        color = d.get("curve_color", "#e0c040")
+        for i in range(self._curve_color_combo.count()):
+            if self._curve_color_combo.itemData(i) == color:
+                self._curve_color_combo.setCurrentIndex(i)
+                break
+        self._grid_cb.setChecked(d.get("grid_visible", True))
+        self._grid_minor_cb.setChecked(d.get("grid_minor_visible", False))
+        sw = int(d.get("smooth_window", 0))
+        self._smooth_cb.setChecked(sw > 0)
+        for i in range(self._smooth_combo.count()):
+            if self._smooth_combo.itemData(i) == sw:
+                self._smooth_combo.setCurrentIndex(i)
+                break
+        else:
+            if self._smooth_combo.count():
+                self._smooth_combo.setCurrentIndex(min(1, self._smooth_combo.count() - 1))
+        use_savgol = d.get("smooth_savgol", False)
+        for i in range(self._smooth_method_combo.count()):
+            if self._smooth_method_combo.itemData(i) is use_savgol:
+                self._smooth_method_combo.setCurrentIndex(i)
+                break
+        self._raw_cb.setChecked(d.get("show_raw_curve", False))
+        self._peaks_cb.setChecked(d.get("peaks_visible", False))
+        y_lin = bool(d.get("y_linear", False))
+        self._y_linear.setChecked(y_lin)
+        self._y_db.setChecked(not y_lin)
+        self._apply_options()
+
+    def _get_bode_viewer_state(self) -> dict[str, Any]:
+        """Retourne l'état actuel des options (pour sauvegarde dans config)."""
+        use_savgol = self._smooth_method_combo.currentData() is True
+        return {
+            "plot_background_dark": self._background_combo.currentData() is True,
+            "curve_color": self._curve_color_combo.currentData() or "#e0c040",
+            "grid_visible": self._grid_cb.isChecked(),
+            "grid_minor_visible": self._grid_minor_cb.isChecked(),
+            "smooth_window": self._smooth_combo.currentData() if self._smooth_cb.isChecked() else 0,
+            "show_raw_curve": self._raw_cb.isChecked(),
+            "smooth_savgol": use_savgol,
+            "y_linear": self._y_linear.isChecked(),
+            "peaks_visible": self._peaks_cb.isChecked(),
+        }
+
+    def _save_bode_viewer_to_config(self) -> None:
+        """Écrit les options actuelles dans config[\"bode_viewer\"] (persistées par Fichier → Sauvegarder config)."""
+        if self._config is not None:
+            self._config["bode_viewer"] = self._get_bode_viewer_state()
+
+    def accept(self) -> None:
+        self._save_bode_viewer_to_config()
+        super().accept()
+
+    def reject(self) -> None:
+        self._save_bode_viewer_to_config()
+        super().reject()
 
     def _load_csv(self, path: str) -> None:
         loader = BodeCsvFileLoader()
@@ -283,7 +207,7 @@ class BodeCsvViewerDialog(QDialog):
         cutoffs = finder.find_all(self._dataset)
         if cutoffs:
             fc_str = "  |  ".join(
-                f"fc{' ' + str(k + 1) if len(cutoffs) > 1 else ''} = {_fmt_freq(r.fc_hz)}"
+                f"fc{' ' + str(k + 1) if len(cutoffs) > 1 else ''} = {format_freq_hz(r.fc_hz)}"
                 for k, r in enumerate(cutoffs)
             )
         else:
@@ -339,7 +263,7 @@ class BodeCsvViewerDialog(QDialog):
         self._plot.set_target_gain_search(target_db, [r.fc_hz for r in results])
         if results:
             self._target_result_label.setText(
-                "  |  ".join(f"f = {_fmt_freq(r.fc_hz)}" for r in results)
+                "  |  ".join(f"f = {format_freq_hz(r.fc_hz)}" for r in results)
             )
         else:
             self._target_result_label.setText("(aucune intersection)")
@@ -350,8 +274,11 @@ class BodeCsvViewerDialog(QDialog):
         self._target_result_label.setText("")
 
     def _on_export(self) -> None:
+        default_dir = Path("datas/png") if Path("datas/png").exists() else Path(".")
+        default_name = f"bode_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
+        default_path = str(default_dir / default_name)
         path, _ = QFileDialog.getSaveFileName(
-            self, "Exporter graphique Bode", "", "PNG (*.png);;Tous (*)"
+            self, "Exporter graphique Bode", default_path, "PNG (*.png);;Tous (*)"
         )
         if not path:
             return
@@ -364,8 +291,11 @@ class BodeCsvViewerDialog(QDialog):
         if not self._dataset or self._dataset.is_empty():
             QMessageBox.warning(self, "Export", "Aucune donnée à exporter.")
             return
+        default_dir = Path("datas/csv") if Path("datas/csv").exists() else Path(".")
+        default_name = f"bode_points_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+        default_path = str(default_dir / default_name)
         path, _ = QFileDialog.getSaveFileName(
-            self, "Exporter les points", "", "CSV (*.csv);;Tous (*)"
+            self, "Exporter les points", default_path, "CSV (*.csv);;Tous (*)"
         )
         if not path:
             return
@@ -379,9 +309,3 @@ class BodeCsvViewerDialog(QDialog):
             QMessageBox.information(self, "Export", f"Points enregistrés : {path}")
         except Exception as e:
             QMessageBox.warning(self, "Export", f"Échec : {e}")
-
-
-def open_viewer(parent=None, csv_path: str = "") -> None:
-    """Point d'entrée unique : ouvre le dialogue viewer avec le fichier CSV (chargé par le viewer)."""
-    dlg = BodeCsvViewerDialog(parent, csv_path=csv_path)
-    dlg.exec()

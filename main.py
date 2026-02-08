@@ -17,6 +17,7 @@ else:
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 
 from config.settings import load_config
@@ -32,9 +33,16 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Banc de test automatique")
 
-    # Thème : config display.theme (dark / light)
-    theme = (config.get("display") or {}).get("theme", "dark")
-    stylesheet = get_theme_stylesheet(theme)
+    # Police et thème depuis la config (display.font_family, display.theme)
+    display = config.get("display") or {}
+    font_family = (display.get("font_family") or "").strip()
+    if not font_family and sys.platform == "win32":
+        font_family = "Segoe UI"  # évite erreurs DirectWrite avec MS Sans Serif
+    if font_family:
+        app.setFont(QFont(font_family, 10))
+
+    theme = display.get("theme", "dark")
+    stylesheet = get_theme_stylesheet(theme, font_family=font_family or "Segoe UI, Arial, sans-serif")
     if stylesheet:
         app.setStyleSheet(stylesheet)
 

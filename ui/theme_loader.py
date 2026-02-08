@@ -15,9 +15,14 @@ def get_resources_themes_dir(base_path: Path | None = None) -> Path:
     return base_path / "resources" / "themes"
 
 
-def get_theme_stylesheet(theme_name: str, base_path: Path | None = None) -> str:
+def get_theme_stylesheet(
+    theme_name: str,
+    base_path: Path | None = None,
+    font_family: str = "",
+) -> str:
     """
     Charge le contenu du fichier QSS du thème (ex. dark.qss, light.qss).
+    font_family : police à injecter (remplace {{FONT_FAMILY}} dans le QSS). Vide = "Segoe UI", Arial, sans-serif.
     Retourne une chaîne vide si le fichier n'existe pas ou theme_name est vide.
     """
     if not theme_name or not theme_name.strip():
@@ -33,14 +38,17 @@ def get_theme_stylesheet(theme_name: str, base_path: Path | None = None) -> str:
         return ""
     try:
         content = path.read_text(encoding="utf-8")
-        # Chemin absolu du dossier themes (slashes) pour les SVG spinbox — pas de file://
-        # pour éviter que Qt concatène avec le CWD (ex. CWD + "file:/C:/..." → chemin invalide)
+        # Chemin absolu du dossier themes (slashes) pour les SVG spinbox
         try:
             theme_dir_path = str(themes_dir.resolve()).replace("\\", "/") + "/"
         except Exception:
             theme_dir_path = ""
         if theme_dir_path and "{{THEME_DIR}}" in content:
             content = content.replace("{{THEME_DIR}}", theme_dir_path)
+        # Police depuis la config (évite MS Sans Serif / erreurs DirectWrite sous Windows)
+        font_css = font_family.strip() if font_family else "Segoe UI, Arial, sans-serif"
+        if "{{FONT_FAMILY}}" in content:
+            content = content.replace("{{FONT_FAMILY}}", font_css)
         return content
     except OSError:
         return ""

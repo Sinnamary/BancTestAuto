@@ -14,20 +14,24 @@ from .smoothing import MovingAverageSmoother, smooth_savgol
 class BodeCurveDrawer:
     """Dessine la courbe principale (lissée ou brute) sur un PlotItem."""
     DEFAULT_MAIN_COLOR = "#e0c040"
-    PEN_MAIN = pg.mkPen(DEFAULT_MAIN_COLOR, width=2)
-    PEN_RAW = pg.mkPen("#808080", width=1, style=Qt.PenStyle.DotLine)
+    PEN_MAIN = pg.mkPen(DEFAULT_MAIN_COLOR, width=2.5)
+    PEN_RAW = pg.mkPen("#909090", width=1.2, style=Qt.PenStyle.DotLine)
 
     def __init__(self, plot_item):
         self._plot_item = plot_item
-        self._curve = plot_item.plot(pen=self.PEN_MAIN)
-        self._raw_curve = plot_item.plot(pen=self.PEN_RAW)
+        try:
+            self._curve = plot_item.plot(pen=self.PEN_MAIN, antialias=True)
+            self._raw_curve = plot_item.plot(pen=self.PEN_RAW, antialias=True)
+        except TypeError:
+            self._curve = plot_item.plot(pen=self.PEN_MAIN)
+            self._raw_curve = plot_item.plot(pen=self.PEN_RAW)
         self._raw_curve.setVisible(False)
 
     def set_curve_color(self, color: Union[str, QColor]) -> None:
         """Change la couleur de la courbe principale (nom, hex ou QColor)."""
         if isinstance(color, QColor):
             color = color.name()
-        self._curve.setPen(pg.mkPen(color, width=2))
+        self._curve.setPen(pg.mkPen(color, width=2.5))
 
     def set_data(
         self,

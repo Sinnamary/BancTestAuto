@@ -5,9 +5,9 @@ Zoom (molette, zoom zone), pan, réglage des échelles. Aucune dépendance au ba
 import math
 from typing import Optional, Tuple, Union
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGraphicsView
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGraphicsView
 from PyQt6.QtGui import QColor, QFont
-from PyQt6.QtCore import QEvent, QPointF
+from PyQt6.QtCore import QEvent
 import pyqtgraph as pg
 
 from core.app_logger import get_logger
@@ -15,13 +15,18 @@ from core.app_logger import get_logger
 logger = get_logger(__name__)
 
 # Polices pour une bonne lisibilité des échelles (rapport/gain et fréquence)
-_AXIS_LABEL_FONT_SIZE = 11
+_AXIS_LABEL_FONT_SIZE = 12
 _TICK_LABEL_FONT_SIZE = 10
+# Couleurs du label de survol (f, G) selon le fond
+_HOVER_COLOR_DARK = "#e8e8e8"
+_HOVER_COLOR_LIGHT = "#1a1a1a"
+_HOVER_FONT_SIZE = 10
 
 from .model import BodeCsvDataset
 from .plot_grid import BodePlotGrid
 from .plot_curves import BodeCurveDrawer
 from .plot_cutoff_viz import CutoffMarkerViz
+from .plot_hover import create_hover_label, update_hover_from_viewport_event
 from .cutoff import Cutoff3DbFinder
 
 try:
@@ -58,8 +63,11 @@ class BodeCsvPlotWidget(QWidget):
         self._plot_widget.getPlotItem().getAxis("bottom").enableAutoSIPrefix(False)
         vb = self._plot_widget.getViewBox()
         vb.setMouseMode(vb.PanMode)
-        # Désactiver l'auto-range dès l'init pour que "Appliquer les limites" ne soit pas écrasé.
-        vb.disableAutoRange()
+        vb.disableAutoRange()  # on garde le contrôle manuel après auto_range()
+        try:
+            vb.setAntialiasing(True)
+        except Exception:
+            pass
         layout.addWidget(self._plot_widget)
         plot_item = self._plot_widget.getPlotItem()
         self._grid = BodePlotGrid(plot_item)
@@ -78,18 +86,14 @@ class BodeCsvPlotWidget(QWidget):
         self._last_target_gain_db: Optional[float] = None
         self._last_target_fc_list: Optional[list] = None
         self._show_raw = False
-        self._background_dark = True  # Noir par défaut
+        self._background_dark = True  # fond noir par défaut (doc: CDC Visualisation Bode)
         self._apply_axis_fonts()
         self._apply_background_style()
 
     def _setup_hover(self) -> None:
         """Affiche (f, gain) au survol du graphique pour faciliter la lecture."""
         plot_item = self._plot_widget.getPlotItem()
-        self._hover_label = pg.TextItem(anchor=(0, 1), text="")
-        self._hover_label.setZValue(20)
-        self._hover_label.setVisible(False)
-        plot_item.addItem(self._hover_label)
-        # Installation du filtre au premier affichage (scène peut être None à l'init)
+        self._hover_label = create_hover_label(plot_item)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -104,49 +108,10 @@ class BodeCsvPlotWidget(QWidget):
 
     def eventFilter(self, obj, event) -> bool:
         if event.type() == QEvent.Type.MouseMove:
-            self._on_mouse_moved_from_event(obj, event)
+            update_hover_from_viewport_event(
+                obj, event, self._plot_widget, self._hover_label, self._y_linear
+            )
         return super().eventFilter(obj, event)
-
-    def _on_mouse_moved_from_event(self, viewport, event) -> None:
-        """Convertit l'événement souris en position scène et met à jour le survol."""
-        view = viewport.parent()
-        if not isinstance(view, QGraphicsView):
-            return
-        # event.pos() est en coordonnées viewport → view → scene
-        pos_in_view = viewport.mapTo(view, event.pos())
-        scene_pos = view.mapToScene(pos_in_view)
-        self._on_mouse_moved(scene_pos)
-
-    def _on_mouse_moved(self, scene_pos) -> None:
-        if self._hover_label is None:
-            return
-        vb = self._plot_widget.getViewBox()
-        if not vb.sceneBoundingRect().contains(scene_pos):
-            self._hover_label.setVisible(False)
-            return
-        # Coordonnées dans le repère du graphique (axe X en log = log10(Hz))
-        p = vb.mapSceneToView(scene_pos)
-        x_data, y_data = p.x(), p.y()
-        # En mode log X, pyqtgraph utilise log10(Hz) en interne
-        if self._plot_widget.getViewBox().state.get("logMode", [False, False])[0]:
-            try:
-                f_hz = 10.0 ** float(x_data)
-            except (TypeError, ValueError, OverflowError):
-                self._hover_label.setVisible(False)
-                return
-        else:
-            f_hz = float(x_data)
-        if f_hz <= 0 or not math.isfinite(f_hz):
-            self._hover_label.setVisible(False)
-            return
-        unit = "dB" if not self._y_linear else "Us/Ue"
-        if f_hz >= 1000:
-            f_str = f"{f_hz / 1000:.3f} kHz"
-        else:
-            f_str = f"{f_hz:.2f} Hz"
-        self._hover_label.setText(f"f = {f_str}  |  G = {y_data:.2f} {unit}")
-        self._hover_label.setPos(x_data, y_data)
-        self._hover_label.setVisible(True)
 
     def set_dataset(self, dataset: Optional[BodeCsvDataset]) -> None:
         self._dataset = dataset
@@ -177,12 +142,19 @@ class BodeCsvPlotWidget(QWidget):
         self._apply_background_style()
 
     def _apply_axis_fonts(self) -> None:
-        """Applique des polices lisibles pour les libellés et graduations des axes."""
+        """Applique des polices lisibles pour les libellés et graduations des axes (suit config display.font_family)."""
         pi = self._plot_widget.getPlotItem()
+        app = QApplication.instance() if QApplication else None
+        family = app.font().family() if app and app.font().family() else (
+            "Segoe UI" if __import__("sys").platform == "win32" else None
+        )
         label_font = QFont()
+        tick_font = QFont()
+        if family:
+            label_font.setFamily(family)
+            tick_font.setFamily(family)
         label_font.setPointSize(_AXIS_LABEL_FONT_SIZE)
         label_font.setBold(True)
-        tick_font = QFont()
         tick_font.setPointSize(_TICK_LABEL_FONT_SIZE)
         for ax_name in ("left", "bottom"):
             ax_item = pi.getAxis(ax_name)
@@ -212,6 +184,21 @@ class BodeCsvPlotWidget(QWidget):
                 ax_item.setTextPen(_AXIS_PEN_LIGHT)
                 if hasattr(ax_item, "label") and ax_item.label is not None:
                     ax_item.label.setDefaultTextColor(QColor(_TICK_LABEL_COLOR_LIGHT))
+        # Label de survol (f, G) : police (config display.font_family) et couleur selon le fond
+        if self._hover_label is not None:
+            app = QApplication.instance() if QApplication else None
+            family = app.font().family() if app and app.font().family() else (
+                "Segoe UI" if __import__("sys").platform == "win32" else None
+            )
+            font = QFont()
+            if family:
+                font.setFamily(family)
+            font.setPointSize(_HOVER_FONT_SIZE)
+            font.setBold(True)
+            self._hover_label.setFont(font)
+            self._hover_label.setColor(
+                QColor(_HOVER_COLOR_DARK) if self._background_dark else QColor(_HOVER_COLOR_LIGHT)
+            )
 
     def set_curve_color(self, color: Union[str, QColor]) -> None:
         """Change la couleur de la courbe principale."""

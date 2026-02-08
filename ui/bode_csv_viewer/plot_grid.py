@@ -11,9 +11,9 @@ from PyQt6.QtCore import Qt
 
 class BodePlotGrid:
     """Gère l'affichage du quadrillage (majeur + mineur) sur un PlotItem pyqtgraph."""
-    ALPHA_DARK = 0.35   # fond noir
-    ALPHA_LIGHT = 0.55  # fond blanc : plus marqué pour bonne lisibilité
-    ALPHA_MINOR = 0.18  # quadrillage mineur plus discret
+    ALPHA_DARK = 0.42   # fond noir : quadrillage un peu plus visible
+    ALPHA_LIGHT = 0.6   # fond blanc : bonne lisibilité
+    ALPHA_MINOR = 0.22  # quadrillage mineur plus visible
 
     def __init__(self, plot_item: Any):
         self._plot_item = plot_item

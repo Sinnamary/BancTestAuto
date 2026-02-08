@@ -6,6 +6,29 @@ from typing import Any, List, Optional
 
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+
+from .formatters import format_freq_hz
+
+# Police lisible pour les étiquettes fc et gain cible (suit la config display.font_family)
+def _default_label_font() -> QFont:
+    font = QFont()
+    app = None
+    try:
+        from PyQt6.QtWidgets import QApplication
+        app = QApplication.instance()
+    except Exception:
+        pass
+    if app and app.font().family():
+        font.setFamily(app.font().family())
+    elif __import__("sys").platform == "win32":
+        font.setFamily("Segoe UI")
+    font.setPointSize(10)
+    font.setBold(True)
+    return font
+
+
+_LABEL_FONT = _default_label_font()
 
 # Niveau -3 dB en gain linéaire (Us/Ue)
 LEVEL_DB = -3.0
@@ -16,15 +39,6 @@ PEN_FC = pg.mkPen("#ff8080", width=1.5, style=Qt.PenStyle.DotLine)
 # Ligne et marqueurs gain cible (recherche personnalisée)
 PEN_TARGET = pg.mkPen("#60c0ff", width=1.5, style=Qt.PenStyle.DashLine)
 PEN_TARGET_FC = pg.mkPen("#80b0ff", width=1, style=Qt.PenStyle.DotLine)
-
-
-def _format_freq(hz: float) -> str:
-    """Ex. 1234.5 -> '1,23 kHz', 0.05 -> '50 Hz'."""
-    if hz >= 1000:
-        return f"{hz / 1000:.2f} kHz"
-    if hz < 1 and hz > 0:
-        return f"{hz * 1000:.1f} mHz"
-    return f"{hz:.1f} Hz"
 
 
 class CutoffMarkerViz:
@@ -64,6 +78,7 @@ class CutoffMarkerViz:
         if self._label is None:
             self._label = pg.TextItem(anchor=(1, 0.5), text="-3 dB")
             self._label.setColor("#ff5050")
+            self._label.setFont(_LABEL_FONT)
             self._label.setZValue(self.Z_LABEL)
             self._plot_item.addItem(self._label)
         if y_value is not None:
@@ -89,9 +104,10 @@ class CutoffMarkerViz:
             line.setZValue(self.Z_FC)
             self._plot_item.addItem(line)
             self._fc_lines.append(line)
-            label_text = f"fc = {_format_freq(fc_hz)}" if len(fc_hz_list) == 1 else f"fc{k + 1} = {_format_freq(fc_hz)}"
+            label_text = f"fc = {format_freq_hz(fc_hz)}" if len(fc_hz_list) == 1 else f"fc{k + 1} = {format_freq_hz(fc_hz)}"
             label = pg.TextItem(anchor=(0, 0.5), text=label_text)
             label.setColor("#ff8080")
+            label.setFont(_LABEL_FONT)
             label.setZValue(self.Z_LABEL)
             label.setPos(fc_hz, self._y_level if self._y_level is not None else LEVEL_DB)
             self._plot_item.addItem(label)
@@ -118,6 +134,7 @@ class CutoffMarkerViz:
         if self._target_label is None:
             self._target_label = pg.TextItem(anchor=(1, 0.5), text="")
             self._target_label.setColor("#60b0ff")
+            self._target_label.setFont(_LABEL_FONT)
             self._target_label.setZValue(self.Z_LABEL)
             self._plot_item.addItem(self._target_label)
         if gain_db is not None:
@@ -146,8 +163,9 @@ class CutoffMarkerViz:
             line.setZValue(self.Z_FC - 1)
             self._plot_item.addItem(line)
             self._target_fc_lines.append(line)
-            lbl = pg.TextItem(anchor=(0, 0.5), text=f"f = {_format_freq(fc_hz)}")
+            lbl = pg.TextItem(anchor=(0, 0.5), text=f"f = {format_freq_hz(fc_hz)}")
             lbl.setColor("#80b0ff")
+            lbl.setFont(_LABEL_FONT)
             lbl.setZValue(self.Z_LABEL)
             lbl.setPos(fc_hz, y_ref)
             self._plot_item.addItem(lbl)

@@ -41,6 +41,7 @@ DEFAULTS = {
     },
     "display": {
         "font_size": "large",
+        "font_family": "Segoe UI",
         "theme": "dark",
         "secondary_display": False,
     },
@@ -70,6 +71,17 @@ DEFAULTS = {
         "scale": "log",
         "settling_ms": 200,
         "ue_rms": 1.0,
+    },
+    "bode_viewer": {
+        "plot_background_dark": True,
+        "curve_color": "#e0c040",
+        "grid_visible": True,
+        "grid_minor_visible": False,
+        "smooth_window": 0,
+        "show_raw_curve": False,
+        "smooth_savgol": False,
+        "y_linear": False,
+        "peaks_visible": False,
     },
 }
 
@@ -152,3 +164,8 @@ def get_generator_config(config: dict[str, Any]) -> dict[str, Any]:
 def get_logging_config(config: dict[str, Any]) -> dict[str, Any]:
     """Retourne la section logging (output_dir, level, etc.)."""
     return config.get("logging", DEFAULTS["logging"]).copy()
+
+
+def get_bode_viewer_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section bode_viewer (options de la fenêtre graphique Bode)."""
+    return config.get("bode_viewer", DEFAULTS["bode_viewer"]).copy()

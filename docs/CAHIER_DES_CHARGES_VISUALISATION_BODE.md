@@ -1,6 +1,6 @@
 # Cahier des charges — Visualisation Bode (Banc filtre)
 
-**Version :** 1.2  
+**Version :** 1.3  
 **Date :** 8 février 2026  
 **Référence :** Banc de test automatique — Banc filtre
 
@@ -41,7 +41,7 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 | **Courbe principale** | Tracé continu des points (f, gain) | P0 |
 | **Échelles visibles** | Libellés des axes clairs, unités affichées (Hz, dB) | P0 |
 | **Quadrillage** | Grille de référence pour faciliter la lecture des valeurs | P0 |
-| **Fond et couleur courbe** | Choix fond noir/blanc et couleur de la courbe via menus déroulants | P1 |
+| **Fond et couleur courbe** | Choix fond noir/blanc et couleur de la courbe via menus déroulants. **Fond noir par défaut.** | P1 |
 | **Réglage des axes** | Possibilité de zoomer, dézoomer, recentrer sur une plage | P0 |
 
 ### 2.3 Quadrillage (grille)
@@ -133,13 +133,46 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
   gain_db: float      # Gain en dB
 ```
 
+### 3.3 Configuration JSON (fenêtre graphique Bode)
+
+Les options d'affichage de la fenêtre du graphique Bode sont persistées dans le fichier de configuration de l'application (`config.json`) sous la clé **`bode_viewer`**. Cette section est chargée à l'ouverture du graphique et mise à jour en mémoire à la fermeture de la fenêtre ; l'enregistrement dans le fichier s'effectue via **Fichier → Sauvegarder config** (ou **Enregistrer config sous...**).
+
+| Clé | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `plot_background_dark` | bool | `true` | `true` = fond noir, `false` = fond blanc |
+| `curve_color` | string | `"#e0c040"` | Couleur de la courbe principale (hexadécimal) |
+| `grid_visible` | bool | `true` | Afficher le quadrillage majeur |
+| `grid_minor_visible` | bool | `false` | Afficher le quadrillage mineur |
+| `smooth_window` | int | `0` | Fenêtre de lissage (0 = désactivé, 3, 5, 7, 9 ou 11 points) |
+| `show_raw_curve` | bool | `false` | Afficher la courbe brute en plus de la courbe lissée |
+| `smooth_savgol` | bool | `false` | `true` = algorithme Savitzky-Golay, `false` = moyenne glissante |
+| `y_linear` | bool | `false` | `true` = axe Y en gain linéaire (Us/Ue), `false` = gain en dB |
+| `peaks_visible` | bool | `false` | Afficher les marqueurs pics/creux (maxima et minima locaux) |
+
+**Exemple dans `config.json` :**
+
+```json
+"bode_viewer": {
+  "plot_background_dark": true,
+  "curve_color": "#e0c040",
+  "grid_visible": true,
+  "grid_minor_visible": false,
+  "smooth_window": 0,
+  "show_raw_curve": false,
+  "smooth_savgol": false,
+  "y_linear": false,
+  "peaks_visible": false
+}
+```
+
 ---
 
 ## 4. Interface utilisateur
 
 ### 4.1 Menu Fichier
 
-- **Ouvrir CSV Banc filtre...** : ouvre une boîte de dialogue de sélection de fichier, charge le CSV et affiche la fenêtre de graphique Bode.
+- **Ouvrir CSV Banc filtre...** : ouvre une boîte de dialogue de sélection de fichier, charge le CSV et affiche la fenêtre de graphique Bode. Les options d'affichage de cette fenêtre sont initialisées depuis la section **`bode_viewer`** de la configuration (voir § 3.3).
+- **Sauvegarder config** / **Enregistrer config sous...** : enregistre la configuration applicative dans un fichier JSON. Inclut la section **`bode_viewer`** si la fenêtre graphique Bode a été ouverte et fermée au moins une fois (les options courantes sont alors mises à jour en mémoire à la fermeture du graphique).
 
 ### 4.2 Fenêtre graphique Bode
 
@@ -184,10 +217,9 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 | **Framework graphique** | pyqtgraph (déjà utilisé dans BodePlotWidget) |
 | **Compatibilité** | PyQt6, Python 3.10+ |
 | **Performances** | Gestion fluide de courbes jusqu’à ~10 000 points |
-| **Thème** | Respect du thème clair/foncé (display.theme) : à l’ouverture du viewer Bode, le fond du graphique (Noir/Blanc) est initialisé selon la config `display.theme` si la config est fournie. |
+| **Thème / options par défaut** | À l'ouverture, les options du graphique Bode sont lues depuis la section **`bode_viewer`** de la config JSON (§ 3.3). Valeurs par défaut : fond noir, courbe jaune. |
 | **Axe X logarithmique** | En mode log, la ViewBox pyqtgraph attend la plage en **log10(Hz)** (exposants), pas en Hz. L’implémentation convertit les bornes F min / F max (Hz) en log10 avant d’appliquer la plage, et interprète la plage renvoyée par la vue en Hz pour les champs F min / F max, afin que « Appliquer les limites » et « Ajuster vue » affichent une échelle de fréquences correcte (0,1 ; 1 ; 10 ; 100 ; … Hz). |
-
----
+| **Config fenêtre Bode** | Les options d'affichage sont stockées dans `config.json` sous la clé **`bode_viewer`**. À la fermeture du graphique (Fermer ou croix), les options courantes sont écrites dans la config en mémoire ; l'enregistrement dans le fichier se fait via **Fichier → Sauvegarder config** (voir § 3.3). |
 
 ## 6. Plan de mise en œuvre
 
@@ -220,7 +252,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 
 ## 8. Analyse de conformité et pistes d’amélioration (étude de la courbe)
 
-*Révision : 8 février 2026 (v1.2 — conformité 100 %)*
+*Révision : 8 février 2026 (v1.3 — conformité 100 %, config JSON bode_viewer documentée)*
 
 ### 8.1 Conformité fonctionnelle
 
@@ -230,7 +262,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 | Lecture CSV, colonnes flexibles, dossier par défaut `datas/csv/` | ✓ |
 | Axe X log, axe Y dB ou linéaire, courbe principale, quadrillage, libellés | ✓ |
 | Fond noir/blanc, couleur courbe, courbe brute + lissée | ✓ |
-| **Thème** : fond du graphique initialisé selon `display.theme` à l'ouverture (si config fournie) | ✓ |
+| Options du graphique Bode chargées/sauvegardées via `config.json` (section **bode_viewer**) et menu Fichier → Sauvegarder config | ✓ |
 | Lissage moyenne glissante (fenêtre 3–11), option activer/désactiver | ✓ |
 | Référence -3 dB : **Recherche gain cible** (ligne + intersections) ; panneau fc, G_max, N | ✓ |
 | **Axe Y linéaire** : ligne de gain cible positionnée à 10^(gain_dB/20) (ex. -3 dB → ≈ 0,708) | ✓ |

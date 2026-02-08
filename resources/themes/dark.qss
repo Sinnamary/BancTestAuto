@@ -1,5 +1,9 @@
 /* Thème sombre — Banc de test automatique */
 
+QMainWindow, QWidget, QGroupBox, QPushButton, QLabel, QMenuBar, QMenu {
+    font-family: {{FONT_FAMILY}};
+}
+
 QMainWindow, QWidget {
     background-color: #2d2d2d;
     color: #e0e0e0;

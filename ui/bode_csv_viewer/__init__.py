@@ -14,8 +14,7 @@ from .csv_loader import BodeCsvFileLoader
 
 def open_viewer(parent=None, csv_path: str = "", config: Optional[dict] = None) -> None:
     """Point d'entrée unique : charge le CSV et ouvre le dialogue (aucune donnée = message et sortie).
-    config: configuration applicative optionnelle ; si fournie, le fond du graphique est initialisé
-    selon display.theme (clair/foncé)."""
+    config: ignoré pour l'instant ; le graphique Bode ouvre avec fond noir par défaut (CDC)."""
     if not csv_path:
         return
     loader = BodeCsvFileLoader()

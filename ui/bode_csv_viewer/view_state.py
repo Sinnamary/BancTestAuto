@@ -7,12 +7,13 @@ from typing import List
 
 @dataclass
 class BodeViewOptions:
-    """Options d'affichage du graphique (quadrillage, lissage, fond, couleur courbe, etc.)."""
+    """Options d'affichage du graphique (quadrillage, lissage, fond, couleur courbe, etc.).
+    Par défaut : fond noir (plot_background_dark=True)."""
     grid_visible: bool = True
     smooth_window: int = 0
     show_raw_curve: bool = False
     y_linear: bool = False
-    plot_background_dark: bool = True  # True = noir, False = blanc
+    plot_background_dark: bool = True  # fond noir par défaut ; False = fond blanc
     curve_color: str = "#e0c040"  # couleur courbe principale (hex)
 
     SMOOTH_WINDOW_CHOICES: List[int] = (3, 5, 7, 9, 11)

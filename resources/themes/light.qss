@@ -1,5 +1,9 @@
 /* Thème clair — Banc de test automatique */
 
+QMainWindow, QWidget, QGroupBox, QPushButton, QLabel, QMenuBar, QMenu {
+    font-family: {{FONT_FAMILY}};
+}
+
 QMainWindow, QWidget {
     background-color: #f5f5f5;
     color: #212529;
