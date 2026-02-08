@@ -5,8 +5,9 @@ Zoom (molette, zoom zone), pan, réglage des échelles. Aucune dépendance au ba
 import math
 from typing import Optional, Tuple, Union
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGraphicsView
 from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtCore import QEvent, QPointF
 import pyqtgraph as pg
 
 from core.app_logger import get_logger
@@ -22,6 +23,12 @@ from .plot_grid import BodePlotGrid
 from .plot_curves import BodeCurveDrawer
 from .plot_cutoff_viz import CutoffMarkerViz, LEVEL_DB, LEVEL_LINEAR
 from .cutoff import Cutoff3DbFinder
+
+try:
+    from core.bode_utils import find_peaks_and_valleys
+except ImportError:
+    def find_peaks_and_valleys(*_args, **_kwargs):
+        return []
 
 # Marge relative pour l'auto-range (évite que la courbe colle aux bords)
 _AUTO_RANGE_MARGIN = 0.05
@@ -59,7 +66,12 @@ class BodeCsvPlotWidget(QWidget):
         self._curves = BodeCurveDrawer(plot_item)
         self._cutoff_viz = CutoffMarkerViz(plot_item)
         self._hover_label: Optional[pg.TextItem] = None
+        self._hover_filter_installed = False
         self._setup_hover()
+        self._peaks_scatter: Optional[pg.ScatterPlotItem] = None
+        self._valleys_scatter: Optional[pg.ScatterPlotItem] = None
+        self._show_peaks = False
+        self._smooth_savgol = False
         self._dataset: Optional[BodeCsvDataset] = None
         self._y_linear = False
         self._smooth_window = 0
@@ -68,6 +80,72 @@ class BodeCsvPlotWidget(QWidget):
         self._background_dark = True  # Noir par défaut
         self._apply_axis_fonts()
         self._apply_background_style()
+
+    def _setup_hover(self) -> None:
+        """Affiche (f, gain) au survol du graphique pour faciliter la lecture."""
+        plot_item = self._plot_widget.getPlotItem()
+        self._hover_label = pg.TextItem(anchor=(0, 1), text="")
+        self._hover_label.setZValue(20)
+        self._hover_label.setVisible(False)
+        plot_item.addItem(self._hover_label)
+        # Installation du filtre au premier affichage (scène peut être None à l'init)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not getattr(self, "_hover_filter_installed", False) and self._plot_widget is not None:
+            vb = self._plot_widget.getViewBox()
+            scene = vb.scene()
+            if scene is not None:
+                views = scene.views()
+                if views:
+                    views[0].viewport().installEventFilter(self)
+                    self._hover_filter_installed = True
+
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() == QEvent.Type.MouseMove:
+            self._on_mouse_moved_from_event(obj, event)
+        return super().eventFilter(obj, event)
+
+    def _on_mouse_moved_from_event(self, viewport, event) -> None:
+        """Convertit l'événement souris en position scène et met à jour le survol."""
+        view = viewport.parent()
+        if not isinstance(view, QGraphicsView):
+            return
+        # event.pos() est en coordonnées viewport → view → scene
+        pos_in_view = viewport.mapTo(view, event.pos())
+        scene_pos = view.mapToScene(pos_in_view)
+        self._on_mouse_moved(scene_pos)
+
+    def _on_mouse_moved(self, scene_pos) -> None:
+        if self._hover_label is None:
+            return
+        vb = self._plot_widget.getViewBox()
+        if not vb.sceneBoundingRect().contains(scene_pos):
+            self._hover_label.setVisible(False)
+            return
+        # Coordonnées dans le repère du graphique (axe X en log = log10(Hz))
+        p = vb.mapSceneToView(scene_pos)
+        x_data, y_data = p.x(), p.y()
+        # En mode log X, pyqtgraph utilise log10(Hz) en interne
+        if self._plot_widget.getViewBox().state.get("logMode", [False, False])[0]:
+            try:
+                f_hz = 10.0 ** float(x_data)
+            except (TypeError, ValueError, OverflowError):
+                self._hover_label.setVisible(False)
+                return
+        else:
+            f_hz = float(x_data)
+        if f_hz <= 0 or not math.isfinite(f_hz):
+            self._hover_label.setVisible(False)
+            return
+        unit = "dB" if not self._y_linear else "Us/Ue"
+        if f_hz >= 1000:
+            f_str = f"{f_hz / 1000:.3f} kHz"
+        else:
+            f_str = f"{f_hz:.2f} Hz"
+        self._hover_label.setText(f"f = {f_str}  |  G = {y_data:.2f} {unit}")
+        self._hover_label.setPos(x_data, y_data)
+        self._hover_label.setVisible(True)
 
     def set_dataset(self, dataset: Optional[BodeCsvDataset]) -> None:
         self._dataset = dataset
@@ -85,6 +163,9 @@ class BodeCsvPlotWidget(QWidget):
 
     def set_grid_visible(self, visible: bool) -> None:
         self._grid.set_visible(visible)
+
+    def set_minor_grid_visible(self, visible: bool) -> None:
+        self._grid.set_minor_visible(visible)
 
     def set_background_dark(self, dark: bool) -> None:
         """True = fond noir, False = fond blanc."""
@@ -132,10 +213,28 @@ class BodeCsvPlotWidget(QWidget):
         """Change la couleur de la courbe principale."""
         self._curves.set_curve_color(color)
 
-    def set_smoothing(self, window: int, show_raw: bool = False) -> None:
+    def set_smoothing(
+        self, window: int, show_raw: bool = False, use_savgol: bool = False
+    ) -> None:
         self._smooth_window = max(0, min(11, window))
         self._show_raw = show_raw and self._smooth_window > 0
+        self._smooth_savgol = use_savgol
         self._refresh()
+
+    def set_peaks_visible(self, visible: bool) -> None:
+        self._show_peaks = visible
+        self._refresh_peaks()
+
+    def set_target_gain_search(
+        self, gain_db: Optional[float], fc_hz_list: Optional[list] = None
+    ) -> None:
+        """Affiche la ligne gain cible et les fréquences d'intersection (recherche personnalisée)."""
+        if gain_db is None:
+            self._cutoff_viz.set_target_gain(None)
+            self._cutoff_viz.set_target_gain_frequencies([])
+        else:
+            self._cutoff_viz.set_target_gain(gain_db, f"{gain_db:.1f} dB")
+            self._cutoff_viz.set_target_gain_frequencies(fc_hz_list or [])
 
     def set_cutoff_visible(self, visible: bool) -> None:
         self._show_cutoff = visible
@@ -151,17 +250,59 @@ class BodeCsvPlotWidget(QWidget):
             y_linear=self._y_linear,
             smooth_window=self._smooth_window,
             show_raw=self._show_raw,
+            smooth_savgol_flag=self._smooth_savgol,
         )
         self._refresh_cutoff()
+        self._refresh_peaks()
         self._cutoff_viz.update_label_position()
 
     def _refresh_cutoff(self) -> None:
         if not self._show_cutoff or not self._dataset or self._dataset.is_empty():
             self._cutoff_viz.set_level(None)
+            self._cutoff_viz.set_cutoff_frequencies([])
             return
         level = LEVEL_LINEAR if self._y_linear else LEVEL_DB
         self._cutoff_viz.set_level(level)
+        # Marqueurs des fréquences de coupure -3 dB (en espace dB)
+        finder = Cutoff3DbFinder()
+        cutoffs = finder.find_all(self._dataset)
+        self._cutoff_viz.set_cutoff_frequencies([r.fc_hz for r in cutoffs])
         self._cutoff_viz.update_label_position()
+
+    def _refresh_peaks(self) -> None:
+        """Affiche les marqueurs pics (maxima) et creux (minima) locaux."""
+        plot_item = self._plot_widget.getPlotItem()
+        if self._peaks_scatter is None:
+            self._peaks_scatter = pg.ScatterPlotItem(
+                size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 200, 0, 200),
+                symbol="o", zValue=8,
+            )
+            plot_item.addItem(self._peaks_scatter)
+        if self._valleys_scatter is None:
+            self._valleys_scatter = pg.ScatterPlotItem(
+                size=10, pen=pg.mkPen(None), brush=pg.mkBrush(100, 200, 255, 200),
+                symbol="o", zValue=8,
+            )
+            plot_item.addItem(self._valleys_scatter)
+        if not self._show_peaks or not self._dataset or self._dataset.is_empty():
+            self._peaks_scatter.setData([], [])
+            self._valleys_scatter.setData([], [])
+            return
+        freqs = self._dataset.freqs_hz()
+        gains = self._dataset.gains_db()
+        peaks_valleys = find_peaks_and_valleys(freqs, gains, order=3)
+        px, py = [], []
+        vx, vy = [], []
+        for f, g_db, kind in peaks_valleys:
+            g_show = (10 ** (g_db / 20.0)) if self._y_linear else g_db
+            if kind == "pic":
+                px.append(f)
+                py.append(g_show)
+            else:
+                vx.append(f)
+                vy.append(g_show)
+        self._peaks_scatter.setData(px, py)
+        self._valleys_scatter.setData(vx, vy)
 
     def get_data_range(self) -> Optional[Tuple[float, float, float, float]]:
         """Retourne (x_min, x_max, y_min, y_max) des données avec marge, ou None si vide."""

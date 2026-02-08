@@ -17,6 +17,10 @@ class BodeViewOptions:
     curve_color: str = "#e0c040"  # couleur courbe principale (hex)
 
     SMOOTH_WINDOW_CHOICES: List[int] = (3, 5, 7, 9, 11)
+    SMOOTH_METHODS: List[tuple] = (
+        ("Moyenne glissante", False),
+        ("Savitzky-Golay", True),
+    )
     BACKGROUND_CHOICES: List[tuple] = (("Noir", True), ("Blanc", False))
     CURVE_COLOR_CHOICES: List[tuple] = (
         ("Jaune", "#e0c040"),

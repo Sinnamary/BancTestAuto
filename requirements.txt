@@ -4,6 +4,9 @@ pyserial>=3.5
 pyqtgraph>=0.13
 markdown>=3.4
 
+# Optionnel : lissage Savitzky-Golay dans le visualiseur Bode (sinon seule la moyenne glissante est proposée)
+scipy>=1.9
+
 # Tests (couverture config + core, sans interface GUI)
 pytest>=7.0
 pytest-cov>=4.0

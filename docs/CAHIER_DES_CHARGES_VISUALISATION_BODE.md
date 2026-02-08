@@ -238,13 +238,13 @@ BodePoint:
 
 ### 8.2 Améliorations pour mieux étudier la courbe de réponse
 
-| Piste | Priorité | Description |
-|-------|----------|-------------|
-| **Marqueurs des fréquences de coupure** | P1 | Afficher sur le graphique les fréquences fc où la courbe coupe la ligne -3 dB (ligne verticale ou annotation « fc = 1,23 kHz »). Gérer plusieurs intersections (ex. filtre coupe-bande). |
-| **Coordonnées au survol** | P1 | Afficher (f en Hz, gain en dB) sous le curseur pour une lecture précise des points de la courbe. |
-| **Panneau d’infos** | P1 | Afficher en permanence : fc (-3 dB), gain max, nombre de points (et bande passante si pertinent). |
+| Piste | Priorité | Statut |
+|-------|----------|--------|
+| **Marqueurs des fréquences de coupure** | P1 | ✓ Implémenté (lignes verticales + étiquettes fc, fc1/fc2) |
+| **Coordonnées au survol** | P1 | ✓ Implémenté (f, G au survol du graphique) |
+| **Panneau d’infos** | P1 | ✓ Implémenté (fc, G_max, N points) |
 | **Recherche gain cible** | P2 | Saisie d’un gain cible (ex. -6 dB) et affichage des fréquences correspondantes (intersections). |
-| **Détection pics/creux** | P1 (spec Phase 6) | Marqueurs optionnels sur les maxima/minima locaux (passe-bande, résonance). |
-| **Lissage Savitzky-Golay** | P2 | Option alternative au lissage pour mieux préserver les pics. |
-| **Quadrillage mineur** | P1 (spec) | Lignes intermédiaires pour une lecture plus fine des échelles. |
-| **Export des points** | P2 | Exporter la série (f_Hz, Gain_dB) en CSV. |
+| **Détection pics/creux** | P1 (spec Phase 6) | ✓ Implémenté (case « Pics/creux », marqueurs jaune/bleu) |
+| **Lissage Savitzky-Golay** | P2 | ✓ Implémenté (option Algo, nécessite scipy) |
+| **Quadrillage mineur** | P1 (spec) | ✓ Implémenté (case « Quadrillage mineur ») |
+| **Export des points** | P2 | ✓ Implémenté (bouton « Exporter les points CSV ») |

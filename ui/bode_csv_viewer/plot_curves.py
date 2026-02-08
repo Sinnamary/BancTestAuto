@@ -8,7 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 from .model import BodeCsvDataset
-from .smoothing import MovingAverageSmoother
+from .smoothing import MovingAverageSmoother, smooth_savgol
 
 
 class BodeCurveDrawer:
@@ -35,6 +35,7 @@ class BodeCurveDrawer:
         y_linear: bool,
         smooth_window: int = 0,
         show_raw: bool = False,
+        smooth_savgol_flag: bool = False,
     ) -> None:
         freqs = dataset.freqs_hz()
         if not freqs:
@@ -47,8 +48,11 @@ class BodeCurveDrawer:
         else:
             ys = dataset.gains_db()
         if smooth_window > 0:
-            smoother = MovingAverageSmoother(smooth_window)
-            ys_smooth = smoother.smooth(ys)
+            if smooth_savgol_flag:
+                ys_smooth = smooth_savgol(ys, smooth_window)
+            else:
+                smoother = MovingAverageSmoother(smooth_window)
+                ys_smooth = smoother.smooth(ys)
             self._curve.setData(freqs, ys_smooth)
             if show_raw:
                 self._raw_curve.setData(freqs, ys)

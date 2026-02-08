@@ -53,3 +53,30 @@ class Cutoff3DbFinder:
                 fc = 10 ** log_fc
             results.append(CutoffResult(fc_hz=fc, gain_db=threshold))
         return results
+
+    def find_crossings_at_gain(
+        self, dataset: BodeCsvDataset, target_gain_db: float
+    ) -> List[CutoffResult]:
+        """
+        Toutes les fréquences où la courbe coupe le niveau target_gain_db (gain cible).
+        Utile pour recherche personnalisée (ex. -6 dB).
+        """
+        freqs = dataset.freqs_hz()
+        gains = dataset.gains_db()
+        if not freqs or not gains or len(freqs) != len(gains):
+            return []
+        threshold = float(target_gain_db)
+        results: List[CutoffResult] = []
+        for i in range(1, len(gains)):
+            g0, g1 = gains[i - 1], gains[i]
+            if (g0 - threshold) * (g1 - threshold) > 0:
+                continue
+            if g1 == g0:
+                fc = freqs[i - 1]
+            else:
+                f0, f1 = freqs[i - 1], freqs[i]
+                t = (threshold - g0) / (g1 - g0)
+                log_fc = math.log10(f0) + t * (math.log10(f1) - math.log10(f0))
+                fc = 10 ** log_fc
+            results.append(CutoffResult(fc_hz=fc, gain_db=threshold))
+        return results

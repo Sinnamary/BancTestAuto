@@ -27,8 +27,17 @@ from .model import BodeCsvDataset
 from .csv_loader import BodeCsvFileLoader
 from .plot_widget import BodeCsvPlotWidget
 from .view_state import BodeViewOptions
+from .cutoff import Cutoff3DbFinder
+from .smoothing import has_savgol
 
 logger = get_logger(__name__)
+
+
+def _fmt_freq(hz: float) -> str:
+    """Ex. 1234.5 -> '1,23 kHz'."""
+    if hz >= 1000:
+        return f"{hz / 1000:.2f} kHz"
+    return f"{hz:.1f} Hz"
 
 
 class BodeCsvViewerDialog(QDialog):
@@ -82,6 +91,10 @@ class BodeCsvViewerDialog(QDialog):
         self._grid_cb.setChecked(True)
         self._grid_cb.toggled.connect(self._apply_options)
         disp_layout.addWidget(self._grid_cb)
+        self._grid_minor_cb = QCheckBox("Quadrillage mineur")
+        self._grid_minor_cb.setToolTip("Lignes intermédiaires pour lecture fine")
+        self._grid_minor_cb.toggled.connect(self._apply_options)
+        disp_layout.addWidget(self._grid_minor_cb)
         self._smooth_cb = QCheckBox("Lissage")
         self._smooth_cb.toggled.connect(self._apply_options)
         disp_layout.addWidget(self._smooth_cb)
@@ -92,6 +105,14 @@ class BodeCsvViewerDialog(QDialog):
         self._smooth_combo.setCurrentIndex(1)
         self._smooth_combo.currentIndexChanged.connect(self._apply_options)
         disp_layout.addWidget(self._smooth_combo)
+        disp_layout.addWidget(QLabel("Algo:"))
+        self._smooth_method_combo = QComboBox()
+        for label, use_savgol in BodeViewOptions.SMOOTH_METHODS:
+            if use_savgol and not has_savgol():
+                continue
+            self._smooth_method_combo.addItem(label, use_savgol)
+        self._smooth_method_combo.currentIndexChanged.connect(self._apply_options)
+        disp_layout.addWidget(self._smooth_method_combo)
         self._raw_cb = QCheckBox("Courbe brute + lissée")
         self._raw_cb.toggled.connect(self._apply_options)
         disp_layout.addWidget(self._raw_cb)
@@ -100,8 +121,31 @@ class BodeCsvViewerDialog(QDialog):
         self._cutoff_cb.setChecked(True)
         self._cutoff_cb.toggled.connect(self._apply_options)
         disp_layout.addWidget(self._cutoff_cb)
+        self._peaks_cb = QCheckBox("Pics/creux")
+        self._peaks_cb.setToolTip("Marqueurs sur les maxima et minima locaux")
+        self._peaks_cb.toggled.connect(self._apply_options)
+        disp_layout.addWidget(self._peaks_cb)
         disp_layout.addStretch()
         layout.addWidget(disp_gb)
+
+        search_gb = QGroupBox("Recherche gain cible")
+        search_layout = QHBoxLayout(search_gb)
+        search_layout.addWidget(QLabel("Gain (dB):"))
+        self._target_gain_spin = QDoubleSpinBox()
+        self._target_gain_spin.setRange(-100, 50)
+        self._target_gain_spin.setDecimals(1)
+        self._target_gain_spin.setValue(-6)
+        self._target_gain_spin.setSingleStep(1)
+        search_layout.addWidget(self._target_gain_spin)
+        self._search_target_btn = QPushButton("Rechercher")
+        self._search_target_btn.setToolTip("Affiche les fréquences où la courbe coupe ce gain")
+        self._search_target_btn.clicked.connect(self._on_search_target_gain)
+        search_layout.addWidget(self._search_target_btn)
+        self._target_result_label = QLabel("")
+        self._target_result_label.setStyleSheet("color: gray; font-size: 10px;")
+        search_layout.addWidget(self._target_result_label)
+        search_layout.addStretch()
+        layout.addWidget(search_gb)
 
         scale_gb = QGroupBox("Échelles / Zoom")
         scale_layout = QHBoxLayout(scale_gb)
@@ -146,6 +190,11 @@ class BodeCsvViewerDialog(QDialog):
         self._plot.setMinimumHeight(280)
         layout.addWidget(self._plot)
 
+        self._info_label = QLabel("")
+        self._info_label.setStyleSheet("color: gray; font-size: 11px;")
+        self._info_label.setToolTip("Résumé des données pour l'étude de la courbe")
+        layout.addWidget(self._info_label)
+
         btn_layout = QHBoxLayout()
         self._adjust_btn = QPushButton("Ajuster vue")
         self._adjust_btn.setToolTip("Recadrer la vue sur toutes les données")
@@ -155,6 +204,10 @@ class BodeCsvViewerDialog(QDialog):
         self._export_btn = QPushButton("Exporter en PNG")
         self._export_btn.clicked.connect(self._on_export)
         btn_layout.addWidget(self._export_btn)
+        self._export_csv_btn = QPushButton("Exporter les points CSV")
+        self._export_csv_btn.setToolTip("Enregistre f_Hz, Us_V, Us_Ue, Gain_dB")
+        self._export_csv_btn.clicked.connect(self._on_export_csv)
+        btn_layout.addWidget(self._export_csv_btn)
         close_btn = QPushButton("Fermer")
         close_btn.clicked.connect(self.accept)
         btn_layout.addWidget(close_btn)
@@ -165,6 +218,7 @@ class BodeCsvViewerDialog(QDialog):
         self._plot.set_dataset(self._dataset)
         self._apply_options()
         self._sync_scale_spins_from_view()
+        self._update_info_panel()
 
     def _load_csv(self, path: str) -> None:
         loader = BodeCsvFileLoader()
@@ -192,9 +246,40 @@ class BodeCsvViewerDialog(QDialog):
             self._options.curve_color = color
             self._plot.set_curve_color(color)
         self._plot.set_grid_visible(self._options.grid_visible)
-        self._plot.set_smoothing(self._options.smooth_window, self._options.show_raw_curve)
+        use_savgol = (
+            self._smooth_method_combo.currentData() is True
+            if self._smooth_method_combo.currentData() is not None
+            else False
+        )
+        self._plot.set_smoothing(
+            self._options.smooth_window,
+            self._options.show_raw_curve,
+            use_savgol=use_savgol,
+        )
         self._plot.set_cutoff_visible(self._options.show_cutoff)
         self._plot.set_y_linear(self._options.y_linear)
+        self._plot.set_peaks_visible(self._peaks_cb.isChecked())
+        self._plot.set_minor_grid_visible(self._grid_minor_cb.isChecked())
+        self._update_info_panel()
+
+    def _update_info_panel(self) -> None:
+        """Affiche fc (-3 dB), gain max et nombre de points pour l'étude de la courbe."""
+        if not self._dataset or self._dataset.is_empty():
+            self._info_label.setText("")
+            return
+        n = self._dataset.count
+        gains_db = self._dataset.gains_db()
+        g_max = max(gains_db) if gains_db else 0.0
+        finder = Cutoff3DbFinder()
+        cutoffs = finder.find_all(self._dataset)
+        if cutoffs:
+            fc_str = "  |  ".join(
+                f"fc{' ' + str(k + 1) if len(cutoffs) > 1 else ''} = {_fmt_freq(r.fc_hz)}"
+                for k, r in enumerate(cutoffs)
+            )
+        else:
+            fc_str = "fc — (pas de coupure -3 dB)"
+        self._info_label.setText(f"  {fc_str}  |  G_max = {g_max:.2f} dB  |  N = {n} points")
 
     def _on_adjust_view(self) -> None:
         self._plot.auto_range()
@@ -235,6 +320,21 @@ class BodeCsvViewerDialog(QDialog):
     def _on_zoom_zone_toggled(self, checked: bool) -> None:
         self._plot.set_rect_zoom_mode(checked)
 
+    def _on_search_target_gain(self) -> None:
+        if not self._dataset or self._dataset.is_empty():
+            self._target_result_label.setText("(aucune donnée)")
+            return
+        target_db = self._target_gain_spin.value()
+        finder = Cutoff3DbFinder()
+        results = finder.find_crossings_at_gain(self._dataset, target_db)
+        self._plot.set_target_gain_search(target_db, [r.fc_hz for r in results])
+        if results:
+            self._target_result_label.setText(
+                "  |  ".join(f"f = {_fmt_freq(r.fc_hz)}" for r in results)
+            )
+        else:
+            self._target_result_label.setText("(aucune intersection)")
+
     def _on_export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, "Exporter graphique Bode", "", "PNG (*.png);;Tous (*)"
@@ -245,6 +345,26 @@ class BodeCsvViewerDialog(QDialog):
             QMessageBox.information(self, "Export", f"Graphique enregistré : {path}")
         else:
             QMessageBox.warning(self, "Export", "Échec de l'export.")
+
+    def _on_export_csv(self) -> None:
+        if not self._dataset or self._dataset.is_empty():
+            QMessageBox.warning(self, "Export", "Aucune donnée à exporter.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exporter les points", "", "CSV (*.csv);;Tous (*)"
+        )
+        if not path:
+            return
+        try:
+            import csv
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f, delimiter=";")
+                w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
+                for p in self._dataset.points:
+                    w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db])
+            QMessageBox.information(self, "Export", f"Points enregistrés : {path}")
+        except Exception as e:
+            QMessageBox.warning(self, "Export", f"Échec : {e}")
 
 
 def open_viewer(parent=None, csv_path: str = "") -> None:
