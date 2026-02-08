@@ -50,7 +50,7 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 | Fin de ligne | `\n` (0x0A) | Toutes les commandes se terminent par LF. |
 | Réponse appareil | 0x0a après exécution | Lire cette réponse avant d'envoyer la commande suivante. |
 | **Fréquence (WMF / WFF)** | µHz, 14 chiffres | Doc FY6900 Rev 1.8 : valeur = freq_Hz × 10⁶. Ex. 1000 Hz → `WMF00010000000000`. |
-| **Amplitude (WMA / WFA)** | Décimal, 3 décimales | Ex. `WMA4.000`, `WMA1.414`. |
+| **Amplitude (WMA / WFA)** | Décimal, 3 décimales | L’interface affiche l’amplitude **crête à crête** (V pp) et envoie la valeur telle quelle (sans conversion). Ex. `WMA2.828`. |
 | **Rapport cyclique (WMD / WFD)** | Pourcentage 0–100, 2 décimales | Ex. `WMD50.00`. |
 | **Phase (WMP / WFP)** | Degrés 0–360, 2 décimales | Ex. `WMP90.00`. |
 | **Offset (WMO / WFO)**   | Décimal, 2 décimales | Ex. `WMO0.00`, `WFO1.50`. |

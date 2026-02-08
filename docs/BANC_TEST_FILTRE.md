@@ -47,7 +47,7 @@ Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individue
 
 - Générateur FY6900 (FeelTech) : sortie sinusoïdale, amplitude réglable pour obtenir 1 V RMS à l’entrée du filtre
 - Multimètre OWON : mode tension AC, mesure RMS
-- Pour un signal sinusoïdal : **amplitude crête = Ueff × √2** → 1 V RMS ≈ 1,414 V crête → WMA1.414
+- Pour un signal sinusoïdal : **amplitude crête à crête = Ueff × 2√2 ≈ 2,828×Ueff** → 1 V RMS → 2,828 V pp → WMA2.828 (le générateur reçoit la valeur crête à crête telle quelle).
 
 ---
 
@@ -67,7 +67,7 @@ Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individue
 |----------|--------|-------------|---------|
 | **WMW**  | WMWxx + 0x0a | Forme d’onde canal principal (2 chiffres) | WMW00 = sinusoïde |
 | **WMF**  | WMFxxxxxxxxxxxxxx + 0x0a | Fréquence (14 chiffres, unité µHz) | 1000 Hz → WMF00010000000000 |
-| **WMA**  | WMAx.xxx + 0x0a | Amplitude crête (V), 3 décimales | WMA1.414 = 1 V RMS |
+| **WMA**  | WMAx.xxx + 0x0a | Amplitude crête à crête (V), 3 décimales | 1 V RMS → 2,828 V pp → WMA2.828 |
 | **WMO**  | WMOxx.xx + 0x0a | Offset (V) | WMO0 = 0 V |
 | **WMN**  | WMNx + 0x0a | Sortie ON/OFF | WMN1 = ON, WMN0 = OFF |
 
@@ -86,16 +86,17 @@ Formule : `valeur = int(round(f * 1_000_000))` (µHz), formatée sur 14 chiffres
 
 ### 2.4 Séquence type pour une mesure
 
-**Au démarrage du balayage**, le logiciel applique d’abord la configuration connue (depuis config.json), puis à chaque point :
+**Au démarrage du balayage**, le logiciel applique la configuration via **Fy6900Protocol** (mêmes classes que l’onglet Générateur), puis à chaque point :
 
-1. WMW00 — sinusoïde (ou valeur depuis `generator.waveform` ; codes FY6900 : 0=sinusoïde, 1=carré, 7=triangle, 8=rampe)
-2. WMA &lt;amplitude_crête&gt; — ex. 1,414 V pour 1 V RMS (depuis `filter_test.ue_rms` ou `generator.amplitude_v_peak`)
-3. WMO0 — offset 0 V (depuis `generator.offset_v`)
-4. WMF&lt;freq&gt; — fréquence de test (balayage)
-5. WMN1 — sortie ON
-6. Attendre stabilisation (ex. 100–500 ms, `filter_test.settling_ms`)
-7. Lancer mesure multimètre (Us)
-8. (Optionnel) WMN0 — sortie OFF entre deux fréquences
+1. WMW00 — sinusoïde (forme d’onde 2 chiffres)
+2. WMA &lt;amplitude_crête_à_crête&gt; — ex. 2,828 V pour 1 V RMS (depuis `filter_test.ue_rms` : Ue_rms × 2√2)
+3. WMO0.00 — offset 0 V (forcé)
+4. WMD50.00 — rapport cyclique 50 % (forcé)
+5. WMP0.00 — phase 0° (forcé)
+6. À chaque point : WMF&lt;fréquence en µHz, 14 chiffres&gt; (ex. 1000 Hz → WMF00010000000000), puis WMN1 — sortie ON
+7. Attendre stabilisation (`filter_test.settling_ms`)
+8. Lancer mesure multimètre (Us)
+9. À la fin du balayage : WMN0 — sortie OFF
 
 ---
 
@@ -244,7 +245,7 @@ Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (
 
 **Le banc de test filtre part toujours d’une configuration connue, et non de la configuration précédente de l’équipement.** Au démarrage d’un balayage, le logiciel :
 
-1. **Applique** sur le générateur la configuration définie dans `config.json` : forme d’onde (ex. sinusoïde depuis `generator.waveform`), amplitude crête (déduite de `filter_test.ue_rms` : Ueff × √2), offset (`generator.offset_v`), voie (`filter_test.generator_channel`).
+1. **Applique** sur le générateur la configuration : forme d’onde sinusoïde, amplitude crête à crête déduite de `filter_test.ue_rms` (Ue_rms × 2√2 ≈ 2,828×Ue_rms pour 1 V RMS → 2,828 V pp), offset 0, voie (`filter_test.generator_channel`).
 2. Puis effectue le balayage en fréquence (f_min → f_max) en réglant la fréquence à chaque pas.
 
 Ainsi, le résultat ne dépend pas de l’état dans lequel le générateur était laissé après une utilisation précédente (onglet Générateur ou autre).
@@ -318,7 +319,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 - Document : `docs/FY6900_communication_protocol.pdf`
 - WMW00 = sinusoïde (format 2 chiffres ; 1=carré, 7=triangle, 8=rampe)
 - WMF : 14 chiffres, unité µHz (1 Hz = 1 000 000 µHz)
-- WMA : amplitude crête en V (1 V RMS ≈ WMA1.414)
+- WMA : amplitude crête à crête en V (1 V RMS → 2√2×1 ≈ 2,828 V pp → WMA2.828)
 
 ### 11.2 Référence OWON
 

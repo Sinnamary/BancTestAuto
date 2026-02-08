@@ -147,13 +147,13 @@ class FilterTestView(QWidget):
 
         graph_desc = QLabel(
             "Graphique Bode — Axe X : fréquence (Hz), échelle logarithmique. "
-            "Axe Y : gain en dB (20×log₁₀(Us/Ue))."
+            "Axe Y : choisir ci‑dessous — gain linéaire (Us/Ue) ou gain en dB (20×log₁₀(Us/Ue))."
         )
         graph_desc.setWordWrap(True)
-        graph_desc.setStyleSheet("color: #666; font-style: italic;")
+        graph_desc.setStyleSheet("color: #888; font-style: italic;")
         layout.addWidget(graph_desc)
 
-        y_axis_gb = QGroupBox("Ordonnée (Y)")
+        y_axis_gb = QGroupBox("Ordonnée (Y) — échelle du gain")
         y_axis_layout = QHBoxLayout(y_axis_gb)
         self._y_axis_group = QButtonGroup(self)
         self._y_linear = QRadioButton("Gain linéaire (Us/Ue)")
@@ -161,8 +161,19 @@ class FilterTestView(QWidget):
         self._y_db.setChecked(True)
         self._y_axis_group.addButton(self._y_linear)
         self._y_axis_group.addButton(self._y_db)
+        # Lisibilité : police plus grande, padding, style distinct pour le choix actif
+        y_radio_style = (
+            "QRadioButton { font-size: 11pt; font-weight: 500; padding: 8px 12px; min-height: 1.2em; } "
+            "QRadioButton::indicator { width: 18px; height: 18px; } "
+            "QRadioButton:checked { font-weight: 700; color: #ffc107; }"
+        )
+        self._y_linear.setStyleSheet(y_radio_style)
+        self._y_db.setStyleSheet(y_radio_style)
+        self._y_linear.setToolTip("Afficher le gain en valeur linéaire Us/Ue sur l'axe Y")
+        self._y_db.setToolTip("Afficher le gain en décibels (20×log₁₀(Us/Ue)) sur l'axe Y")
         y_axis_layout.addWidget(self._y_linear)
         y_axis_layout.addWidget(self._y_db)
+        y_axis_layout.addStretch()
         layout.addWidget(y_axis_gb)
 
         if _BODE_PLOT_AVAILABLE and BodePlotWidget:
@@ -182,6 +193,8 @@ class FilterTestView(QWidget):
         self._stop_btn.clicked.connect(self._on_stop)
         self._export_csv_btn.clicked.connect(self._on_export_csv)
         self._export_graph_btn.clicked.connect(self._on_export_graph)
+        self._y_linear.toggled.connect(self._on_y_axis_changed)
+        self._y_db.toggled.connect(self._on_y_axis_changed)
 
     def set_filter_test(self, filter_test):
         """Injection du banc filtre (FilterTest) depuis la fenêtre principale."""
@@ -249,7 +262,12 @@ class FilterTestView(QWidget):
         self._results_table.setItem(row, 2, QTableWidgetItem(f"{point.gain_linear:.6f}"))
         self._results_table.setItem(row, 3, QTableWidgetItem(f"{point.gain_db:.2f}"))
         if self._bode_plot:
-            self._bode_plot.set_bode_points(self._results)
+            self._bode_plot.set_bode_points(self._results, y_linear=self._y_linear.isChecked())
+
+    def _on_y_axis_changed(self):
+        """Rafraîchit le graphique quand on change l'échelle Y (linéaire / dB)."""
+        if self._bode_plot and self._results:
+            self._bode_plot.set_bode_points(self._results, y_linear=self._y_linear.isChecked())
 
     def _on_progress(self, current, total):
         self._progress.setMaximum(total)

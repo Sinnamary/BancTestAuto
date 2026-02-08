@@ -65,25 +65,27 @@ class FilterTest:
         on_progress: Optional[Callable[[int, int], None]] = None,
     ) -> list[BodePoint]:
         """
-        Effectue le balayage. Pour chaque point :
-        - configure le générateur (sinusoïde, Ue, fréquence), sortie ON ;
-        - attend settling_ms ;
-        - mesure Us ;
-        - calcule gain et appelle on_point(result, index, total) puis on_progress(index+1, total).
-        Retourne la liste des BodePoint. Si abort() a été appelé, arrête et retourne les points déjà acquis.
+        Effectue le balayage. Au démarrage : configure le générateur (sinusoïde WMW00, amplitude Ue×√2,
+        offset 0 V, rapport cyclique 50 %, phase 0°) via Fy6900Protocol. Pour chaque point : fréquence (µHz 14 chiffres),
+        sortie ON, attente settling_ms, mesure Us, calcul gain. Retourne la liste des BodePoint.
         """
         self._abort = False
         ue = self._config.ue_rms
-        # Amplitude crête pour 1 V RMS : sqrt(2)
-        amplitude_peak = ue * (2 ** 0.5)
+        # Sinusoïde : Ue RMS → amplitude crête à crête pour le générateur
+        # V_pp = 2 * V_peak = 2 * (V_rms * sqrt(2)) = 2*sqrt(2)*V_rms ≈ 2,828*V_rms (ex. 1 V RMS → 2,828 V pp)
+        amplitude_pp = ue * 2 * (2 ** 0.5)
 
         ch = self._config.generator_channel
-        logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, n_points=%s, Ue_rms=%.3f V",
-                     ch, self._config.f_min_hz, self._config.f_max_hz, self._config.n_points, ue)
+        logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, n_points=%s, Ue_rms=%.3f V → Ue_pp=%.3f V",
+                     ch, self._config.f_min_hz, self._config.f_max_hz, self._config.n_points, ue, amplitude_pp)
         self._measurement.set_voltage_ac()
-        self._generator.set_waveform(0, channel=ch)
-        self._generator.set_amplitude_peak_v(amplitude_peak, channel=ch)
+        # Même ordre et mêmes classes que l'onglet Générateur : forme (WMW00), amplitude (V pp), offset, rapport cyclique, phase
+        # Fréquence envoyée via set_frequency_hz (µHz, 14 chiffres) à chaque point.
+        self._generator.set_waveform(0, channel=ch)  # 0 = sinusoïde (WMW00)
+        self._generator.set_amplitude_peak_v(amplitude_pp, channel=ch)  # valeur crête à crête (comme l'onglet Générateur)
         self._generator.set_offset_v(0.0, channel=ch)
+        self._generator.set_duty_cycle_percent(50.0, channel=ch)
+        self._generator.set_phase_deg(0.0, channel=ch)
 
         freqs = sweep_frequencies(
             self._config.f_min_hz,
@@ -97,7 +99,7 @@ class FilterTest:
         for i, f_hz in enumerate(freqs):
             if self._abort:
                 break
-            self._generator.set_frequency_hz(f_hz, channel=ch)
+            self._generator.set_frequency_hz(f_hz, channel=ch)  # Fy6900Protocol → WMF/WFF µHz 14 chiffres
             self._generator.set_output(True, channel=ch)
             time.sleep(self._config.settling_ms / 1000.0)
 

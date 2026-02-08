@@ -132,7 +132,7 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 
 ### Générateur FeelTech FY6900
 
-- **Pilotage individuel** (onglet dédié) : **choix de la voie (Voie 1 / Voie 2)** ; forme d’onde (WMWxx, 2 chiffres : 0=sinusoïde, 1=carré, 7=triangle, 8=rampe), fréquence (WMF en µHz, 14 chiffres), amplitude (WMA, 3 décimales), offset (WMO), rapport cyclique (WMD/WFD), phase (WMP/WFP), sortie ON/OFF (WMN). Lecture de la réponse (0x0a) après chaque commande. Voir [Commandes FY6900](docs/COMMANDES_FY6900.md).
+- **Pilotage individuel** (onglet dédié) : **choix de la voie (Voie 1 / Voie 2)** ; forme d’onde (WMWxx, 2 chiffres : 0=sinusoïde, 1=carré, 7=triangle, 8=rampe), fréquence (WMF en µHz, 14 chiffres), amplitude **crête à crête** (V pp ; valeur envoyée telle quelle), offset (WMO), rapport cyclique (WMD/WFD), phase (WMP/WFP), sortie ON/OFF (WMN). Lecture de la réponse (0x0a) après chaque commande. Voir [Commandes FY6900](docs/COMMANDES_FY6900.md).
 - Paramètres par défaut dans `config.json` ; optionnel pour le banc filtre.
 
 ### Banc de test filtre

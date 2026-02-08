@@ -121,10 +121,11 @@ class GeneratorView(QWidget):
         self._freq_spin.setToolTip("Valeur en Hz ; envoyée au générateur en µHz (14 chiffres, doc FY6900).")
         form.addRow("Fréquence (Hz)", self._freq_spin)
         self._amplitude_spin = QDoubleSpinBox()
-        self._amplitude_spin.setRange(0.01, 20)
-        self._amplitude_spin.setValue(1.414)
+        self._amplitude_spin.setRange(0.02, 40)
+        self._amplitude_spin.setValue(2.828)  # 2.828 V crête à crête = 1 V RMS sinusoïde
         self._amplitude_spin.setDecimals(3)
-        form.addRow("Amplitude (V crête)", self._amplitude_spin)
+        self._amplitude_spin.setToolTip("Amplitude crête à crête (V pp) ; la valeur affichée est envoyée telle quelle au générateur.")
+        form.addRow("Amplitude (V crête à crête)", self._amplitude_spin)
         self._offset_spin = QDoubleSpinBox()
         self._offset_spin.setRange(-20, 20)
         self._offset_spin.setValue(0)
@@ -189,7 +190,7 @@ class GeneratorView(QWidget):
         WAVEFORM_CODES = (0, 7, 1, 8)
         waveform = WAVEFORM_CODES[self._waveform_combo.currentIndex()]
         freq = self._freq_spin.value()
-        amp = self._amplitude_spin.value()
+        amp = self._amplitude_spin.value()  # valeur affichée (V crête à crête), envoyée telle quelle
         offset = self._offset_spin.value()
         duty = self._duty_spin.value()
         phase = self._phase_spin.value()
