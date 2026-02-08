@@ -3,5 +3,13 @@ from .generator_view import GeneratorView
 from .logging_view import LoggingView
 from .filter_test_view import FilterTestView
 from .power_supply_view import PowerSupplyView
+from .serial_terminal_view import SerialTerminalView
 
-__all__ = ["MeterView", "GeneratorView", "LoggingView", "FilterTestView", "PowerSupplyView"]
+__all__ = [
+    "MeterView",
+    "GeneratorView",
+    "LoggingView",
+    "FilterTestView",
+    "PowerSupplyView",
+    "SerialTerminalView",
+]

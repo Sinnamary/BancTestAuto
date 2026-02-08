@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView
+from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView, SerialTerminalView
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
 from ui.theme_loader import get_theme_stylesheet
 
@@ -179,6 +179,8 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._filter_test_view, "Banc filtre")
         self._power_supply_view = PowerSupplyView()
         self._tabs.addTab(self._power_supply_view, "Alimentation")
+        self._serial_terminal_view = SerialTerminalView()
+        self._tabs.addTab(self._serial_terminal_view, "Terminal série")
         layout.addWidget(self._tabs)
 
         self.setCentralWidget(central)
@@ -293,6 +295,8 @@ class MainWindow(QMainWindow):
             logging_view.set_data_logger(self._data_logger)
         if hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
+            self._serial_terminal_view.load_config(self._config)
 
     def _reconnect_serial(self):
         """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils."""
@@ -384,6 +388,8 @@ class MainWindow(QMainWindow):
             self._update_connection_status()
             if self._filter_test_view and get_filter_test_config:
                 self._filter_test_view.load_config(self._config)
+            if self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config"):
+                self._serial_terminal_view.load_config(self._config)
             sm = get_serial_multimeter_config(self._config) if get_serial_multimeter_config else {}
             sg = get_serial_generator_config(self._config) if get_serial_generator_config else {}
             msg = f"Config : {config_path.name} — Multimètre {sm.get('port', '?')} @ {sm.get('baudrate', '?')} bauds, Générateur {sg.get('port', '?')} @ {sg.get('baudrate', '?')} bauds."
@@ -589,8 +595,11 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def closeEvent(self, event):
-        """À la fermeture : déconnexion de l'alimentation (onglet autonome)."""
+        """À la fermeture : déconnexion de l'alimentation et du terminal série."""
         if hasattr(self, "_power_supply_view") and self._power_supply_view is not None:
             if hasattr(self._power_supply_view, "_disconnect"):
                 self._power_supply_view._disconnect()
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view is not None:
+            if hasattr(self._serial_terminal_view, "disconnect_serial"):
+                self._serial_terminal_view.disconnect_serial()
         super().closeEvent(event)
