@@ -8,6 +8,10 @@ from typing import Callable, Optional
 import serial
 from serial import SerialException
 
+from .app_logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class SerialConnection:
     """
@@ -56,10 +60,12 @@ class SerialConnection:
                 timeout=self._timeout,
                 write_timeout=self._write_timeout,
             )
+            logger.debug("série OPEN port=%s baud=%s", self._port, self._baudrate)
 
     def close(self) -> None:
         with self._lock:
             if self._serial:
+                logger.debug("série CLOSE port=%s", self._port)
                 try:
                     self._serial.close()
                 except Exception:
@@ -72,6 +78,11 @@ class SerialConnection:
             if not self._serial or not self._serial.is_open:
                 raise SerialException("Port non ouvert")
             n = self._serial.write(data)
+            try:
+                txt = data.decode("utf-8", errors="replace").strip() or data.hex(" ")
+            except Exception:
+                txt = data.hex(" ")
+            logger.debug("série TX port=%s baud=%s: %r", self._port, self._baudrate, txt)
             if self._log_exchanges:
                 self._log_callback("TX", data.decode("utf-8", errors="replace"))
             return n
@@ -82,6 +93,12 @@ class SerialConnection:
             if not self._serial or not self._serial.is_open:
                 raise SerialException("Port non ouvert")
             line = self._serial.readline()
+            if line:
+                try:
+                    txt = line.decode("utf-8", errors="replace").strip() or line.hex(" ")
+                except Exception:
+                    txt = line.hex(" ")
+                logger.debug("série RX port=%s baud=%s: %r", self._port, self._baudrate, txt)
             if self._log_exchanges and line:
                 self._log_callback("RX", line.decode("utf-8", errors="replace"))
             return line
@@ -91,6 +108,12 @@ class SerialConnection:
             if not self._serial or not self._serial.is_open:
                 raise SerialException("Port non ouvert")
             data = self._serial.read_until(terminator)
+            if data:
+                try:
+                    txt = data.decode("utf-8", errors="replace").strip() or data.hex(" ")
+                except Exception:
+                    txt = data.hex(" ")
+                logger.debug("série RX port=%s baud=%s (read_until): %r", self._port, self._baudrate, txt)
             if self._log_exchanges and data:
                 self._log_callback("RX", data.decode("utf-8", errors="replace"))
             return data
@@ -101,6 +124,8 @@ class SerialConnection:
             if not self._serial or not self._serial.is_open:
                 raise SerialException("Port non ouvert")
             data = self._serial.read(size)
+            if data:
+                logger.debug("série RX port=%s baud=%s (read %d octets): %s", self._port, self._baudrate, len(data), data.hex(" "))
             if self._log_exchanges and data:
                 self._log_callback("RX", data.hex(" "))
             return data

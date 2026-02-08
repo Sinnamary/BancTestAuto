@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QMessageBox,
 )
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
 
 class GeneratorApplyWorker(QThread):
@@ -24,20 +24,22 @@ class GeneratorApplyWorker(QThread):
     done = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, fy6900, waveform: int, freq_hz: float, amp_peak: float, offset_v: float):
+    def __init__(self, fy6900, waveform: int, freq_hz: float, amp_peak: float, offset_v: float, channel: int = 1):
         super().__init__()
         self._fy6900 = fy6900
         self._waveform = waveform
         self._freq_hz = freq_hz
         self._amp_peak = amp_peak
         self._offset_v = offset_v
+        self._channel = channel
 
     def run(self):
         try:
-            self._fy6900.set_waveform(self._waveform)
-            self._fy6900.set_frequency_hz(self._freq_hz)
-            self._fy6900.set_amplitude_peak_v(self._amp_peak)
-            self._fy6900.set_offset_v(self._offset_v)
+            ch = self._channel
+            self._fy6900.set_waveform(self._waveform, channel=ch)
+            self._fy6900.set_frequency_hz(self._freq_hz, channel=ch)
+            self._fy6900.set_amplitude_peak_v(self._amp_peak, channel=ch)
+            self._fy6900.set_offset_v(self._offset_v, channel=ch)
             self.done.emit()
         except Exception as e:
             self.error.emit(str(e))
@@ -55,6 +57,29 @@ class GeneratorView(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
+
+        # Style des boutons radio : indicateur plus grand et contraste fort (sélection bien visible)
+        _radio_style = """
+            QRadioButton {
+                font-weight: 500;
+                spacing: 8px;
+            }
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border: 2px solid #555;
+                background: #fff;
+            }
+            QRadioButton::indicator:checked {
+                background: #1565c0;
+                border: 2px solid #0d47a1;
+            }
+            QRadioButton::indicator:hover {
+                border-color: #1565c0;
+            }
+        """
+        self.setStyleSheet(_radio_style)
 
         channel_gb = QGroupBox("Voie")
         channel_layout = QHBoxLayout(channel_gb)
@@ -79,6 +104,7 @@ class GeneratorView(QWidget):
         self._freq_spin.setRange(0.1, 20e6)
         self._freq_spin.setValue(1000)
         self._freq_spin.setDecimals(2)
+        self._freq_spin.setToolTip("Valeur en Hz ; envoyée au générateur en Hz avec 6 décimales.")
         form.addRow("Fréquence (Hz)", self._freq_spin)
         self._amplitude_spin = QDoubleSpinBox()
         self._amplitude_spin.setRange(0.01, 20)
@@ -92,14 +118,26 @@ class GeneratorView(QWidget):
         form.addRow("Offset (V)", self._offset_spin)
         layout.addWidget(form_gb)
 
+        # État sortie par voie (lecture seule dans l'UI ; modifié par les boutons Sortie ON/OFF)
+        self._output_state = {1: False, 2: False}
+
         out_gb = QGroupBox("Sortie")
-        out_layout = QHBoxLayout(out_gb)
-        out_layout.addWidget(QLabel("Sortie de la voie sélectionnée :"))
-        self._out_off = QRadioButton("OFF")
-        self._out_on = QRadioButton("ON")
-        self._out_off.setChecked(True)
-        out_layout.addWidget(self._out_off)
-        out_layout.addWidget(self._out_on)
+        out_layout = QVBoxLayout(out_gb)
+        out_layout.addWidget(QLabel("État des sorties (lecture seule) :"))
+        row_flags = QHBoxLayout()
+        self._flag_voie1 = QLabel("Voie 1 : OFF")
+        self._flag_voie2 = QLabel("Voie 2 : OFF")
+        for lbl in (self._flag_voie1, self._flag_voie2):
+            lbl.setStyleSheet(
+                "padding: 6px 12px; border-radius: 4px; font-weight: 600; min-width: 90px;"
+            )
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._update_output_flags()
+        row_flags.addWidget(self._flag_voie1)
+        row_flags.addWidget(self._flag_voie2)
+        row_flags.addStretch()
+        out_layout.addLayout(row_flags)
+        out_layout.addWidget(QLabel("Les boutons « Sortie ON » et « Sortie OFF » ci‑dessous agissent sur la voie sélectionnée ci‑dessus."))
         layout.addWidget(out_gb)
 
         btns = QHBoxLayout()
@@ -123,8 +161,9 @@ class GeneratorView(QWidget):
         freq = self._freq_spin.value()
         amp = self._amplitude_spin.value()
         offset = self._offset_spin.value()
+        channel = self.get_selected_channel()
         self._apply_btn.setEnabled(False)
-        self._worker = GeneratorApplyWorker(self._fy6900, waveform, freq, amp, offset)
+        self._worker = GeneratorApplyWorker(self._fy6900, waveform, freq, amp, offset, channel)
         self._worker.done.connect(self._on_apply_done)
         self._worker.error.connect(self._on_apply_error)
         self._worker.finished.connect(lambda: self._apply_btn.setEnabled(True))
@@ -136,21 +175,42 @@ class GeneratorView(QWidget):
     def _on_apply_error(self, msg: str):
         QMessageBox.warning(self, "Générateur", f"Erreur : {msg}")
 
+    def _update_output_flags(self):
+        """Met à jour les indicateurs Voie 1 / Voie 2 (couleur et texte, lecture seule)."""
+        for ch, lbl in ((1, self._flag_voie1), (2, self._flag_voie2)):
+            on = self._output_state[ch]
+            text = "Voie {} : ON".format(ch) if on else "Voie {} : OFF".format(ch)
+            lbl.setText(text)
+            if on:
+                lbl.setStyleSheet(
+                    "padding: 6px 12px; border-radius: 4px; font-weight: 600; min-width: 90px;"
+                    " background-color: #2e7d32; color: white;"
+                )
+            else:
+                lbl.setStyleSheet(
+                    "padding: 6px 12px; border-radius: 4px; font-weight: 600; min-width: 90px;"
+                    " background-color: #616161; color: white;"
+                )
+
     def _on_output_on(self):
         if not self._fy6900:
             return
+        ch = self.get_selected_channel()
         try:
-            self._fy6900.set_output(True)
-            self._out_on.setChecked(True)
+            self._fy6900.set_output(True, channel=ch)
+            self._output_state[ch] = True
+            self._update_output_flags()
         except Exception as e:
             QMessageBox.warning(self, "Générateur", str(e))
 
     def _on_output_off(self):
         if not self._fy6900:
             return
+        ch = self.get_selected_channel()
         try:
-            self._fy6900.set_output(False)
-            self._out_off.setChecked(True)
+            self._fy6900.set_output(False, channel=ch)
+            self._output_state[ch] = False
+            self._update_output_flags()
         except Exception as e:
             QMessageBox.warning(self, "Générateur", str(e))
 

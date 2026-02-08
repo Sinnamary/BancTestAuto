@@ -1,6 +1,6 @@
 # Banc de test automatique
 
-Application PyQt6 pour **commander individuellement** le multimètre OWON XDM et le générateur FeelTech FY6900, avec **toutes les commandes implantées dans le matériel**. Configuration par défaut dans `config/config.json`. Le **banc de test filtre** permet de **caractériser un filtre au format Bode** (réponse en fréquence) avec un **balayage en fréquence modifiable** pour qualifier le filtre.
+Application PyQt6 pour **commander individuellement** le multimètre OWON XDM, le générateur FeelTech FY6900 et l'alimentation Rockseed RS305P, avec **toutes les commandes implantées dans le matériel**. Configuration par défaut dans `config/config.json`. Le **banc de test filtre** permet de **caractériser un filtre au format Bode** (réponse en fréquence) avec un **balayage en fréquence modifiable** pour qualifier le filtre.
 
 **Spécifications détaillées :** [Cahier des charges](docs/CAHIER_DES_CHARGES.md).
 
@@ -36,12 +36,12 @@ BancTestAuto/
 ├── main.py
 ├── clean.py             # Nettoyage __pycache__, logs (python clean.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
-├── core/                # Série, SCPI, FY6900, mesure, data_logger, filter_test, device_detection, etc.
+├── core/                # Série, SCPI, FY6900, RS305P (Modbus), mesure, data_logger, filter_test, device_detection, etc.
 ├── config/              # settings.py, config.json
 ├── ui/
 │   ├── widgets/         # connection_status (2 indicateurs), measurement_display, mode_bar, range_selector, rate_selector, math_panel, history_table, advanced_params, etc.
 │   ├── dialogs/         # serial_config, save_config, device_detection, view_config, help_dialog (F1)
-│   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view (voie générateur), etc.
+│   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view, power_supply_view (Alimentation RS305P)
 └── resources/           # thèmes (dark.qss, light.qss) ; icônes optionnelles (phase ultérieure)
 ```
 
@@ -115,6 +115,13 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 
 Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
 
+### Alimentation Rockseed RS305P
+
+- **Onglet dédié** (connexion et déconnexion gérées dans l'onglet, aucun paramètre dans `config.json`).
+- **Préréglages** : boutons rapides 3,3 V, 5 V, 9 V, 12 V (0,5 A, sortie OFF).
+- **Contrôles** : tension et courant configurables, sortie ON/OFF, valeurs mesurées (tension et courant affichés).
+- Protocole Modbus RTU (9600 baud). Voir [Commandes RS305P](docs/COMMANDES_RS305P.md).
+
 ### Mode enregistrement
 
 - **Enregistrement des mesures du multimètre** uniquement (valeur, unité, mode à chaque intervalle).
@@ -187,6 +194,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Audit documentation / code](docs/DOC_AUDIT.md) | Synthèse doc ↔ code, structure cible vs actuelle, redondances |
 | [Commandes OWON (multimètre)](docs/COMMANDES_OWON.md) | Tableau des commandes SCPI implémentées pour le multimètre OWON XDM |
 | [Commandes FY6900 (générateur)](docs/COMMANDES_FY6900.md) | Tableau des commandes série implémentées pour le générateur FeelTech FY6900 |
+| [Commandes RS305P (alimentation)](docs/COMMANDES_RS305P.md) | Protocole Modbus RTU et registres pour l'alimentation Rockseed RS305P |
 
 ---
 
@@ -194,3 +202,4 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 - **Multimètre** OWON XDM1041 / XDM2041 (SCPI, USB)
 - **Générateur** FeelTech FY6900 (optionnel ; requis pour le banc de test filtre)
+- **Alimentation** Rockseed RS305P (Modbus RTU, USB ; optionnel, onglet autonome)

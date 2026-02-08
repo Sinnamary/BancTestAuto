@@ -41,6 +41,15 @@ class TestFy6900Protocol:
         fy.set_output(False)
         assert b"WMN0" in conn.write.call_args[0][0]
 
+    def test_set_output_channel_2_sends_wfn(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        fy = Fy6900Protocol(conn)
+        fy.set_output(True, channel=2)
+        assert b"WFN1" in conn.write.call_args[0][0]
+        fy.set_output(False, channel=2)
+        assert b"WFN0" in conn.write.call_args[0][0]
+
     def test_apply_sinus_1v_rms_sends_several_commands(self):
         conn = MagicMock()
         conn.write = MagicMock()

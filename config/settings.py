@@ -85,17 +85,35 @@ def _deep_merge(default: dict, loaded: dict) -> dict:
     return out
 
 
+def _resolve_config_path(path: Path | str | None) -> Path:
+    """Retourne le chemin du fichier config à utiliser (avec repli si le défaut n'existe pas)."""
+    p = Path(path) if path else DEFAULT_CONFIG_PATH
+    p = Path(p)
+    if p.exists():
+        return p
+    # Repli : config/config.json depuis le répertoire de travail (si exécution depuis une autre racine)
+    fallback = Path.cwd() / "config" / "config.json"
+    if fallback.exists():
+        return fallback
+    return DEFAULT_CONFIG_PATH  # pour message d'erreur cohérent
+
+
+def get_config_file_path(path: Path | str | None = None) -> Path:
+    """Retourne le chemin du fichier config qui sera ou a été utilisé (pour affichage)."""
+    return _resolve_config_path(path)
+
+
 def load_config(path: Path | str | None = None) -> dict[str, Any]:
     """
     Charge la configuration depuis le fichier JSON.
     Si une section ou clé manque, utilise les valeurs par défaut.
+    Essaie DEFAULT_CONFIG_PATH puis, s'il n'existe pas, cwd/config/config.json.
     """
-    path = path or DEFAULT_CONFIG_PATH
-    path = Path(path)
-    if not path.exists():
+    p = _resolve_config_path(path)
+    if not p.exists():
         return dict(DEFAULTS)
 
-    with open(path, encoding="utf-8") as f:
+    with open(p, encoding="utf-8") as f:
         loaded = json.load(f)
 
     return _deep_merge(dict(DEFAULTS), loaded)

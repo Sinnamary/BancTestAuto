@@ -13,7 +13,7 @@
 |--------|--------|
 | **README** : structure projet, `main.py`, `clean.py`, `maquette/`, `core/`, `config/`, `ui/`, `resources/themes/` | Conforme au code |
 | **Raccourci F1** (Aide) | Implémenté dans `ui/main_window.py` + `help_dialog.py` ; documenté dans README et AIDE.md |
-| **core/** : serial_connection, scpi_*, measurement, fy6900_*, data_logger, filter_test, filter_sweep, bode_calc, device_detection, app_logger, serial_exchange_logger | Tous présents |
+| **core/** : serial_connection, scpi_*, measurement, fy6900_*, rs305p_protocol, data_logger, filter_test, filter_sweep, bode_calc, device_detection, app_logger, serial_exchange_logger | Tous présents |
 | **main.py** : chargement config, thème `display.theme`, MainWindow, theme_loader | Conforme au README |
 | **AIDE.md** | Contenu cohérent avec les menus et l’usage réel |
 
@@ -51,7 +51,7 @@ Ce n’est **pas** une redondance à supprimer : la maquette sert au prototypage
 
 ### 2.2 Au sein de l’application
 
-- **core/** : pas de duplication de logique ; modules distincts (série, SCPI, FY6900, mesure, data_logger, filter_test, device_detection).
+- **core/** : pas de duplication de logique ; modules distincts (série, SCPI, FY6900, RS305P, mesure, data_logger, filter_test, device_detection).
 - **filter_test** : orchestration uniquement ; appelle les classes d’appareils sans dupliquer leurs commandes.
 - **ui/** : vues qui utilisent le core sans répéter les protocoles.
 
@@ -80,6 +80,8 @@ Ce n’est **pas** une redondance à supprimer : la maquette sert au prototypage
 | **PLAN_IMPLEMENTATION.md** | Phases d’implémentation et jalons. |
 | **COMMANDES_OWON.md** | Commandes SCPI implémentées pour le multimètre OWON (tableau). |
 | **COMMANDES_FY6900.md** | Commandes série implémentées pour le générateur FeelTech FY6900 (tableau). |
+| **COMMANDES_RS305P.md** | Protocole Modbus RTU implémenté pour l'alimentation Rockseed RS305P. |
+| **Modbus.pdf** | Documentation Modbus alimentation RS305P. |
 | **FY6900_communication_protocol.pdf** | Protocole FeelTech. |
 | **XDM1000_Digital_Multimeter_Programming_Manual.pdf** | SCPI multimètre OWON. |
 

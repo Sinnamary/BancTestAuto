@@ -18,6 +18,7 @@ Développer une application PyQt6 permettant de **commander individuellement cha
 
 - **Multimètre OWON** XDM1041/XDM2041 : pilotage via liaison série (USB/SCPI) avec **l’ensemble des commandes implantées dans le matériel** (modes de mesure, plages, vitesse, fonctions math, etc.).
 - **Générateur de signaux** FeelTech FY6900 : pilotage via liaison série avec **toutes les commandes du protocole** (forme d’onde, fréquence, amplitude, offset, sortie ON/OFF, etc.).
+- **Alimentation stabilisée** Rockseed RS305P : pilotage via Modbus RTU (onglet autonome, connexion gérée dans l'onglet, aucun paramètre dans `config.json`).
 
 Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au démarrage depuis le fichier **`config/config.json`**. Chaque appareil peut ainsi être utilisé seul ou dans le cadre du banc de test filtre.
 

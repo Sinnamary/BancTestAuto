@@ -10,6 +10,9 @@ from .fy6900_protocol import Fy6900Protocol
 from .measurement import Measurement
 from .filter_sweep import sweep_frequencies
 from .bode_calc import gain_linear, gain_db
+from .app_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -74,10 +77,13 @@ class FilterTest:
         # Amplitude crête pour 1 V RMS : sqrt(2)
         amplitude_peak = ue * (2 ** 0.5)
 
+        ch = self._config.generator_channel
+        logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, n_points=%s, Ue_rms=%.3f V",
+                     ch, self._config.f_min_hz, self._config.f_max_hz, self._config.n_points, ue)
         self._measurement.set_voltage_ac()
-        self._generator.set_waveform(0)
-        self._generator.set_amplitude_peak_v(amplitude_peak)
-        self._generator.set_offset_v(0.0)
+        self._generator.set_waveform(0, channel=ch)
+        self._generator.set_amplitude_peak_v(amplitude_peak, channel=ch)
+        self._generator.set_offset_v(0.0, channel=ch)
 
         freqs = sweep_frequencies(
             self._config.f_min_hz,
@@ -91,8 +97,8 @@ class FilterTest:
         for i, f_hz in enumerate(freqs):
             if self._abort:
                 break
-            self._generator.set_frequency_hz(f_hz)
-            self._generator.set_output(True)
+            self._generator.set_frequency_hz(f_hz, channel=ch)
+            self._generator.set_output(True, channel=ch)
             time.sleep(self._config.settling_ms / 1000.0)
 
             raw = self._measurement.read_value()
@@ -101,6 +107,8 @@ class FilterTest:
                 us = 0.0
             g_lin = gain_linear(us, ue)
             g_db = gain_db(us, ue)
+            logger.debug("banc filtre point %d/%d: f=%.4f Hz, Us=%r -> %.4f V, gain_lin=%.4f, gain_dB=%.2f",
+                         i + 1, total, f_hz, raw, us, g_lin, g_db)
             point = BodePoint(f_hz=f_hz, us_v=us, gain_linear=g_lin, gain_db=g_db)
             results.append(point)
             if on_point:
@@ -108,5 +116,6 @@ class FilterTest:
             if on_progress:
                 on_progress(i + 1, total)
 
-        self._generator.set_output(False)
+        self._generator.set_output(False, channel=self._config.generator_channel)
+        logger.debug("banc filtre: balayage terminé, %d points", len(results))
         return results

@@ -4,6 +4,9 @@ Codes fonction : 03 (lecture), 06 (écriture).
 Voir docs/Modbus.pdf.
 """
 from .serial_connection import SerialConnection
+from .app_logger import get_logger
+
+logger = get_logger(__name__)
 
 # Registres Modbus (adresses hex)
 REG_ON_OFF = 0x0001  # 0=OFF, 1=ON
@@ -59,9 +62,11 @@ class Rs305pProtocol:
     def _request_response(self, frame: bytes, response_len: int) -> bytes:
         """Envoie une trame et lit la réponse (response_len octets attendus)."""
         import time
+        logger.debug("RS305P Modbus TX: %s", frame.hex(" "))
         self._conn.write(frame)
         time.sleep(0.02)
         resp = self._conn.read(response_len)
+        logger.debug("RS305P Modbus RX: %s", resp.hex(" ") if resp else "(vide)")
         return resp
 
     def read_register(self, reg: int) -> int:

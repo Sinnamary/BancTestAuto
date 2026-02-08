@@ -60,7 +60,7 @@ class TestFilterTest:
         result = ft.run_sweep(on_point=on_point)
         assert len(result) >= 1
         assert len(result) < 100
-        gen.set_output.assert_called_with(False)
+        gen.set_output.assert_called_with(False, channel=1)
 
     def test_run_sweep_returns_bode_points(self):
         gen = MagicMock()
@@ -76,7 +76,7 @@ class TestFilterTest:
             assert isinstance(p, BodePoint)
             assert p.f_hz >= 10
             assert p.us_v == 0.707
-        gen.set_output.assert_called_with(False)
+        gen.set_output.assert_called_with(False, channel=1)
 
     def test_run_sweep_when_parse_float_returns_none_uses_zero(self):
         """Si parse_float retourne None, us = 0.0 puis gain calculé (couverture ligne 101)."""

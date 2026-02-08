@@ -94,7 +94,9 @@ class MeterView(QWidget):
             try:
                 rate = (meas.get("default_rate") or "F").upper()
                 if rate in ("F", "M", "L"):
-                    self._measurement.set_rate(rate)
+                    # N'envoyer la commande SCPI que si la vitesse a changé (évite doublon en log quand load_config est appelé deux fois)
+                    if self._rate_selector.current_rate() != rate:
+                        self._measurement.set_rate(rate)
                     self._rate_selector.set_rate(rate)
                 if meas.get("default_auto_range", True):
                     self._measurement.set_auto_range(True)

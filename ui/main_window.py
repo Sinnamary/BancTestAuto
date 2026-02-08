@@ -19,15 +19,25 @@ from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView
-from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, HelpDialog
+from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog
 from ui.theme_loader import get_theme_stylesheet
 
 # Import core et config (optionnel si non disponibles)
 try:
-    from config.settings import load_config, save_config, get_serial_multimeter_config, get_serial_generator_config, get_filter_test_config, get_generator_config, DEFAULT_CONFIG_PATH
+    from config.settings import (
+        load_config,
+        save_config,
+        get_serial_multimeter_config,
+        get_serial_generator_config,
+        get_filter_test_config,
+        get_generator_config,
+        get_config_file_path,
+        DEFAULT_CONFIG_PATH,
+    )
 except ImportError:
     load_config = save_config = None
     get_serial_multimeter_config = get_serial_generator_config = get_filter_test_config = get_generator_config = None
+    get_config_file_path = lambda: Path("config/config.json")
     DEFAULT_CONFIG_PATH = Path("config/config.json")
 
 try:
@@ -51,7 +61,7 @@ except ImportError:
     SerialExchangeLogger = None
 
 try:
-    from core.app_logger import get_logger, set_level as set_log_level, get_current_level_name
+    from core.app_logger import get_logger, set_level as set_log_level, get_current_level_name, get_latest_log_path
 except ImportError:
     def get_logger(_name):
         import logging
@@ -60,20 +70,21 @@ except ImportError:
         pass
     def get_current_level_name():
         return "INFO"
+    get_latest_log_path = None
 
 logger = get_logger(__name__)
 
 
 class DetectionWorker(QThread):
     """Thread pour la détection des équipements (évite de bloquer l'UI)."""
-    result = pyqtSignal(object, object)
+    result = pyqtSignal(object, object, object, object)  # m_port, m_baud, g_port, g_baud
 
     def run(self):
         if detect_devices is None:
-            self.result.emit(None, None)
+            self.result.emit(None, None, None, None)
             return
-        m, g = detect_devices()
-        self.result.emit(m, g)
+        m_port, m_baud, g_port, g_baud, _log_lines = detect_devices()
+        self.result.emit(m_port, m_baud, g_port, g_baud)
 
 
 class MainWindow(QMainWindow):
@@ -98,6 +109,7 @@ class MainWindow(QMainWindow):
         self._connect_connection_bar()
         self._setup_shortcuts()
         self._setup_core()
+        self._inject_views()
         self._update_connection_status()
 
     def _build_menu(self):
@@ -108,6 +120,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Enregistrer config sous...", self._on_save_config_as)
         file_menu.addSeparator()
         file_menu.addAction("Voir config JSON (lecture seule)", self._on_view_config)
+        file_menu.addAction("Lire le dernier log", self._on_view_latest_log)
         file_menu.addSeparator()
         file_menu.addAction("Quitter", self.close)
         tools_menu = menubar.addMenu("Outils")
@@ -140,6 +153,12 @@ class MainWindow(QMainWindow):
 
         help_menu = menubar.addMenu("Aide")
         help_menu.addAction("Manuel", QKeySequence("F1"), self._on_help)
+        sub_owon = help_menu.addMenu("Multimètre OWON")
+        sub_owon.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_OWON.md"))
+        sub_fy6900 = help_menu.addMenu("Générateur FY6900")
+        sub_fy6900.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_FY6900.md"))
+        sub_rs305p = help_menu.addMenu("Alimentation RS305P")
+        sub_rs305p.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_RS305P.md"))
 
     def _build_central(self):
         central = QWidget()
@@ -166,6 +185,7 @@ class MainWindow(QMainWindow):
         pass  # optionnel
 
     def _connect_connection_bar(self):
+        self._connection_bar.get_load_config_button().clicked.connect(self._on_load_config_clicked)
         self._connection_bar.get_params_button().clicked.connect(self._on_params)
         self._connection_bar.get_detect_button().clicked.connect(self._on_detect_clicked)
 
@@ -222,8 +242,12 @@ class MainWindow(QMainWindow):
             sg = dict(sg)
             sm["log_exchanges"] = True
             sg["log_exchanges"] = True
-            sm["log_callback"] = self._serial_exchange_logger.get_callback("multimeter")
-            sg["log_callback"] = self._serial_exchange_logger.get_callback("generator")
+            sm["log_callback"] = self._serial_exchange_logger.get_callback(
+                "multimeter", port=sm.get("port"), baudrate=sm.get("baudrate")
+            )
+            sg["log_callback"] = self._serial_exchange_logger.get_callback(
+                "generator", port=sg.get("port"), baudrate=sg.get("baudrate")
+            )
 
         self._multimeter_conn = SerialConnection(**sm)
         self._generator_conn = SerialConnection(**sg)
@@ -250,8 +274,7 @@ class MainWindow(QMainWindow):
             self._data_logger = DataLogger()
             self._data_logger.set_measurement(self._measurement)
 
-        # Pas d'ouverture des ports au démarrage : l'utilisateur lance la détection via le bouton « Détecter »
-        self._inject_views()
+        # _inject_views() est appelée par l'appelant (__init__ ou _reconnect_serial) pour éviter de l'exécuter deux fois
 
     def _inject_views(self):
         """Passe les références core aux vues (multimètre, générateur, enregistrement)."""
@@ -339,6 +362,40 @@ class MainWindow(QMainWindow):
         else:
             self._connection_bar.set_generator_status(False)
 
+    def _on_load_config_clicked(self):
+        """Bouton Charger config : récupère config.json et tente de se connecter aux équipements."""
+        if not load_config:
+            QMessageBox.warning(self, "Config", "Chargement de la config non disponible.")
+            return
+        try:
+            config_path = get_config_file_path() if get_config_file_path else Path("config/config.json")
+            if not config_path.exists():
+                QMessageBox.warning(
+                    self,
+                    "Charger config",
+                    f"Fichier introuvable : {config_path}\n\n"
+                    "Vérifiez que config.json existe (ex. config/config.json).",
+                )
+                return
+            self._config = load_config()
+            self._reconnect_serial()
+            self._update_connection_status()
+            if self._filter_test_view and get_filter_test_config:
+                self._filter_test_view.load_config(self._config)
+            sm = get_serial_multimeter_config(self._config) if get_serial_multimeter_config else {}
+            sg = get_serial_generator_config(self._config) if get_serial_generator_config else {}
+            msg = f"Config : {config_path.name} — Multimètre {sm.get('port', '?')} @ {sm.get('baudrate', '?')} bauds, Générateur {sg.get('port', '?')} @ {sg.get('baudrate', '?')} bauds."
+            if self.statusBar():
+                self.statusBar().showMessage(msg)
+            logger.info("Config rechargée depuis %s", config_path)
+        except Exception as e:
+            logger.exception("Charger config")
+            QMessageBox.warning(
+                self,
+                "Charger config",
+                f"Impossible de charger la config : {e}",
+            )
+
     def _on_detect_clicked(self):
         """Bouton Détecter : lance la détection en thread avec barre de progression."""
         logger.debug("Clic Détecter — lancement du worker")
@@ -351,9 +408,15 @@ class MainWindow(QMainWindow):
         self._detection_worker.finished.connect(self._on_detection_finished)
         self._detection_worker.start()
 
-    def _on_detection_result(self, multimeter_port, generator_port):
-        logger.info("Détection: multimètre=%s, générateur=%s", multimeter_port, generator_port)
-        self._config = update_config_ports(self._config, multimeter_port, generator_port)
+    def _on_detection_result(self, multimeter_port, multimeter_baud, generator_port, generator_baud):
+        logger.info("Détection: multimètre=%s@%s, générateur=%s@%s", multimeter_port, multimeter_baud, generator_port, generator_baud)
+        self._config = update_config_ports(
+            self._config,
+            multimeter_port,
+            generator_port,
+            multimeter_baud=multimeter_baud,
+            generator_baud=generator_baud,
+        )
         self._reconnect_serial()
         if self.statusBar():
             msg = []
@@ -425,20 +488,31 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def _on_detection_config_updated(self, new_config: dict):
-        """Après détection : applique la nouvelle config (ports) et reconnecte."""
+        """Après détection : applique la nouvelle config (ports) et reconnecte si les ports ont changé."""
+        sm_old = (self._config.get("serial_multimeter") or {}).get("port"), (self._config.get("serial_multimeter") or {}).get("baudrate")
+        sg_old = (self._config.get("serial_generator") or {}).get("port"), (self._config.get("serial_generator") or {}).get("baudrate")
+        sm_new = (new_config.get("serial_multimeter") or {}).get("port"), (new_config.get("serial_multimeter") or {}).get("baudrate")
+        sg_new = (new_config.get("serial_generator") or {}).get("port"), (new_config.get("serial_generator") or {}).get("baudrate")
         self._config = new_config
-        self._reconnect_serial()
+        if (sm_old != sm_new) or (sg_old != sg_new):
+            self._reconnect_serial()
         self._update_connection_status()
         if self._filter_test_view and get_filter_test_config:
             self._filter_test_view.load_config(self._config)
 
     def _on_params(self):
-        dlg = SerialConfigDialog(config=self._config, parent=self)
+        """Ouvre la configuration série : affiche les valeurs lues depuis config.json.
+        OK = applique les champs du formulaire en mémoire et reconnecte.
+        Fichier → Sauvegarder config pour écrire dans config.json."""
+        config_from_file = load_config() if load_config else self._config
+        dlg = SerialConfigDialog(config=config_from_file, parent=self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._config = dlg.get_updated_config()
             self._reconnect_serial()
             if self.statusBar():
-                self.statusBar().showMessage("Configuration série mise à jour. Enregistrez la config pour conserver.")
+                self.statusBar().showMessage(
+                    "Configuration série appliquée. Fichier → Sauvegarder config pour écrire config.json."
+                )
 
     def _on_open_config(self):
         path, _ = QFileDialog.getOpenFileName(self, "Ouvrir la configuration", "", "JSON (*.json)")
@@ -471,12 +545,40 @@ class MainWindow(QMainWindow):
         )
         dlg.exec()
 
+    def _on_view_latest_log(self):
+        """Ouvre une fenêtre affichant le contenu du dernier fichier de log."""
+        if get_latest_log_path is None:
+            QMessageBox.warning(
+                self,
+                "Log",
+                "Fonction de lecture du log non disponible.",
+            )
+            return
+        log_path = get_latest_log_path(self._config)
+        if log_path is None or not log_path.exists():
+            log_dir = Path((self._config.get("logging") or {}).get("output_dir", "./logs"))
+            QMessageBox.information(
+                self,
+                "Log",
+                f"Aucun fichier de log trouvé dans {log_dir.resolve()}.\n\n"
+                "Les logs sont créés au démarrage de l'application (app_AAAA-MM-JJ_HH-MM-SS.log).",
+            )
+            return
+        dlg = ViewLogDialog(log_path, parent=self)
+        dlg.exec()
+
     def _on_help(self):
         """Ouvre la fenêtre d'aide (manuel utilisateur avec recherche)."""
+        self._on_help_doc("AIDE.md")
+
+    def _on_help_doc(self, doc_filename: str):
+        """Ouvre le dialogue d'aide avec le fichier de documentation indiqué (ex. COMMANDES_OWON.md)."""
         from core.app_paths import get_base_path
         root = get_base_path()
-        help_path = root / "docs" / "AIDE.md"
+        help_path = root / "docs" / doc_filename
         dlg = HelpDialog(help_path=help_path, parent=self)
+        title = doc_filename.replace(".md", "").replace("_", " ").title()
+        dlg.setWindowTitle(title)
         dlg.exec()
 
     def closeEvent(self, event):

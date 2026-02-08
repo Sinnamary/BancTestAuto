@@ -81,6 +81,10 @@ class SerialConfigDialog(QDialog):
         baud_opts = self._config.get("limits", {}).get("baudrate_options", [9600, 19200, 38400, 57600, 115200])
 
         layout = QVBoxLayout(self)
+        hint = QLabel("Valeurs lues depuis config.json. OK = appliquer et reconnecter ; Fichier → Sauvegarder config pour enregistrer.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #666; font-size: 11px;")
+        layout.addWidget(hint)
         self._tabs = QTabWidget()
 
         sm = self._config.get("serial_multimeter", {})

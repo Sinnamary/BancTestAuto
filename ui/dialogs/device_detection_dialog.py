@@ -1,6 +1,6 @@
 """
 Dialogue « Détecter les équipements » — utilise core.device_detection.
-Lance la détection dans un thread, affiche le résultat, permet de mettre à jour config.json.
+Lance la détection dans un thread, affiche le résultat et le log série détaillé, permet de mettre à jour config.json.
 """
 from PyQt6.QtWidgets import (
     QDialog,
@@ -24,14 +24,14 @@ except ImportError:
 
 class DetectionWorker(QThread):
     """Thread pour exécuter la détection sans bloquer l'UI."""
-    result = pyqtSignal(object, object)  # multimeter_port, generator_port
+    result = pyqtSignal(object, object, object, object, object)  # m_port, m_baud, g_port, g_baud, log_lines
 
     def run(self):
         if detect_devices is None:
-            self.result.emit(None, None)
+            self.result.emit(None, None, None, None, [])
             return
-        multimeter_port, generator_port = detect_devices()
-        self.result.emit(multimeter_port, generator_port)
+        m_port, m_baud, g_port, g_baud, log_lines = detect_devices()
+        self.result.emit(m_port, m_baud, g_port, g_baud, log_lines)
 
 
 class DeviceDetectionDialog(QDialog):
@@ -46,7 +46,9 @@ class DeviceDetectionDialog(QDialog):
         self._config = config or {}
         self._on_config_updated = on_config_updated
         self._multimeter_port = None
+        self._multimeter_baud = None
         self._generator_port = None
+        self._generator_baud = None
         self._worker = None
         self._build_ui()
 
@@ -69,6 +71,18 @@ class DeviceDetectionDialog(QDialog):
         self._result_edit.setMaximumHeight(120)
         result_layout.addWidget(self._result_edit)
         layout.addWidget(result_gb)
+
+        serial_log_gb = QGroupBox("Log série détaillé (détection)")
+        serial_log_layout = QVBoxLayout(serial_log_gb)
+        self._serial_log_edit = QTextEdit()
+        self._serial_log_edit.setReadOnly(True)
+        self._serial_log_edit.setPlaceholderText(
+            "Lancez la détection pour afficher ici le détail par port : émission (TX), réception (RX), débit."
+        )
+        self._serial_log_edit.setMinimumHeight(200)
+        self._serial_log_edit.setStyleSheet("font-family: Consolas, monospace; font-size: 11px;")
+        serial_log_layout.addWidget(self._serial_log_edit)
+        layout.addWidget(serial_log_gb)
 
         self._progress = QProgressBar()
         self._progress.setVisible(False)
@@ -105,19 +119,30 @@ class DeviceDetectionDialog(QDialog):
         self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
 
-    def _on_detection_result(self, multimeter_port, generator_port):
+    def _on_detection_result(self, multimeter_port, multimeter_baud, generator_port, generator_baud, log_lines):
         self._multimeter_port = multimeter_port
+        self._multimeter_baud = multimeter_baud
         self._generator_port = generator_port
+        self._generator_baud = generator_baud
         self._result_edit.clear()
+
+        def _baud_str(b: int | None) -> str:
+            if b is None:
+                return ""
+            return f" — débit utilisé lors du test : {b} bauds (8N1)"
+
         if multimeter_port:
-            self._result_edit.append(f"Multimètre OWON : {multimeter_port}")
+            self._result_edit.append(f"Multimètre OWON : {multimeter_port}{_baud_str(multimeter_baud)}")
         else:
             self._result_edit.append("Multimètre OWON : non détecté")
         if generator_port:
-            self._result_edit.append(f"Générateur FY6900 : {generator_port}")
+            self._result_edit.append(f"Générateur FY6900 : {generator_port}{_baud_str(generator_baud)}")
         else:
             self._result_edit.append("Générateur FY6900 : non détecté")
+        self._result_edit.append("")
+        self._result_edit.append("Ces débits sont ceux pour lesquels l’appareil a répondu. Pour en utiliser un autre, modifiez Paramètres (Configuration série) puis rechargez la config.")
         self._update_config_btn.setEnabled(True)
+        self._serial_log_edit.setPlainText("\n".join(log_lines) if log_lines else "")
 
     def _on_worker_finished(self):
         self._progress.setVisible(False)
@@ -132,6 +157,8 @@ class DeviceDetectionDialog(QDialog):
             self._config,
             self._multimeter_port,
             self._generator_port,
+            multimeter_baud=self._multimeter_baud,
+            generator_baud=self._generator_baud,
         )
         if self._on_config_updated:
             self._on_config_updated(self._config)

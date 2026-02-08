@@ -127,7 +127,7 @@ BancTestAuto/
 │   ├── __init__.py
 │   ├── config.json          # Config par défaut : multimètre, générateur, banc filtre
 │   └── settings.py          # Chargement / sauvegarde config
-├── core/                    # Logique métier (série, SCPI, FY6900, mesure, banc filtre)
+├── core/                    # Logique métier (série, SCPI, FY6900, RS305P, mesure, banc filtre)
 │   ├── __init__.py
 │   ├── app_logger.py        # Logging application (fichiers horodatés)
 │   ├── serial_connection.py
@@ -137,6 +137,7 @@ BancTestAuto/
 │   ├── measurement.py
 │   ├── fy6900_protocol.py
 │   ├── fy6900_commands.py
+│   ├── rs305p_protocol.py   # Protocole Modbus RTU pour alimentation RS305P
 │   ├── data_logger.py
 │   ├── filter_test.py
 │   ├── filter_sweep.py
@@ -147,7 +148,7 @@ BancTestAuto/
 │   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
 │   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params
 │   ├── dialogs/             # serial_config, save_config, device_detection, view_config, help_dialog
-│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, bode_plot_widget
+│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, power_supply_view, bode_plot_widget
 ├── maquette/                # Interface seule (données factices), lancement indépendant
 │   ├── main_maquette.py
 │   ├── README.md
@@ -189,6 +190,7 @@ BancTestAuto/
 │   ├── serial_exchange_logger.py   # Log des échanges série (multimètre / générateur)
 │   ├── fy6900_protocol.py         # Classe Fy6900Protocol : commandes WMW, WMF, WMA, WMN (utilise SerialConnection)
 │   ├── fy6900_commands.py         # Format des commandes FY6900 (WMF 14 chiffres, etc.) — helpers
+│   ├── rs305p_protocol.py         # Classe Rs305pProtocol : Modbus RTU pour alimentation RS305P
 │   ├── data_logger.py             # Classe DataLogger : enregistrement CSV horodaté
 │   ├── filter_test.py             # Classe FilterTest : orchestration banc filtre (appelle Measurement + Fy6900Protocol)
 │   ├── filter_sweep.py            # Génération liste de fréquences (log/lin), pas de balayage
@@ -231,6 +233,7 @@ BancTestAuto/
 │   │   ├── generator_view.py      # Vue générateur FY6900 : choix Voie 1/2 + forme, fréquence, amplitude, offset, ON/OFF
 │   │   ├── logging_view.py        # Vue enregistrement : texte explicatif (multimètre uniquement), config, graphique temps réel
 │   │   ├── filter_test_view.py    # Vue banc filtre : config balayage + tableau + graphique Bode (panneau/tableau intégrés)
+│   │   ├── power_supply_view.py   # Vue alimentation RS305P (connexion série gérée dans l'onglet)
 │   │   └── bode_plot_widget.py    # Widget graphique Bode (semi-log, gain dB vs fréquence) — réutilisable
 │   │
 │   └── (optionnel) mixins/

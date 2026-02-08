@@ -79,11 +79,19 @@ class ConnectionStatusBar(QWidget):
         layout.addWidget(self._generator_label)
 
         layout.addStretch()
+        self._load_config_btn = QPushButton("Charger config")
+        self._load_config_btn.setObjectName("loadConfigButton")
+        self._load_config_btn.setToolTip("Récupère la config depuis config.json et tente de se connecter aux équipements.")
+        layout.addWidget(self._load_config_btn)
         self._detect_btn = QPushButton("Détecter")
         self._detect_btn.setObjectName("detectButton")
         layout.addWidget(self._detect_btn)
         self._params_btn = QPushButton("Paramètres")
         self._params_btn.setObjectName("paramsButton")
+        self._params_btn.setToolTip(
+            "Configuration série : port, débit, timeouts (multimètre et générateur). "
+            "Affiche les valeurs de config.json ; OK applique et reconnecte. Sauvegarder avec Fichier → Sauvegarder config."
+        )
         layout.addWidget(self._params_btn)
 
         main_layout.addLayout(layout)
@@ -119,6 +127,9 @@ class ConnectionStatusBar(QWidget):
             self._generator_label.setText(f"Générateur: {model or 'FY6900'} — {port or '?'}")
         else:
             self._generator_label.setText("Générateur: Non connecté")
+
+    def get_load_config_button(self):
+        return self._load_config_btn
 
     def get_params_button(self):
         return self._params_btn

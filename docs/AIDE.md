@@ -1,6 +1,6 @@
 # Aide — Banc de test automatique
 
-Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur de signaux FeelTech FY6900**, de configurer des mesures, d’enregistrer des données et de caractériser un filtre au format Bode.
+Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur de signaux FeelTech FY6900** et une **alimentation Rockseed RS305P**, de configurer des mesures, d’enregistrer des données et de caractériser un filtre au format Bode.
 
 ---
 
@@ -12,10 +12,11 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 4. [Onglet Générateur](#onglet-générateur)
 5. [Onglet Enregistrement](#onglet-enregistrement)
 6. [Onglet Banc filtre](#onglet-banc-filtre)
-7. [Configuration et thème](#configuration-et-thème)
-8. [Raccourcis clavier](#raccourcis-clavier)
-9. [Fichiers et export](#fichiers-et-export)
-10. [Dépannage](#dépannage)
+7. [Onglet Alimentation](#onglet-alimentation)
+8. [Configuration et thème](#configuration-et-thème)
+9. [Raccourcis clavier](#raccourcis-clavier)
+10. [Fichiers et export](#fichiers-et-export)
+11. [Dépannage](#dépannage)
 
 ---
 
@@ -24,7 +25,7 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 1. **Branchez** le multimètre et le générateur en USB (ports COM sous Windows, `/dev/ttyUSBx` sous Linux).
 2. Lancez l’application : `python main.py` (après activation du venv et `pip install -r requirements.txt`).
 3. Ouvrez le menu **Outils → Détecter les équipements** (ou cliquez sur **Détecter** dans la barre de connexion) pour identifier automatiquement les ports du multimètre et du générateur.
-4. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre).
+4. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation).
 
 **Prérequis :** Python 3.10+, PyQt6, pyserial. Voir `requirements.txt`.
 
@@ -132,6 +133,30 @@ Au démarrage d’un balayage, la configuration générateur (forme d’onde, am
 
 ---
 
+## Onglet Alimentation
+
+Pilotage de l'**alimentation stabilisée Rockseed RS305P** (protocole Modbus RTU). Cet onglet est **autonome** : la connexion et la déconnexion série sont gérées directement dans l'onglet (aucun paramètre dans `config.json`).
+
+### Connexion série
+
+- **Port** : sélection dans la liste déroulante (ou saisie manuelle du port COM).
+- **Vitesse** : 9600 baud (fixe pour le RS305P).
+- **Bouton Connexion/Déconnexion** : ouvre ou ferme le port série. Une pastille verte/rouge indique l'état.
+
+### Paramètres et sortie
+
+- **Tension (V)** et **Courant (A)** : spinboxes pour définir les valeurs cibles (0–30 V, 0–5 A). Cliquez sur **Appliquer** pour envoyer à l'alimentation.
+- **Préréglages** : boutons rapides **3,3 V**, **5 V**, **9 V**, **12 V** (chaque bouton règle 0,5 A et met la sortie OFF).
+- **Sortie ON/OFF** : active ou coupe la sortie de l'alimentation.
+
+### Valeurs mesurées
+
+- **Rafraîchir** : lit la tension et le courant affichés par l'alimentation pour mettre à jour l'affichage.
+
+Voir [Commandes RS305P](COMMANDES_RS305P.md) pour le détail du protocole Modbus.
+
+---
+
 ## Configuration et thème
 
 ### Fichier de configuration
@@ -208,8 +233,9 @@ Tous les exports CSV et graphiques sont adaptés à une utilisation ultérieure 
 - **Cahier des charges** : `docs/CAHIER_DES_CHARGES.md`
 - **Banc de test filtre** : `docs/BANC_TEST_FILTRE.md`
 - **Guide de développement** : `docs/DEVELOPPEMENT.md`
+- **Commandes RS305P** : `docs/COMMANDES_RS305P.md`
 - **README** : `README.md` à la racine du projet
 
 ---
 
-*Banc de test automatique — Aide intégrée. Pour toute question sur le matériel, consulter les manuels OWON (XDM1000) et FeelTech (FY6900).*
+*Banc de test automatique — Aide intégrée. Pour toute question sur le matériel, consulter les manuels OWON (XDM1000), FeelTech (FY6900) et Rockseed (RS305P Modbus).*

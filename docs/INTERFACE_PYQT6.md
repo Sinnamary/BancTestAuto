@@ -25,7 +25,7 @@
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [Barre de connexion : pastille multimètre + label | pastille générateur + label | Paramètres] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]              │
+│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Alimentation ]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  (Contenu de l’onglet sélectionné)                                               │
@@ -41,7 +41,7 @@
 |--------|---------------|------|
 | Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, **Voir config JSON (lecture seule)**, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
-| Onglets | `QTabWidget` | 4 onglets : Multimètre, Générateur, Enregistrement, Banc filtre |
+| Onglets | `QTabWidget` | 5 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |
 
 **Menu Outils :** au moins une action **« Détecter les équipements »** : parcourt les ports COM, identifie le multimètre OWON (SCPI *IDN?) et le générateur FY6900 par protocole, affecte le bon port à chaque équipement et met à jour `config.json` (voir cahier des charges § 3.2). Implémentation côté logique : `core/device_detection.py`.

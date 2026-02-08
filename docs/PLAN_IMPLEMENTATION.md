@@ -171,6 +171,11 @@
 - Ajouter ou compléter les tests unitaires pour les nouvelles méthodes de `Measurement` et les commandes SCPI utilisées.
 - Mettre à jour le README si de nouvelles entrées (ex. raccourcis) n’y figuraient pas déjà ; vérifier que DEVELOPPEMENT.md et CAHIER_DES_CHARGES restent cohérents.
 
+### 5.5 Onglet Alimentation RS305P (implémenté)
+
+- **Alimentation Rockseed RS305P** : onglet dédié, connexion série gérée localement (aucun paramètre dans `config.json`).
+- **Fichiers** : `core/rs305p_protocol.py` (Modbus RTU), `ui/views/power_supply_view.py`, `docs/COMMANDES_RS305P.md`.
+
 **Livrables Phase 5 :**
 - [ ] (Optionnel) Icônes en place.
 - [x] Thème clair sélectionnable (menu Configuration → Thème ; sauvegarde via Fichier → Sauvegarder config).

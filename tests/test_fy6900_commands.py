@@ -16,28 +16,25 @@ class TestFormatWmw:
 
 class TestFormatWmfHz:
     def test_100_hz(self):
-        # 100 Hz = 100_000_000 µHz (14 chiffres)
-        expected = f"WMF{100_000_000:014d}\n"
-        assert FY.format_wmf_hz(100) == expected
+        assert FY.format_wmf_hz(100) == "WMF100.000000\n"
 
     def test_1000_hz(self):
-        assert "WMF" in FY.format_wmf_hz(1000)
-        assert FY.format_wmf_hz(1000).strip().endswith("01000000000")
+        assert FY.format_wmf_hz(1000) == "WMF1000.000000\n"
+
+    def test_freq_6_decimals(self):
+        assert FY.format_wmf_hz(12345678.901234) == "WMF12345678.901234\n"
 
     def test_clamp_negative(self):
-        out = FY.format_wmf_hz(-1)
-        assert out.startswith("WMF")
-        assert "00000000000000" in out
+        assert FY.format_wmf_hz(-1) == "WMF0.000000\n"
 
-    def test_clamp_high(self):
-        out = FY.format_wmf_hz(1e15)
-        assert out.startswith("WMF")
-        assert "99999999999999" in out
+    def test_fractional_hz(self):
+        assert FY.format_wmf_hz(1.5) == "WMF1.500000\n"
 
 
 class TestFormatWma:
     def test_amplitude(self):
-        assert FY.format_wma(1.414) == "WMA1.414\n"
+        assert FY.format_wma(1.41) == "WMA1.41\n"
+        assert FY.format_wma(5.0) == "WMA5.00\n"
 
 
 class TestFormatWmo:

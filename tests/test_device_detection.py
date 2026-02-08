@@ -53,16 +53,22 @@ class TestUpdateConfigPorts:
 class TestDetectDevices:
     def test_returns_tuple_none_none_when_no_ports(self):
         with patch("core.device_detection.list_serial_ports", return_value=[]):
-            m, g = detect_devices()
+            m, m_baud, g, g_baud, log_lines = detect_devices()
             assert m is None
+            assert m_baud is None
             assert g is None
+            assert g_baud is None
+            assert isinstance(log_lines, list)
 
     def test_returns_ports_when_mocks_identify(self):
         with patch("core.device_detection.list_serial_ports", return_value=["COM3", "COM4"]):
             with patch("core.device_detection._try_owon_on_port") as try_owon:
                 with patch("core.device_detection._try_fy6900_on_port") as try_fy:
-                    try_owon.side_effect = lambda p: p == "COM3"
-                    try_fy.side_effect = lambda p: p == "COM4"
-                    m, g = detect_devices()
+                    try_owon.side_effect = lambda p, log_lines: (p == "COM3", 115200 if p == "COM3" else None)
+                    try_fy.side_effect = lambda p, log_lines: p == "COM4"
+                    m, m_baud, g, g_baud, log_lines = detect_devices()
                     assert m == "COM3"
+                    assert m_baud == 115200
                     assert g == "COM4"
+                    assert g_baud == 115200
+                    assert isinstance(log_lines, list)

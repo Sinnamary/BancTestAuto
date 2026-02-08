@@ -4,6 +4,9 @@ Utilisé par Measurement et toute commande OWON.
 """
 from .serial_connection import SerialConnection
 from . import scpi_commands as SCPI
+from .app_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ScpiProtocol:
@@ -17,13 +20,16 @@ class ScpiProtocol:
         cmd = command.strip()
         if not cmd.endswith("\n"):
             cmd += "\n"
+        logger.debug("SCPI TX: %s", cmd)
         self._conn.write(cmd.encode("utf-8"))
 
     def ask(self, command: str) -> str:
         """Envoie une commande et retourne la réponse (jusqu'à LF)."""
         self.write(command)
         line = self._conn.readline()
-        return line.decode("utf-8", errors="replace").strip()
+        reply = line.decode("utf-8", errors="replace").strip()
+        logger.debug("SCPI RX: %r", reply)
+        return reply
 
     def idn(self) -> str:
         """Identification (*IDN?)."""

@@ -11,11 +11,15 @@ Utilisation dans les modules :
 
 Le niveau (DEBUG, INFO, WARNING, ERROR) est lu dans config.json, section "logging", clé "level".
 Fichier généré : logging.output_dir / app_YYYY-MM-DD_HH-MM-SS.log
+
+En mode DEBUG, l'application enregistre en plus : commandes série envoyées/reçues (port, débit, données),
+commandes FY6900 et SCPI (TX/RX), détection des appareils (étape par étape), trames Modbus RS305P,
+et chaque point du balayage banc filtre (fréquence, mesure, gain).
 """
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 _initialized = False
 _file_handler = None
@@ -92,3 +96,18 @@ def get_current_level_name() -> str:
         if value == level:
             return name
     return "INFO"
+
+
+def get_latest_log_path(config: dict[str, Any]) -> Optional[Path]:
+    """
+    Retourne le chemin du fichier de log le plus récent (app_*.log) dans le répertoire
+    configuré (logging.output_dir). Retourne None si aucun fichier ou répertoire absent.
+    """
+    log_cfg = config.get("logging") or {}
+    output_dir = Path(log_cfg.get("output_dir", "./logs"))
+    if not output_dir.exists():
+        return None
+    logs = list(output_dir.glob("app_*.log"))
+    if not logs:
+        return None
+    return max(logs, key=lambda p: p.stat().st_mtime)
