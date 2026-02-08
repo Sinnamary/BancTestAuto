@@ -180,6 +180,10 @@ Tous les réglages sont centralisés dans **`config/config.json`** (ports série
 - **Configuration → Thème → Clair** ou **Foncé** : changement immédiat de l’apparence.
 - Pour **conserver** le thème au prochain lancement : après avoir choisi Clair ou Foncé, faites **Fichier → Sauvegarder config**. La valeur est stockée dans `display.theme` (`"light"` ou `"dark"`). Fichiers de style : `resources/themes/light.qss` et `dark.qss`.
 
+### Police d'affichage
+
+La police de l'interface (menus, libellés, graphique Bode) est définie dans **`config.json`** sous **`display.font_family`** (ex. `"Segoe UI"`, `"Arial"`). Par défaut : `"Segoe UI"` (recommandé sous Windows). Pour changer : éditez le fichier puis **Fichier → Sauvegarder config** ; le changement s'applique au prochain lancement.
+
 ### Niveau de log
 
 **Configuration → Niveau de log** : DEBUG, INFO, WARNING, ERROR. Utile pour le dépannage. Pensez à sauvegarder la config pour conserver le niveau.

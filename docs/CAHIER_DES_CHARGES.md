@@ -181,6 +181,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
   },
   "display": {
     "font_size": "large",
+    "font_family": "Segoe UI",
     "theme": "dark",
     "secondary_display": false
   },
@@ -235,8 +236,11 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | default_auto_range| Plage auto au démarrage           | true, false                         |
 |             | refresh_interval_ms | Intervalle rafraîchissement (ms) | 100 – 2000                          |
 | **display** | font_size         | Taille affichage mesures           | `"small"`, `"medium"`, `"large"`    |
+|             | font_family       | Police de l'interface (menus, libellés, graphiques) | `"Segoe UI"`, `"Arial"` ; vide = défaut système |
 |             | theme             | Thème interface                    | `"dark"`, `"light"`                 |
 |             | secondary_display | Affichage secondaire (Hz) par défaut | true, false                       |
+| **bode_viewer** | *(options fenêtre graphique Bode — export CSV/PNG)* | | |
+|             | plot_background_dark, curve_color, grid_visible, smooth_window, etc. | Fond, couleur courbe, quadrillage, lissage, gain linéaire/dB, pics | Voir [CDC Visualisation Bode § 3.3](CAHIER_DES_CHARGES_VISUALISATION_BODE.md) |
 | **limits**  | history_size      | Nombre max de mesures en historique| 10 – 1000                           |
 |             | baudrate_options  | Débits disponibles dans l'UI       | liste de valeurs                    |
 | **logging** | output_dir        | Répertoire des fichiers enregistrés| `"./logs"`                          |

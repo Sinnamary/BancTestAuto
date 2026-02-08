@@ -135,7 +135,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 
 ### 3.3 Configuration JSON (fenêtre graphique Bode)
 
-Les options d'affichage de la fenêtre du graphique Bode sont persistées dans le fichier de configuration de l'application (`config.json`) sous la clé **`bode_viewer`**. Cette section est chargée à l'ouverture du graphique et mise à jour en mémoire à la fermeture de la fenêtre ; l'enregistrement dans le fichier s'effectue via **Fichier → Sauvegarder config** (ou **Enregistrer config sous...**).
+Les options d'affichage de la fenêtre du graphique Bode sont persistées dans le fichier de configuration de l'application (`config.json`) sous la clé **`bode_viewer`**. Cette section est chargée à l'ouverture du graphique et mise à jour en mémoire à la fermeture de la fenêtre ; l'enregistrement dans le fichier s'effectue via **Fichier → Sauvegarder config** (ou **Enregistrer config sous...**). La **police** des libellés et étiquettes du graphique suit la configuration applicative **`display.font_family`** (voir cahier des charges principal).
 
 | Clé | Type | Défaut | Description |
 |-----|------|--------|-------------|

@@ -12,7 +12,7 @@ Convention : MAJEUR.MINEUR.PATCH (ex. 2.0.0 = changement majeur).
 from datetime import date
 
 APP_NAME = "Banc de test automatique"
-__version__ = "6.0.0"
+__version__ = "1.0.0"
 __version_date__ = "2026-02-08"
 
 

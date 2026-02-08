@@ -179,11 +179,12 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `serial_multimeter` | Port, débit, timeouts, log des échanges (multimètre) |
 | `serial_generator` | Port, débit, timeouts (générateur FY6900) |
 | `measurement` | Vitesse par défaut, auto-plage, intervalle de rafraîchissement |
-| `display` | Taille de police, **thème (clair/foncé)**, affichage secondaire |
+| `display` | **Police** (`font_family`), taille de police, **thème (clair/foncé)**, affichage secondaire |
 | `limits` | Taille de l'historique, options de débit série |
 | `logging` | Dossier de sortie, niveau de log, intervalle et durée par défaut |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
 | `filter_test` | Voie générateur (1 ou 2), f_min, f_max, points par décade, échelle, délai, tension Ue |
+| `bode_viewer` | Options fenêtre graphique Bode (fond, couleur, quadrillage, lissage, etc.) ; sauvegardées à la fermeture du graphique |
 
 Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIER_DES_CHARGES.md).
 
@@ -195,6 +196,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
   - **Fichier → Enregistrer config sous...** pour un autre fichier.
 - La valeur est stockée dans la section `display` sous la clé `theme` : `"light"` (clair) ou `"dark"` (foncé). Au démarrage, l’application charge le thème indiqué dans ce fichier.
 - Fichiers de style : `resources/themes/dark.qss` et `resources/themes/light.qss`.
+- **Police d'affichage :** configurable dans `config.json` sous **`display.font_family`** (ex. `"Segoe UI"`, `"Arial"`). Par défaut : `"Segoe UI"`. Modifier puis **Fichier → Sauvegarder config** ; le changement s'applique au prochain lancement.
 
 ---
 
