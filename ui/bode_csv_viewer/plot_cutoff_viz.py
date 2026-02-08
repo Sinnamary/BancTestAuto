@@ -1,8 +1,8 @@
 """
-Affichage de la ligne horizontale à -3 dB. Autonome viewer CSV.
+Affichage de la ligne horizontale à -3 dB et des marqueurs de fréquences de coupure.
 Convient à tous les types de filtres (passe-bas, coupe-bande, etc.).
 """
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
@@ -11,18 +11,33 @@ from PyQt6.QtCore import Qt
 LEVEL_DB = -3.0
 LEVEL_LINEAR = 10 ** (LEVEL_DB / 20.0)
 
+# Style des lignes verticales fc
+PEN_FC = pg.mkPen("#ff8080", width=1.5, style=Qt.PenStyle.DotLine)
+
+
+def _format_freq(hz: float) -> str:
+    """Ex. 1234.5 -> '1,23 kHz', 0.05 -> '50 Hz'."""
+    if hz >= 1000:
+        return f"{hz / 1000:.2f} kHz"
+    if hz < 1 and hz > 0:
+        return f"{hz * 1000:.1f} mHz"
+    return f"{hz:.1f} Hz"
+
 
 class CutoffMarkerViz:
-    """Ligne horizontale rouge à -3 dB (gain) avec étiquette."""
+    """Ligne horizontale rouge à -3 dB (gain) avec étiquette + marqueurs fc optionnels."""
     PEN = pg.mkPen("#ff6060", width=2.5, style=Qt.PenStyle.DashLine)
     Z_LINE = 10
     Z_LABEL = 11
+    Z_FC = 9
 
     def __init__(self, plot_item: Any):
         self._plot_item = plot_item
         self._line: Optional[Any] = None
         self._label: Optional[Any] = None
         self._y_level: Optional[float] = None
+        self._fc_lines: List[Any] = []
+        self._fc_labels: List[Any] = []
 
     def set_level(self, y_value: Optional[float]) -> None:
         """
@@ -49,6 +64,28 @@ class CutoffMarkerViz:
         else:
             self._line.setVisible(False)
             self._label.setVisible(False)
+
+    def set_cutoff_frequencies(self, fc_hz_list: List[float]) -> None:
+        """
+        Affiche des lignes verticales et étiquettes aux fréquences de coupure -3 dB.
+        fc_hz_list: liste des fréquences en Hz (vide = masquer les marqueurs).
+        """
+        for item in self._fc_lines + self._fc_labels:
+            self._plot_item.removeItem(item)
+        self._fc_lines.clear()
+        self._fc_labels.clear()
+        for k, fc_hz in enumerate(fc_hz_list):
+            line = pg.InfiniteLine(pos=fc_hz, angle=90, movable=False, pen=PEN_FC)
+            line.setZValue(self.Z_FC)
+            self._plot_item.addItem(line)
+            self._fc_lines.append(line)
+            label_text = f"fc = {_format_freq(fc_hz)}" if len(fc_hz_list) == 1 else f"fc{k + 1} = {_format_freq(fc_hz)}"
+            label = pg.TextItem(anchor=(0, 0.5), text=label_text)
+            label.setColor("#ff8080")
+            label.setZValue(self.Z_LABEL)
+            label.setPos(fc_hz, self._y_level if self._y_level is not None else LEVEL_DB)
+            self._plot_item.addItem(label)
+            self._fc_labels.append(label)
 
     def update_label_position(self) -> None:
         if self._y_level is None or self._label is None or not self._label.isVisible():

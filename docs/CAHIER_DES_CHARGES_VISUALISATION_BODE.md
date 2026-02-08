@@ -216,3 +216,35 @@ BodePoint:
 ---
 
 *Document préparé pour la spécification de la visualisation Bode du Banc de test automatique.*
+
+---
+
+## 8. Analyse de conformité et pistes d’amélioration (étude de la courbe)
+
+*Révision : 8 février 2026*
+
+### 8.1 Déjà en place
+
+| Exigence | Statut |
+|----------|--------|
+| Lecture CSV, colonnes flexibles, dossier par défaut | ✓ |
+| Axe X log, axe Y dB ou linéaire, courbe principale, quadrillage, libellés | ✓ |
+| Fond noir/blanc, couleur courbe, courbe brute + lissée | ✓ |
+| Lissage moyenne glissante (fenêtre 3–11), option activer/désactiver | ✓ |
+| Ligne horizontale -3 dB (pointillé rouge, option, étiquette « -3 dB ») | ✓ |
+| Plage manuelle (F min/max, gain min/max), Appliquer les limites, Ajuster vue | ✓ |
+| Zoom molette, zoom sur zone (glisser), pan | ✓ |
+| Export PNG | ✓ |
+
+### 8.2 Améliorations pour mieux étudier la courbe de réponse
+
+| Piste | Priorité | Description |
+|-------|----------|-------------|
+| **Marqueurs des fréquences de coupure** | P1 | Afficher sur le graphique les fréquences fc où la courbe coupe la ligne -3 dB (ligne verticale ou annotation « fc = 1,23 kHz »). Gérer plusieurs intersections (ex. filtre coupe-bande). |
+| **Coordonnées au survol** | P1 | Afficher (f en Hz, gain en dB) sous le curseur pour une lecture précise des points de la courbe. |
+| **Panneau d’infos** | P1 | Afficher en permanence : fc (-3 dB), gain max, nombre de points (et bande passante si pertinent). |
+| **Recherche gain cible** | P2 | Saisie d’un gain cible (ex. -6 dB) et affichage des fréquences correspondantes (intersections). |
+| **Détection pics/creux** | P1 (spec Phase 6) | Marqueurs optionnels sur les maxima/minima locaux (passe-bande, résonance). |
+| **Lissage Savitzky-Golay** | P2 | Option alternative au lissage pour mieux préserver les pics. |
+| **Quadrillage mineur** | P1 (spec) | Lignes intermédiaires pour une lecture plus fine des échelles. |
+| **Export des points** | P2 | Exporter la série (f_Hz, Gain_dB) en CSV. |

@@ -21,6 +21,7 @@ from .model import BodeCsvDataset
 from .plot_grid import BodePlotGrid
 from .plot_curves import BodeCurveDrawer
 from .plot_cutoff_viz import CutoffMarkerViz, LEVEL_DB, LEVEL_LINEAR
+from .cutoff import Cutoff3DbFinder
 
 # Marge relative pour l'auto-range (évite que la courbe colle aux bords)
 _AUTO_RANGE_MARGIN = 0.05
@@ -57,6 +58,8 @@ class BodeCsvPlotWidget(QWidget):
         self._grid = BodePlotGrid(plot_item)
         self._curves = BodeCurveDrawer(plot_item)
         self._cutoff_viz = CutoffMarkerViz(plot_item)
+        self._hover_label: Optional[pg.TextItem] = None
+        self._setup_hover()
         self._dataset: Optional[BodeCsvDataset] = None
         self._y_linear = False
         self._smooth_window = 0
