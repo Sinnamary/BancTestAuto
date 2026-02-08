@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
+from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, HelpDialog
 from ui.theme_loader import get_theme_stylesheet
 
@@ -156,6 +156,8 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(LoggingView(), "Enregistrement")
         self._filter_test_view = FilterTestView()
         self._tabs.addTab(self._filter_test_view, "Banc filtre")
+        self._power_supply_view = PowerSupplyView()
+        self._tabs.addTab(self._power_supply_view, "Alimentation")
         layout.addWidget(self._tabs)
 
         self.setCentralWidget(central)
@@ -476,3 +478,10 @@ class MainWindow(QMainWindow):
         help_path = root / "docs" / "AIDE.md"
         dlg = HelpDialog(help_path=help_path, parent=self)
         dlg.exec()
+
+    def closeEvent(self, event):
+        """À la fermeture : déconnexion de l'alimentation (onglet autonome)."""
+        if hasattr(self, "_power_supply_view") and self._power_supply_view is not None:
+            if hasattr(self._power_supply_view, "_disconnect"):
+                self._power_supply_view._disconnect()
+        super().closeEvent(event)

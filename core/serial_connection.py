@@ -95,6 +95,16 @@ class SerialConnection:
                 self._log_callback("RX", data.decode("utf-8", errors="replace"))
             return data
 
+    def read(self, size: int = 1) -> bytes:
+        """Lit size octets. Pour protocoles binaires (ex. Modbus)."""
+        with self._lock:
+            if not self._serial or not self._serial.is_open:
+                raise SerialException("Port non ouvert")
+            data = self._serial.read(size)
+            if self._log_exchanges and data:
+                self._log_callback("RX", data.hex(" "))
+            return data
+
     def set_log_exchanges(self, enabled: bool) -> None:
         self._log_exchanges = enabled
 
