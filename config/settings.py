@@ -87,8 +87,9 @@ def _deep_merge(default: dict, loaded: dict) -> dict:
 
 def _resolve_config_path(path: Path | str | None) -> Path:
     """Retourne le chemin du fichier config à utiliser (avec repli si le défaut n'existe pas)."""
-    p = Path(path) if path else DEFAULT_CONFIG_PATH
-    p = Path(p)
+    if path is not None:
+        return Path(path).resolve()
+    p = DEFAULT_CONFIG_PATH
     if p.exists():
         return p
     # Repli : config/config.json depuis le répertoire de travail (si exécution depuis une autre racine)

@@ -344,7 +344,32 @@ python main.py
 
 ---
 
-## 5. Références
+## 5. Gestion de la version
+
+La version et la date sont définies dans **un seul fichier** : `core/version.py`.
+
+| Variable           | Rôle |
+|--------------------|------|
+| `APP_NAME`         | Nom affiché (ex. « Banc de test automatique ») |
+| `__version__`      | Numéro de version (ex. `"1.0.0"`) |
+| `__version_date__` | Date de la version. Si `None` ou vide → **date du jour affichée automatiquement** à l’exécution. Sinon la date fixée ici est utilisée. |
+
+**Mise à jour automatique ou manuelle :**
+
+- **Date** : si `__version_date__ = None` dans `core/version.py`, la fenêtre « À propos » affiche la date du jour. Pour figer une date de release, mettre par ex. `__version_date__ = "2026-02-08"` (ou lancer le script ci‑dessous).
+- **Numéro de version** : après une modification (mineure ou majeure), exécuter en racine du projet :
+  ```bash
+  python bump_version.py patch   # 1.0.0 → 1.0.1 (correctif)
+  python bump_version.py minor   # 1.0.1 → 1.1.0 (nouvelle fonctionnalité)
+  python bump_version.py major   # 1.1.0 → 2.0.0 (changement majeur)
+  ```
+  Le script met à jour `__version__` et `__version_date__` (date du jour) dans `core/version.py`.
+
+Convention : **MAJEUR.MINEUR.PATCH**. L’utilisateur voit la version via **Aide → A propos...** (nom, version, date, Python, Qt).
+
+---
+
+## 6. Références
 
 | Document | Rôle |
 |----------|------|

@@ -19,7 +19,7 @@ from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView
-from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog
+from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
 from ui.theme_loader import get_theme_stylesheet
 
 # Import core et config (optionnel si non disponibles)
@@ -153,6 +153,8 @@ class MainWindow(QMainWindow):
 
         help_menu = menubar.addMenu("Aide")
         help_menu.addAction("Manuel", QKeySequence("F1"), self._on_help)
+        help_menu.addSeparator()
+        help_menu.addAction("A propos...", self._on_about)
         sub_owon = help_menu.addMenu("Multimètre OWON")
         sub_owon.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_OWON.md"))
         sub_fy6900 = help_menu.addMenu("Générateur FY6900")
@@ -570,6 +572,11 @@ class MainWindow(QMainWindow):
     def _on_help(self):
         """Ouvre la fenêtre d'aide (manuel utilisateur avec recherche)."""
         self._on_help_doc("AIDE.md")
+
+    def _on_about(self):
+        """Ouvre le dialogue À propos (version, date, environnement)."""
+        dlg = AboutDialog(parent=self)
+        dlg.exec()
 
     def _on_help_doc(self, doc_filename: str):
         """Ouvre le dialogue d'aide avec le fichier de documentation indiqué (ex. COMMANDES_OWON.md)."""
