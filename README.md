@@ -37,6 +37,7 @@ BancTestAuto/
 ├── clean.py             # Nettoyage __pycache__, logs (python clean.py [--all])
 ├── bump_version.py      # Incrément de version (patch|minor|major) dans core/version.py
 ├── build_exe.py         # Construction de l'exécutable (PyInstaller, à lancer depuis le venv)
+├── serve_htmlcov.py     # Serveur local + ouverture du rapport de couverture (htmlcov) dans le navigateur
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
 ├── core/                # app_logger, app_paths, bode_calc, data_logger, device_detection, filter_sweep,
 │                        # filter_test, fy6900_commands, fy6900_protocol, measurement, rs305p_protocol,
@@ -68,7 +69,11 @@ pytest                             # lancer les tests
 pytest --cov=config --cov=core --cov-report=term-missing --cov-report=html   # avec couverture de code
 ```
 
-Rapport HTML : `htmlcov/index.html`.
+Rapport HTML : `htmlcov/index.html`. Pour le visualiser dans le navigateur avec un serveur local :
+
+```bash
+python serve_htmlcov.py
+```
 
 ---
 
