@@ -174,7 +174,7 @@ Commande individuelle du FeelTech FY6900 (deux voies). Les paramètres s’appli
 | Paramètre | Widget | Remarque |
 |-----------|--------|----------|
 | **Voie** | `QRadioButton` Voie 1 / Voie 2 | FY6900 a deux voies ; les paramètres ci‑dessous s’appliquent à la voie choisie |
-| Forme d’onde | `QComboBox` | Sinus, Triangle, Carré, etc. (WMW) |
+| Forme d’onde | `QComboBox` | Sinusoïde, Triangle, Carré, Dent de scie → codes FY6900 (WMWxx, 2 chiffres : 0, 7, 1, 8) |
 | Fréquence | `QDoubleSpinBox` ou `QLineEdit` + validateur | Min/max selon FY6900, unité Hz (conversion vers µHz pour WMF) |
 | Amplitude | `QDoubleSpinBox` | Crête en V, 3 décimales (WMA/WFA) |
 | Offset | `QDoubleSpinBox` | WMO |

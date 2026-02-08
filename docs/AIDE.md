@@ -104,7 +104,7 @@ Les dernières mesures apparaissent dans un **tableau**. Le bouton **Exporter CS
 
 ## Onglet Générateur
 
-Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, forme d’onde, fréquence, amplitude, offset, sortie ON/OFF. Toutes les commandes du protocole sont accessibles (WMW, WMF, WMA, WMO, WMD, WMP, WMN, etc.). Rapport cyclique et phase disponibles. Le logiciel lit la réponse (0x0a) après chaque commande avant la suivante. Les valeurs par défaut sont chargées depuis `config.json` ; vous pouvez les modifier et sauvegarder la configuration.
+Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, forme d’onde (Sinusoïde, Triangle, Carré, Dent de scie — codes FY6900 : 0, 7, 1, 8 ; format WMWxx 2 chiffres), fréquence (envoyée en µHz, 14 chiffres), amplitude, offset, rapport cyclique, phase, sortie ON/OFF. Le logiciel lit la réponse (0x0a) après chaque commande avant la suivante. Valeurs par défaut dans `config.json`. Voir [Commandes FY6900](COMMANDES_FY6900.md).
 
 ---
 

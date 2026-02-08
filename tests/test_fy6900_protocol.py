@@ -13,8 +13,8 @@ class TestFy6900Protocol:
         conn = MagicMock()
         conn.write = MagicMock()
         fy = Fy6900Protocol(conn)
-        fy._send("WMW0\n")
-        conn.write.assert_called_once_with(b"WMW0\n")
+        fy._send("WMW00\n")
+        conn.write.assert_called_once_with(b"WMW00\n")
 
     def test_set_waveform(self):
         conn = MagicMock()
@@ -22,7 +22,7 @@ class TestFy6900Protocol:
         fy = Fy6900Protocol(conn)
         fy.set_waveform(0)
         conn.write.assert_called_once()
-        assert b"WMW0" in conn.write.call_args[0][0]
+        assert b"WMW00" in conn.write.call_args[0][0]
 
     def test_set_frequency_hz(self):
         conn = MagicMock()
@@ -57,6 +57,6 @@ class TestFy6900Protocol:
         fy.apply_sinus_1v_rms(1000.0)
         assert conn.write.call_count >= 4
         written = b"".join(c[0][0] for c in conn.write.call_args_list)
-        assert b"WMW0" in written
+        assert b"WMW00" in written
         assert b"WMA" in written
         assert b"WMN1" in written

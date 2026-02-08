@@ -7,11 +7,14 @@ from core import fy6900_commands as FY
 
 
 class TestFormatWmw:
+    """WMW/WFW : format 2 chiffres (doc FY6900)."""
+
     def test_sinus(self):
-        assert FY.format_wmw(0) == "WMW0\n"
+        assert FY.format_wmw(0) == "WMW00\n"
 
     def test_other_waveform(self):
-        assert FY.format_wmw(1) == "WMW1\n"
+        assert FY.format_wmw(1) == "WMW01\n"
+        assert FY.format_wmw(7) == "WMW07\n"
 
 
 class TestFormatWmfHz:

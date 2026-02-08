@@ -84,12 +84,12 @@ def _try_owon_on_port(port: str, log_lines: list[str]) -> tuple[bool, Optional[i
 
 def _try_fy6900_on_port(port: str, log_lines: list[str]) -> bool:
     """
-    Teste si un port répond au protocole FY6900 (commande WMW0 + LF).
+    Teste si un port répond au protocole FY6900 (commande WMW00 + LF).
     On n'accepte que si le port renvoie des données (réponse non vide), pour éviter
     de prendre une alimentation ou un autre appareil muet pour un FY6900.
     On rejette aussi toute réponse qui ressemble à du SCPI (ex. OWON).
     """
-    cmd = "WMW0\\n"
+    cmd = "WMW00\n"
     _log_detection(log_lines, f"{port} [FY6900] Paramètres testés: {_serial_params_str(FY6900_BAUD)}")
     _log_detection(log_lines, f"{port} {FY6900_BAUD} [FY6900] Ouverture...")
     try:
@@ -103,7 +103,7 @@ def _try_fy6900_on_port(port: str, log_lines: list[str]) -> bool:
             write_timeout=TIMEOUT,
         )
         _log_detection(log_lines, f"{port} {FY6900_BAUD} [FY6900] TX {cmd!r}")
-        ser.write(b"WMW0\n")
+        ser.write(b"WMW00\n")
         data = ser.read(10)
         if data:
             rx_str = data.decode("utf-8", errors="replace").strip() or data.hex(" ")

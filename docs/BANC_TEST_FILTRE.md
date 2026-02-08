@@ -65,7 +65,7 @@ Ce mode orchestre FY6900 et OWON ; chaque appareil reste **commandable individue
 
 | Commande | Format | Description | Exemple |
 |----------|--------|-------------|---------|
-| **WMW**  | WMWxx + 0x0a | Forme d’onde canal principal | WMW0 = sinusoïde |
+| **WMW**  | WMWxx + 0x0a | Forme d’onde canal principal (2 chiffres) | WMW00 = sinusoïde |
 | **WMF**  | WMFxxxxxxxxxxxxxx + 0x0a | Fréquence (14 chiffres, unité µHz) | 1000 Hz → WMF00010000000000 |
 | **WMA**  | WMAx.xxx + 0x0a | Amplitude crête (V), 3 décimales | WMA1.414 = 1 V RMS |
 | **WMO**  | WMOxx.xx + 0x0a | Offset (V) | WMO0 = 0 V |
@@ -88,7 +88,7 @@ Formule : `valeur = int(round(f * 1_000_000))` (µHz), formatée sur 14 chiffres
 
 **Au démarrage du balayage**, le logiciel applique d’abord la configuration connue (depuis config.json), puis à chaque point :
 
-1. WMW0 — sinusoïde (ou valeur depuis `generator.waveform`)
+1. WMW00 — sinusoïde (ou valeur depuis `generator.waveform` ; codes FY6900 : 0=sinusoïde, 1=carré, 7=triangle, 8=rampe)
 2. WMA &lt;amplitude_crête&gt; — ex. 1,414 V pour 1 V RMS (depuis `filter_test.ue_rms` ou `generator.amplitude_v_peak`)
 3. WMO0 — offset 0 V (depuis `generator.offset_v`)
 4. WMF&lt;freq&gt; — fréquence de test (balayage)
@@ -316,7 +316,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 ### 11.1 Référence rapide FY6900
 
 - Document : `docs/FY6900_communication_protocol.pdf`
-- WMW0 = sinusoïde
+- WMW00 = sinusoïde (format 2 chiffres ; 1=carré, 7=triangle, 8=rampe)
 - WMF : 14 chiffres, unité µHz (1 Hz = 1 000 000 µHz)
 - WMA : amplitude crête en V (1 V RMS ≈ WMA1.414)
 

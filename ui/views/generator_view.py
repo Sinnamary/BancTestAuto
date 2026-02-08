@@ -118,7 +118,7 @@ class GeneratorView(QWidget):
         self._freq_spin.setRange(0.1, 20e6)
         self._freq_spin.setValue(1000)
         self._freq_spin.setDecimals(2)
-        self._freq_spin.setToolTip("Valeur en Hz ; envoyée au générateur en Hz avec 6 décimales.")
+        self._freq_spin.setToolTip("Valeur en Hz ; envoyée au générateur en µHz (14 chiffres, doc FY6900).")
         form.addRow("Fréquence (Hz)", self._freq_spin)
         self._amplitude_spin = QDoubleSpinBox()
         self._amplitude_spin.setRange(0.01, 20)
@@ -185,7 +185,9 @@ class GeneratorView(QWidget):
         if not self._fy6900:
             QMessageBox.warning(self, "Générateur", "Connexion générateur requise.")
             return
-        waveform = self._waveform_combo.currentIndex()  # 0 = sinusoïde (WMW0)
+        # Mapping UI (Sinusoïde, Triangle, Carré, Dent de scie) → codes FY6900 (0=SINE, 7=TRGL, 1=Square, 8=Ramp)
+        WAVEFORM_CODES = (0, 7, 1, 8)
+        waveform = WAVEFORM_CODES[self._waveform_combo.currentIndex()]
         freq = self._freq_spin.value()
         amp = self._amplitude_spin.value()
         offset = self._offset_spin.value()

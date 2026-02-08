@@ -19,7 +19,7 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 
 | Commande | Format envoyé           | Rôle              | Notes |
 |----------|-------------------------|-------------------|--------|
-| **WMW**  | `WMW<n>\n`              | Forme d’onde      | `n` = type. **0** = sinusoïde, 1 = triangle, 2 = carré, etc. (voir manuel). |
+| **WMW**  | `WMWxx\n`               | Forme d’onde      | **2 chiffres** (doc FY6900). 0 = sinusoïde (WMW00), 1 = carré, 7 = triangle, 8 = rampe (dent de scie). |
 | **WMF**  | `WMF<valeur>\n`        | Fréquence         | Fréquence en **µHz**, **14 chiffres** (zéros à gauche). Ex. 1000 Hz → `WMF00010000000000`. |
 | **WMA**  | `WMA<valeur>\n`         | Amplitude crête   | Amplitude en **V**. 3 décimales. Ex. `WMA4.000`, `WMA1.414`. |
 | **WMO**  | `WMO<valeur>\n`         | Offset            | Tension de décalage en **V**. 2 décimales. Ex. `WMO0.00`. |
@@ -33,7 +33,7 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 
 | Commande | Format envoyé           | Rôle              | Notes |
 |----------|-------------------------|-------------------|--------|
-| **WFW**  | `WFW<n>\n`              | Forme d’onde      | Même codage que WMW (0 = sinusoïde, etc.). |
+| **WFW**  | `WFWxx\n`               | Forme d’onde      | 2 chiffres, même codage que WMW (0 = sinusoïde, 1 = carré, 7 = triangle, 8 = rampe). |
 | **WFF**  | `WFF<valeur>\n`          | Fréquence         | Fréquence en **µHz**, 14 chiffres (même format que WMF). |
 | **WFA**  | `WFA<valeur>\n`          | Amplitude crête   | Amplitude en **V**, 3 décimales (même format que WMA). |
 | **WFO**  | `WFO<valeur>\n`          | Offset            | Offset en **V**, 2 décimales (même format que WMO). |
@@ -54,7 +54,7 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 | **Rapport cyclique (WMD / WFD)** | Pourcentage 0–100, 2 décimales | Ex. `WMD50.00`. |
 | **Phase (WMP / WFP)** | Degrés 0–360, 2 décimales | Ex. `WMP90.00`. |
 | **Offset (WMO / WFO)**   | Décimal, 2 décimales | Ex. `WMO0.00`, `WFO1.50`. |
-| **Forme d’onde (WMW / WFW)** | Entier | 0 = sinusoïde, 1 = triangle, 2 = carré, 3 = dent de scie (codes selon manuel FY6900). |
+| **Forme d’onde (WMW / WFW)** | 2 chiffres | 0 = sinusoïde (WMW00), 1 = carré, 7 = triangle, 8 = rampe / dent de scie (manuel FY6900). |
 | **Sortie (WMN / WFN)**   | 0 ou 1 | 0 = OFF, 1 = ON. |
 
 ---
@@ -63,7 +63,7 @@ Le logiciel envoie les commandes correspondant à la **voie sélectionnée** dan
 
 Pour un point du **banc de test filtre** (voie choisie dans la config, ex. voie 1) :
 
-1. `WMW0` (ou `WFW0` si voie 2) — sinusoïde  
+1. `WMW00` (ou `WFW00` si voie 2) — sinusoïde  
 2. `WMA1.414` (ou `WFA1.414`) — amplitude crête (3 décimales)  
 3. `WMO0.00` (ou `WFO0.00`) — offset 0 V  
 4. `WMF<fréquence en µHz, 14 chiffres>` (ou `WFF<...>`) — ex. 1000 Hz → WMF00010000000000  
@@ -83,4 +83,4 @@ D'après la documentation FY6900 : l'appareil **renvoie 0x0a (LF)** après exéc
 
 - Protocole FeelTech : `docs/FY6900_communication_protocol.pdf`
 - Implémentation : `core/fy6900_commands.py`, `core/fy6900_protocol.py`
-- Détection automatique : le logiciel envoie `WMW0\n` pour tester si le port répond au protocole FY6900 (`core/device_detection.py`).
+- Détection automatique : le logiciel envoie `WMW00\n` pour tester si le port répond au protocole FY6900 (`core/device_detection.py`).

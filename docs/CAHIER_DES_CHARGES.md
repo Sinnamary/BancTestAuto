@@ -245,7 +245,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | default_duration_min | Durée par défaut (min)          | 1 – 525600 (1 an)                   |
 |             | duration_unlimited| Durée illimitée par défaut         | true, false                         |
 | **generator** | default_channel  | Voie par défaut (onglet Générateur) | 1, 2                                |
-|             | waveform         | Forme d’onde (0 = sinusoïde FY6900)  | 0                                   |
+|             | waveform         | Forme d’onde FY6900 (0=sinusoïde, 1=carré, 7=triangle, 8=rampe ; WMWxx 2 chiffres) | 0                                   |
 |             | frequency_hz     | Fréquence par défaut (Hz)           | 1 – 20e6                            |
 |             | amplitude_v_peak| Amplitude crête (V) — 1,414 ≈ 1 V RMS | 0.01 – 20                        |
 |             | offset_v         | Offset (V)                          | −20 – 20                            |
@@ -593,7 +593,7 @@ L'objectif est de regrouper visuellement les fonctions et de réduire les action
 - Relecture de fichiers horodatés, superposition pour comparaison
 
 #### Zone 9 : Générateur de signaux (commande individuelle)
-- Onglet ou panneau pour piloter le FY6900 **individuellement** avec l’ensemble des commandes du protocole : forme d’onde (WMW), fréquence (WMF), amplitude (WMA), offset (WMO), sortie ON/OFF (WMN), etc.
+- Onglet ou panneau pour piloter le FY6900 **individuellement** avec l’ensemble des commandes du protocole : forme d’onde (WMWxx, 2 chiffres), fréquence (WMF en µHz, 14 chiffres), amplitude (WMA), offset (WMO), sortie ON/OFF (WMN), etc.
 - Paramètres par défaut chargés depuis `config.json` (port, débit ; paramètres du banc filtre réutilisables ou surchargeables).
 
 ### 4.4 Codes visuels et accessibilité

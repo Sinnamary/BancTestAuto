@@ -21,13 +21,13 @@ def _freq_hz_to_uhz(freq_hz: float) -> int:
 
 
 def format_wmw(waveform: int) -> str:
-    """Forme d'onde voie 1. WMW0 = sinusoïde."""
-    return f"WMW{waveform}{EOL}"
+    """Forme d'onde voie 1. Doc FY6900 : format WMWxx (2 chiffres). 0 = sinusoïde."""
+    return f"WMW{waveform:02d}{EOL}"
 
 
 def format_wfw(waveform: int) -> str:
-    """Forme d'onde voie 2 (WFW)."""
-    return f"WFW{waveform}{EOL}"
+    """Forme d'onde voie 2 (WFW). Format WFWxx (2 chiffres, doc FY6900)."""
+    return f"WFW{waveform:02d}{EOL}"
 
 
 def format_wmf_hz(freq_hz: float) -> str:

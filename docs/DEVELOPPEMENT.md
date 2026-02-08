@@ -189,7 +189,7 @@ BancTestAuto/
 │   ├── app_logger.py              # Logging application (niveau, fichiers horodatés)
 │   ├── serial_exchange_logger.py   # Log des échanges série (multimètre / générateur)
 │   ├── fy6900_protocol.py         # Classe Fy6900Protocol : commandes WMW, WMF, WMA, WMN (utilise SerialConnection)
-│   ├── fy6900_commands.py         # Format des commandes FY6900 (WMF 14 chiffres, etc.) — helpers
+│   ├── fy6900_commands.py         # Format des commandes FY6900 (WMF/WFF µHz 14 chiffres, WMW/WFW 2 chiffres) — helpers
 │   ├── rs305p_protocol.py         # Classe Rs305pProtocol : Modbus RTU pour alimentation RS305P
 │   ├── data_logger.py             # Classe DataLogger : enregistrement CSV horodaté
 │   ├── filter_test.py             # Classe FilterTest : orchestration banc filtre (appelle Measurement + Fy6900Protocol)
@@ -274,7 +274,7 @@ BancTestAuto/
 | **core/app_logger.py** | Logging application (niveau, fichiers horodatés dans logs/). | main.py, main_window, device_detection |
 | **core/serial_exchange_logger.py** | Log des échanges série (multimètre / générateur) pour debug. | main_window → serial_connection |
 | **core/fy6900_protocol.py** | Protocole FY6900 (WMW, WMF, WMA, WMO, WMD, WMP, WMN ; lecture ack 0x0a entre commandes). | generator_view, filter_test |
-| **core/fy6900_commands.py** | Format commandes (ex. WMF 14 chiffres). Aucune I/O. | fy6900_protocol |
+| **core/fy6900_commands.py** | Format commandes (WMF/WFF µHz 14 chiffres, WMW/WFW 2 chiffres). Aucune I/O. | fy6900_protocol |
 | **core/data_logger.py** | Écriture CSV horodaté (timestamp, value, unit, mode). | logging_view |
 | **core/filter_test.py** | Orchestration : balayage, réglage FY6900, mesure OWON, calcul gain. | filter_test_view |
 | **core/filter_sweep.py** | Génération liste f[] (log/lin). Pur calcul. | filter_test |
