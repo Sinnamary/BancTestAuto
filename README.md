@@ -140,7 +140,7 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 
 - Caractérisation d’un filtre au **format Bode** (réponse en fréquence).
 - **Choix de la voie du générateur** (Voie 1 ou 2) pour le balayage.
-- **Balayage modifiable :** f_min, f_max, nombre de points, échelle lin/log, délai de stabilisation.
+- **Balayage modifiable :** f_min, f_max, nombre de points par décade, échelle lin/log, délai de stabilisation.
 - Tableau et courbe **gain (dB) vs fréquence** ; export CSV et graphiques semi-log.
 
 Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
@@ -183,7 +183,7 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `limits` | Taille de l'historique, options de débit série |
 | `logging` | Dossier de sortie, niveau de log, intervalle et durée par défaut |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
-| `filter_test` | Voie générateur (1 ou 2), f_min, f_max, nombre de points, échelle, délai, tension Ue |
+| `filter_test` | Voie générateur (1 ou 2), f_min, f_max, points par décade, échelle, délai, tension Ue |
 
 Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIER_DES_CHARGES.md).
 

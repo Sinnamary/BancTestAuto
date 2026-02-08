@@ -57,7 +57,7 @@
     "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
-    "n_points": 50,
+    "points_per_decade": 10,
     "scale": "log",
     "settling_ms": 200,
     "ue_rms": 1.0

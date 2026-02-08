@@ -206,7 +206,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
     "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
-    "n_points": 50,
+    "points_per_decade": 10,
     "scale": "log",
     "settling_ms": 200,
     "ue_rms": 1.0
@@ -251,7 +251,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | offset_v         | Offset (V)                          | −20 – 20                            |
 | **filter_test** | generator_channel | Voie du générateur pour le banc filtre | 1, 2                              |
 |             | f_min_hz, f_max_hz | Plage de fréquence (Hz)            | 10 – 1 000 000                      |
-|             | n_points        | Nombre de points du balayage        | 20 – 200                            |
+|             | points_per_decade | Nombre de points par décade (gamme ×10) | 1 – 100                             |
 |             | scale           | Échelle fréquence                   | `"log"`, `"lin"`                    |
 |             | settling_ms     | Délai stabilisation après changement f | 100 – 1000                       |
 |             | ue_rms          | Tension entrée filtre (V RMS)       | 1.0                                 |

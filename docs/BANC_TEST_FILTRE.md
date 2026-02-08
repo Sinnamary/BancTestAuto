@@ -12,7 +12,7 @@
 
 Le **banc de test filtre** permet de **caractériser un filtre au format Bode** (réponse en fréquence). Il fournit :
 
-- Un **balayage en fréquence entièrement modifiable** (f_min, f_max, N points, échelle, délai, Ue) ; valeurs par défaut dans `config.json`, ajustables pour une **bonne qualification du filtre** (passe-bas, coupure, etc.).
+- Un **balayage en fréquence entièrement modifiable** (f_min, f_max, points par décade, échelle, délai, Ue) ; valeurs par défaut dans `config.json`, ajustables pour une **bonne qualification du filtre** (passe-bas, coupure, etc.).
 - Un **tableau de résultats** : fréquence (Hz) | Us (V) | Us/Ue | 20×log₁₀(Us/Ue) [dB]
 - Un **graphique au format Bode** (semi-log) : gain en dB vs fréquence, pour analyse et export
 - Une **impression** possible sur papier semi-log
@@ -128,14 +128,14 @@ Pour **qualifier correctement le filtre** (pente de coupure, résonance, bande p
 | **Voie générateur** | Voie du FY6900 utilisée pour le balayage | 1 ou 2 | Choisir la sortie du générateur (FY6900 a deux voies) |
 | f_min     | Fréquence minimale (Hz) | 10, 20, 50 | Adapter à la plage utile du filtre |
 | f_max     | Fréquence maximale (Hz) | 100 kHz, 1 MHz | Couvrir la bande passante ou la coupure |
-| N_points  | Nombre de points | 20–100 | Résolution du tracé Bode (plus de points = courbe plus lisse) |
+| points_per_decade | Nombre de points par décade (chaque ×10) | 1–100 | Résolution du tracé Bode (plus de points/décade = courbe plus lisse) |
 | Échelle   | Linéaire ou logarithmique | Log recommandé | Log pour Bode classique, lin pour zoom sur une bande |
 | Temps stabilisation | Délai après changement de fréquence (ms) | 100–500 | Limiter les erreurs de mesure à chaque pas |
 | Ue        | Tension d’entrée effective (V RMS) | 1,0 (fixe) | Niveau d'excitation du filtre |
 
 ### 4.2 Échelle logarithmique des fréquences
 
-Pour un balayage log entre f_min et f_max avec N points :
+Pour un balayage log entre f_min et f_max avec points par décade :
 
 ```
 f[i] = f_min × (f_max / f_min)^(i / (N-1))   pour i = 0, 1, ..., N-1
@@ -239,7 +239,7 @@ ui/
 
 ### 8.1 Liaisons série et banc filtre
 
-Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (multimètre) et **`serial_generator`** (générateur FY6900). Les classes reprennent ces paramètres à l’initialisation et définissent des paramètres par défaut si une clé manque. Le banc filtre utilise la section **`filter_test`** pour le balayage (f_min, f_max, n_points, etc.) et les classes générateur/multimètre utilisent respectivement `serial_generator` et `serial_multimeter` pour la connexion. La section **`generator`** définit les **paramètres par défaut du générateur** (forme d’onde, fréquence, amplitude crête, offset), utilisés par l’onglet Générateur et par le banc filtre.
+Chaque liaison série a ses paramètres dans le JSON : **`serial_multimeter`** (multimètre) et **`serial_generator`** (générateur FY6900). Les classes reprennent ces paramètres à l’initialisation et définissent des paramètres par défaut si une clé manque. Le banc filtre utilise la section **`filter_test`** pour le balayage (f_min, f_max, points_per_decade, etc.) et les classes générateur/multimètre utilisent respectivement `serial_generator` et `serial_multimeter` pour la connexion. La section **`generator`** définit les **paramètres par défaut du générateur** (forme d’onde, fréquence, amplitude crête, offset), utilisés par l’onglet Générateur et par le banc filtre.
 
 ### 8.2 Configuration initiale connue (banc filtre)
 
@@ -272,7 +272,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
     "generator_channel": 1,
     "f_min_hz": 10,
     "f_max_hz": 100000,
-    "n_points": 50,
+    "points_per_decade": 10,
     "scale": "log",
     "settling_ms": 200,
     "ue_rms": 1.0
@@ -286,7 +286,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 
 ### 9.1 Onglet « Banc de test filtre »
 
-- **Zone config (balayage modifiable)** : **voie générateur (Voie 1 / Voie 2)**, f_min, f_max, N_points, échelle (lin/log), délai de stabilisation, Ue — tous modifiables pour **qualifier correctement le filtre** (coupure, pente, bande passante). Valeurs par défaut depuis `config.json`, modifiables à la volée.
+- **Zone config (balayage modifiable)** : **voie générateur (Voie 1 / Voie 2)**, f_min, f_max, points par décade, échelle (lin/log), délai de stabilisation, Ue — tous modifiables pour **qualifier correctement le filtre** (coupure, pente, bande passante). Valeurs par défaut depuis `config.json`, modifiables à la volée.
 - **Connexions** : port générateur, port multimètre (paramètres existants ou dédiés)
 - **Boutons** : [Démarrer balayage] [Arrêter] [Exporter CSV] [Exporter graphique]
 - **Tableau** : f | Us | Us/Ue | Gain (dB)

@@ -2,6 +2,7 @@
 Orchestration banc filtre : balayage en fréquence, mesures Us, calculs gain.
 Appelle Fy6900Protocol et Measurement ; n'implémente pas les protocoles.
 """
+import math
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -30,7 +31,7 @@ class FilterTestConfig:
     generator_channel: int
     f_min_hz: float
     f_max_hz: float
-    n_points: int
+    points_per_decade: int  # Nombre de points par décade (gamme ×10) ; le total est déduit
     scale: str  # "log" | "lin"
     settling_ms: int
     ue_rms: float
@@ -63,6 +64,8 @@ class FilterTest:
         self,
         on_point: Optional[Callable[[BodePoint, int, int], None]] = None,
         on_progress: Optional[Callable[[int, int], None]] = None,
+        on_stabilization_started: Optional[Callable[[], None]] = None,
+        on_stabilization_ended: Optional[Callable[[], None]] = None,
     ) -> list[BodePoint]:
         """
         Effectue le balayage. Au démarrage : configure le générateur (sinusoïde WMW00, amplitude Ue×√2,
@@ -76,8 +79,16 @@ class FilterTest:
         amplitude_pp = ue * 2 * (2 ** 0.5)
 
         ch = self._config.generator_channel
-        logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, n_points=%s, Ue_rms=%.3f V → Ue_pp=%.3f V",
-                     ch, self._config.f_min_hz, self._config.f_max_hz, self._config.n_points, ue, amplitude_pp)
+        # Nombre total de points : points_per_decade × nombre de décades (log10(f_max/f_min))
+        f_min = self._config.f_min_hz
+        f_max = self._config.f_max_hz
+        if f_min <= 0 or f_max <= 0:
+            decades = 1.0
+        else:
+            decades = math.log10(f_max / f_min)
+        n_points = max(2, round(self._config.points_per_decade * decades))
+        logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, points/decade=%s → %d points, Ue_rms=%.3f V → Ue_pp=%.3f V",
+                     ch, f_min, f_max, self._config.points_per_decade, n_points, ue, amplitude_pp)
         self._measurement.set_voltage_ac()
         # Même ordre et mêmes classes que l'onglet Générateur : forme (WMW00), amplitude (V pp), offset, rapport cyclique, phase
         # Fréquence envoyée via set_frequency_hz (µHz, 14 chiffres) à chaque point.
@@ -88,20 +99,34 @@ class FilterTest:
         self._generator.set_phase_deg(0.0, channel=ch)
 
         freqs = sweep_frequencies(
-            self._config.f_min_hz,
-            self._config.f_max_hz,
-            self._config.n_points,
+            f_min,
+            f_max,
+            n_points,
             self._config.scale,
         )
         total = len(freqs)
         results: list[BodePoint] = []
 
+        # Appliquer le premier stimulus (première fréquence, sortie ON), puis attendre 2 s de stabilisation
+        # des appareils et du filtre avant de lancer les mesures et le balayage.
+        if freqs:
+            first_f = freqs[0]
+            self._generator.set_frequency_hz(first_f, channel=ch)
+            self._generator.set_output(True, channel=ch)
+            logger.debug("banc filtre: premier stimulus appliqué (f=%.4f Hz), attente 2 s stabilisation", first_f)
+            if on_stabilization_started:
+                on_stabilization_started()
+            time.sleep(2.0)
+            if on_stabilization_ended:
+                on_stabilization_ended()
+
         for i, f_hz in enumerate(freqs):
             if self._abort:
                 break
-            self._generator.set_frequency_hz(f_hz, channel=ch)  # Fy6900Protocol → WMF/WFF µHz 14 chiffres
-            self._generator.set_output(True, channel=ch)
-            time.sleep(self._config.settling_ms / 1000.0)
+            # À partir du 2e point : régler la nouvelle fréquence et attendre settling_ms avant de mesurer
+            if i > 0:
+                self._generator.set_frequency_hz(f_hz, channel=ch)
+                time.sleep(self._config.settling_ms / 1000.0)
 
             raw = self._measurement.read_value()
             us = self._measurement.parse_float(raw)
