@@ -37,6 +37,7 @@ wheels/
 htmlcov/
 .coverage
 .coverage.*
+tests/tmp_bode_csv/
 
 # Environnement
 .env

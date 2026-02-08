@@ -1,55 +1,31 @@
 """
-Widget graphique Bode pour le viewer CSV. Compose grille, courbes, marqueur fc.
-Zoom (molette, zoom zone), pan, réglage des échelles. Aucune dépendance au banc de test.
+Widget graphique Bode pour le viewer CSV. Compose grille, courbes, marqueurs.
+Zoom (molette, zoom zone), pan, réglage des échelles. Délègue à plot_* pour la logique.
 """
-import math
 from typing import Optional, Tuple, Union
 
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGraphicsView
-from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGraphicsView
 from PyQt6.QtCore import QEvent
+from PyQt6.QtGui import QColor
 import pyqtgraph as pg
 
 from core.app_logger import get_logger
-
-logger = get_logger(__name__)
-
-# Polices pour une bonne lisibilité des échelles (rapport/gain et fréquence)
-_AXIS_LABEL_FONT_SIZE = 12
-_TICK_LABEL_FONT_SIZE = 10
-# Couleurs du label de survol (f, G) selon le fond
-_HOVER_COLOR_DARK = "#e8e8e8"
-_HOVER_COLOR_LIGHT = "#1a1a1a"
-_HOVER_FONT_SIZE = 10
 
 from .model import BodeCsvDataset
 from .plot_grid import BodePlotGrid
 from .plot_curves import BodeCurveDrawer
 from .plot_cutoff_viz import CutoffMarkerViz
 from .plot_hover import create_hover_label, update_hover_from_viewport_event
-from .cutoff import Cutoff3DbFinder
+from .plot_peaks import BodePeaksOverlay
+from .plot_range import compute_data_range, apply_view_range, read_view_range
+from .plot_style import apply_axis_fonts, apply_background_style, BG_DARK, BG_LIGHT
 
-try:
-    from core.bode_utils import find_peaks_and_valleys
-except ImportError:
-    def find_peaks_and_valleys(*_args, **_kwargs):
-        return []
-
-# Marge relative pour l'auto-range (évite que la courbe colle aux bords)
-_AUTO_RANGE_MARGIN = 0.05
-
-# Couleurs fond : noir = thème sombre, blanc = thème clair
-_BG_DARK = "k"
-_BG_LIGHT = "w"
-# Thème sombre : axes et texte en gris clair
-_AXIS_PEN_DARK = pg.mkPen("#c0c0c0")
-# Thème clair : axes et texte en noir pour forte lisibilité sur fond blanc
-_AXIS_PEN_LIGHT = pg.mkPen("#000000")
-_TICK_LABEL_COLOR_LIGHT = "#000000"
+logger = get_logger(__name__)
 
 
 class BodeCsvPlotWidget(QWidget):
     """Graphique Bode semi-log dédié au visualiseur CSV."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -58,12 +34,10 @@ class BodeCsvPlotWidget(QWidget):
         self._plot_widget.setLabel("left", "Gain", units="dB")
         self._plot_widget.setLabel("bottom", "Fréquence", units="Hz")
         self._plot_widget.setLogMode(x=True, y=False)
-        # Désactiver le préfixe SI sur l'axe X : en mode log il fausse l'échelle (ex. "e27Hz", 10^23…).
-        # On affiche toujours les fréquences en Hz (0,1 ; 1 ; 10 ; 100 ; …).
         self._plot_widget.getPlotItem().getAxis("bottom").enableAutoSIPrefix(False)
         vb = self._plot_widget.getViewBox()
         vb.setMouseMode(vb.PanMode)
-        vb.disableAutoRange()  # on garde le contrôle manuel après auto_range()
+        vb.disableAutoRange()
         try:
             vb.setAntialiasing(True)
         except Exception:
@@ -73,31 +47,28 @@ class BodeCsvPlotWidget(QWidget):
         self._grid = BodePlotGrid(plot_item)
         self._curves = BodeCurveDrawer(plot_item)
         self._cutoff_viz = CutoffMarkerViz(plot_item)
+        self._peaks_overlay = BodePeaksOverlay(plot_item)
         self._hover_label: Optional[pg.TextItem] = None
         self._hover_filter_installed = False
         self._setup_hover()
-        self._peaks_scatter: Optional[pg.ScatterPlotItem] = None
-        self._valleys_scatter: Optional[pg.ScatterPlotItem] = None
-        self._show_peaks = False
-        self._smooth_savgol = False
         self._dataset: Optional[BodeCsvDataset] = None
         self._y_linear = False
         self._smooth_window = 0
         self._last_target_gain_db: Optional[float] = None
         self._last_target_fc_list: Optional[list] = None
         self._show_raw = False
-        self._background_dark = True  # fond noir par défaut (doc: CDC Visualisation Bode)
-        self._apply_axis_fonts()
+        self._smooth_savgol = False
+        self._background_dark = True
+        apply_axis_fonts(plot_item)
         self._apply_background_style()
 
     def _setup_hover(self) -> None:
-        """Affiche (f, gain) au survol du graphique pour faciliter la lecture."""
         plot_item = self._plot_widget.getPlotItem()
         self._hover_label = create_hover_label(plot_item)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        if not getattr(self, "_hover_filter_installed", False) and self._plot_widget is not None:
+        if not self._hover_filter_installed and self._plot_widget is not None:
             vb = self._plot_widget.getViewBox()
             scene = vb.scene()
             if scene is not None:
@@ -126,7 +97,6 @@ class BodeCsvPlotWidget(QWidget):
         else:
             self._plot_widget.setLabel("left", "Gain", units="dB")
         self._refresh()
-        # Réappliquer la ligne de gain cible avec la position Y adaptée au mode (dB ou Us/Ue)
         if self._last_target_gain_db is not None:
             self.set_target_gain_search(self._last_target_gain_db, self._last_target_fc_list)
 
@@ -137,71 +107,15 @@ class BodeCsvPlotWidget(QWidget):
         self._grid.set_minor_visible(visible)
 
     def set_background_dark(self, dark: bool) -> None:
-        """True = fond noir, False = fond blanc."""
         self._background_dark = dark
         self._apply_background_style()
 
-    def _apply_axis_fonts(self) -> None:
-        """Applique des polices lisibles pour les libellés et graduations des axes (suit config display.font_family)."""
-        pi = self._plot_widget.getPlotItem()
-        app = QApplication.instance() if QApplication else None
-        family = app.font().family() if app and app.font().family() else (
-            "Segoe UI" if __import__("sys").platform == "win32" else None
-        )
-        label_font = QFont()
-        tick_font = QFont()
-        if family:
-            label_font.setFamily(family)
-            tick_font.setFamily(family)
-        label_font.setPointSize(_AXIS_LABEL_FONT_SIZE)
-        label_font.setBold(True)
-        tick_font.setPointSize(_TICK_LABEL_FONT_SIZE)
-        for ax_name in ("left", "bottom"):
-            ax_item = pi.getAxis(ax_name)
-            ax_item.tickFont = tick_font
-            if hasattr(ax_item, "label") and ax_item.label is not None:
-                ax_item.label.setFont(label_font)
-        pi.getAxis("left").setWidth(48)
-        pi.getAxis("bottom").setHeight(42)
-
     def _apply_background_style(self) -> None:
-        vb = self._plot_widget.getViewBox()
         pi = self._plot_widget.getPlotItem()
-        self._grid.set_dark_background(self._background_dark)
-        if self._background_dark:
-            vb.setBackgroundColor(_BG_DARK)
-            for ax in ("left", "bottom"):
-                ax_item = pi.getAxis(ax)
-                ax_item.setPen(_AXIS_PEN_DARK)
-                ax_item.setTextPen(_AXIS_PEN_DARK)
-                if hasattr(ax_item, "label") and ax_item.label is not None:
-                    ax_item.label.setDefaultTextColor(QColor("#c0c0c0"))
-        else:
-            vb.setBackgroundColor(_BG_LIGHT)
-            for ax in ("left", "bottom"):
-                ax_item = pi.getAxis(ax)
-                ax_item.setPen(_AXIS_PEN_LIGHT)
-                ax_item.setTextPen(_AXIS_PEN_LIGHT)
-                if hasattr(ax_item, "label") and ax_item.label is not None:
-                    ax_item.label.setDefaultTextColor(QColor(_TICK_LABEL_COLOR_LIGHT))
-        # Label de survol (f, G) : police (config display.font_family) et couleur selon le fond
-        if self._hover_label is not None:
-            app = QApplication.instance() if QApplication else None
-            family = app.font().family() if app and app.font().family() else (
-                "Segoe UI" if __import__("sys").platform == "win32" else None
-            )
-            font = QFont()
-            if family:
-                font.setFamily(family)
-            font.setPointSize(_HOVER_FONT_SIZE)
-            font.setBold(True)
-            self._hover_label.setFont(font)
-            self._hover_label.setColor(
-                QColor(_HOVER_COLOR_DARK) if self._background_dark else QColor(_HOVER_COLOR_LIGHT)
-            )
+        vb = self._plot_widget.getViewBox()
+        apply_background_style(pi, vb, self._background_dark, self._grid, self._hover_label)
 
     def set_curve_color(self, color: Union[str, QColor]) -> None:
-        """Change la couleur de la courbe principale."""
         self._curves.set_curve_color(color)
 
     def set_smoothing(
@@ -213,14 +127,12 @@ class BodeCsvPlotWidget(QWidget):
         self._refresh()
 
     def set_peaks_visible(self, visible: bool) -> None:
-        self._show_peaks = visible
-        self._refresh_peaks()
+        self._peaks_overlay.set_visible(visible)
+        self._peaks_overlay.update(self._dataset, self._y_linear)
 
     def set_target_gain_search(
         self, gain_db: Optional[float], fc_hz_list: Optional[list] = None
     ) -> None:
-        """Affiche la ligne gain cible et les fréquences d'intersection (recherche personnalisée).
-        En mode gain linéaire (Us/Ue), la ligne est positionnée à 10^(gain_db/20)."""
         self._last_target_gain_db = gain_db
         self._last_target_fc_list = (fc_hz_list or []) if gain_db is not None else None
         if gain_db is None:
@@ -231,12 +143,12 @@ class BodeCsvPlotWidget(QWidget):
             self._cutoff_viz.set_target_gain(gain_db, f"{gain_db:.1f} dB", y_display=y_display)
             self._cutoff_viz.set_target_gain_frequencies(fc_hz_list or [])
 
-
     def _refresh(self) -> None:
         if not self._dataset or self._dataset.is_empty():
             self._curves.clear()
             self._cutoff_viz.set_level(None)
             self._cutoff_viz.set_cutoff_frequencies([])
+            self._peaks_overlay.update(None, self._y_linear)
             return
         self._curves.set_data(
             self._dataset,
@@ -245,70 +157,19 @@ class BodeCsvPlotWidget(QWidget):
             show_raw=self._show_raw,
             smooth_savgol_flag=self._smooth_savgol,
         )
-        self._refresh_cutoff()
-        self._refresh_peaks()
-        self._cutoff_viz.update_label_position()
-
-    def _refresh_cutoff(self) -> None:
-        # Ligne fixe -3 dB supprimée : remplacée par « Recherche gain cible » (ligne cyan au gain choisi)
         self._cutoff_viz.set_level(None)
         self._cutoff_viz.set_cutoff_frequencies([])
+        self._peaks_overlay.update(self._dataset, self._y_linear)
         self._cutoff_viz.update_label_position()
 
-    def _refresh_peaks(self) -> None:
-        """Affiche les marqueurs pics (maxima) et creux (minima) locaux."""
-        plot_item = self._plot_widget.getPlotItem()
-        if self._peaks_scatter is None:
-            self._peaks_scatter = pg.ScatterPlotItem(
-                size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 200, 0, 200),
-                symbol="o", zValue=8,
-            )
-            plot_item.addItem(self._peaks_scatter)
-        if self._valleys_scatter is None:
-            self._valleys_scatter = pg.ScatterPlotItem(
-                size=10, pen=pg.mkPen(None), brush=pg.mkBrush(100, 200, 255, 200),
-                symbol="o", zValue=8,
-            )
-            plot_item.addItem(self._valleys_scatter)
-        if not self._show_peaks or not self._dataset or self._dataset.is_empty():
-            self._peaks_scatter.setData([], [])
-            self._valleys_scatter.setData([], [])
-            return
-        freqs = self._dataset.freqs_hz()
-        gains = self._dataset.gains_db()
-        peaks_valleys = find_peaks_and_valleys(freqs, gains, order=3)
-        px, py = [], []
-        vx, vy = [], []
-        for f, g_db, kind in peaks_valleys:
-            g_show = (10 ** (g_db / 20.0)) if self._y_linear else g_db
-            if kind == "pic":
-                px.append(f)
-                py.append(g_show)
-            else:
-                vx.append(f)
-                vy.append(g_show)
-        self._peaks_scatter.setData(px, py)
-        self._valleys_scatter.setData(vx, vy)
-
     def get_data_range(self) -> Optional[Tuple[float, float, float, float]]:
-        """Retourne (x_min, x_max, y_min, y_max) des données avec marge, ou None si vide."""
         if not self._dataset or self._dataset.is_empty():
             return None
         freqs = self._dataset.freqs_hz()
         ys = self._dataset.gains_linear() if self._y_linear else self._dataset.gains_db()
-        x_min, x_max = min(freqs), max(freqs)
-        y_min, y_max = min(ys), max(ys)
-        dx = (x_max - x_min) * _AUTO_RANGE_MARGIN or x_min * 0.1
-        dy = (y_max - y_min) * _AUTO_RANGE_MARGIN or 1.0
-        return (
-            max(x_min - dx, 0.1) if x_min > 0 else 0.1,
-            x_max + dx,
-            y_min - dy,
-            y_max + dy,
-        )
+        return compute_data_range(freqs, ys)
 
     def auto_range(self) -> None:
-        """Recadre la vue sur les données (avec marge)."""
         r = self.get_data_range()
         if r is not None:
             self.set_view_range(r[0], r[1], r[2], r[3])
@@ -318,105 +179,32 @@ class BodeCsvPlotWidget(QWidget):
             vb.autoRange()
 
     def set_view_range(
-        self,
-        x_min: float,
-        x_max: float,
-        y_min: float,
-        y_max: float,
+        self, x_min: float, x_max: float, y_min: float, y_max: float
     ) -> None:
-        """Fixer les limites des axes (fréquence en Hz, gain selon unité courante)."""
-        logger.debug(
-            "Bode plot set_view_range: x_min=%.6g, x_max=%.6g, y_min=%.6g, y_max=%.6g (Hz / gain)",
-            x_min, x_max, y_min, y_max,
-        )
         vb = self._plot_widget.getViewBox()
-        vb.disableAutoRange()
-        # En mode log (axe X), la ViewBox pyqtgraph attend la plage en exposants (log10(Hz)),
-        # pas en Hz. Sinon elle ignore nos valeurs et garde les limites par défaut (-307.6, 308.2),
-        # d'où l'échelle aberrante (10^-300 à 10^300). On convertit Hz → log10(Hz).
         log_mode_x = vb.state.get("logMode", [False, False])[0]
-        if log_mode_x:
-            x_lo = math.log10(max(float(x_min), 1e-307))
-            x_hi = math.log10(min(float(x_max), 1e308))
-            vb.setRange(
-                xRange=(x_lo, x_hi),
-                padding=0,
-                update=True,
-                disableAutoRange=True,
-            )
-        else:
-            vb.setRange(
-                xRange=(float(x_min), float(x_max)),
-                padding=0,
-                update=True,
-                disableAutoRange=True,
-            )
-        vb.setRange(
-            yRange=(float(y_min), float(y_max)),
-            padding=0,
-            update=True,
-            disableAutoRange=True,
-        )
-        r = vb.viewRange()
-        logger.debug(
-            "Bode plot après set_view_range: viewRange X=%s, Y=%s",
-            r[0], r[1],
-        )
+        apply_view_range(vb, x_min, x_max, y_min, y_max, log_mode_x=log_mode_x)
         self._cutoff_viz.update_label_position()
 
     def set_rect_zoom_mode(self, enabled: bool) -> None:
-        """True = glisser pour sélectionner une zone et zoomer ; False = glisser pour déplacer (pan)."""
         vb = self._plot_widget.getViewBox()
         vb.setMouseMode(vb.RectMode if enabled else vb.PanMode)
 
     def get_view_range(self) -> Tuple[float, float, float, float]:
-        """Retourne (x_min, x_max, y_min, y_max) en Hz / gain. En mode log (axe X), la ViewBox
-        peut renvoyer l'axe X en exposants (ex. -307.6, 308.2) au lieu de Hz ; on convertit en Hz."""
         vb = self._plot_widget.getViewBox()
-        r = vb.viewRange()
-        x_lo, x_hi = r[0][0], r[0][1]
-        y_lo, y_hi = r[1][0], r[1][1]
-        # Détecter si l'axe X est en espace log (exposants) : valeurs négatives ou > 400
-        if x_lo <= 0 or x_hi <= 0 or x_lo > 500 or x_hi > 500:
-            # Interpréter comme log10(f_Hz), convertir en Hz (avec bornes pour éviter overflow)
-            exp_lo = max(-307.6, min(308.2, x_lo))
-            exp_hi = max(-307.6, min(308.2, x_hi))
-            x_lo = 10.0 ** exp_lo
-            x_hi = 10.0 ** exp_hi
-            if not math.isfinite(x_lo):
-                x_lo = 1e-307
-            if not math.isfinite(x_hi):
-                x_hi = 1e308
-            # Si la plage est celle des limites par défaut de la ViewBox (~0 à ~1e308), utiliser la plage des données
-            if self._dataset and not self._dataset.is_empty() and (x_hi > 1e200 or x_lo < 1e-200):
-                dr = self.get_data_range()
-                if dr is not None:
-                    x_lo, x_hi = dr[0], dr[1]
-                    logger.debug(
-                        "Bode plot get_view_range: viewRange X=limites par défaut → plage données x=[%.6g, %.6g], y=[%.6g, %.6g]",
-                        x_lo, x_hi, y_lo, y_hi,
-                    )
-                else:
-                    logger.debug(
-                        "Bode plot get_view_range: viewRange X en exposants → Hz x=[%.6g, %.6g], y=[%.6g, %.6g] (raw X=%s)",
-                        x_lo, x_hi, y_lo, y_hi, r[0],
-                    )
-            else:
-                logger.debug(
-                    "Bode plot get_view_range: viewRange X en exposants → Hz x=[%.6g, %.6g], y=[%.6g, %.6g] (raw X=%s)",
-                    x_lo, x_hi, y_lo, y_hi, r[0],
-                )
-        else:
-            logger.debug(
-                "Bode plot get_view_range: x=[%.6g, %.6g], y=[%.6g, %.6g] (viewRange raw: X=%s, Y=%s)",
-                x_lo, x_hi, y_lo, y_hi, r[0], r[1],
-            )
-        return (x_lo, x_hi, y_lo, y_hi)
+        log_mode_x = vb.state.get("logMode", [False, False])[0]
+        fallback = self.get_data_range()
+        out = read_view_range(vb, log_mode_x=log_mode_x, fallback=fallback)
+        logger.debug(
+            "Bode plot get_view_range: x=[%.6g, %.6g], y=[%.6g, %.6g]",
+            out[0], out[1], out[2], out[3],
+        )
+        return out
 
     def export_png(self, path: str) -> bool:
         try:
             vb = self._plot_widget.getViewBox()
-            vb.setBackgroundColor(_BG_DARK if self._background_dark else _BG_LIGHT)
+            vb.setBackgroundColor(BG_DARK if self._background_dark else BG_LIGHT)
             exporter = pg.exporters.ImageExporter(self._plot_widget.plotItem)
             exporter.export(path)
             return True
