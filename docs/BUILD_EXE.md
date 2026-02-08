@@ -14,14 +14,18 @@ L'application peut être distribuée sous forme d'un **exécutable unique** (.ex
 
 ## Génération de l'exécutable
 
-À la racine du projet :
+À la racine du projet, **avec l'environnement virtuel activé** :
 
 ```powershell
 # Windows (PowerShell)
 .\.venv\Scripts\Activate.ps1
-pip install pyinstaller
-pyinstaller BancTestAuto.spec
+pip install pyinstaller    # une seule fois
+python build_exe.py
 ```
+
+Le script `build_exe.py` utilise l'interpréteur du venv pour appeler PyInstaller (pas besoin d'activer le venv autrement que pour lancer `python build_exe.py`).
+
+Alternative manuelle : `pyinstaller BancTestAuto.spec` (depuis le venv).
 
 L'exécutable est produit dans le dossier **`dist/`** :
 

@@ -9,7 +9,7 @@ Application PyQt6 pour **commander individuellement** le multimètre OWON XDM, l
 ## Prérequis
 
 - **Python 3.10+**
-- **PyQt6**, **pyserial** — voir `requirements.txt`
+- **PyQt6**, **pyserial**, **pyqtgraph**, **markdown** — voir `requirements.txt`
 - **Plateformes :** Windows (ports `COMx`) et Linux (ports `/dev/ttyUSBx`)
 
 ---
@@ -33,16 +33,23 @@ python main.py
 
 ```
 BancTestAuto/
-├── main.py
-├── clean.py             # Nettoyage __pycache__, logs (python clean.py)
+├── main.py              # Point d'entrée : config, logging, thème, MainWindow
+├── clean.py             # Nettoyage __pycache__, logs (python clean.py [--all])
+├── bump_version.py      # Incrément de version (patch|minor|major) dans core/version.py
+├── build_exe.py         # Construction de l'exécutable (PyInstaller, à lancer depuis le venv)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
-├── core/                # Série, SCPI, FY6900, RS305P (Modbus), mesure, data_logger, filter_test, device_detection, etc.
-├── config/              # settings.py, config.json
+├── core/                # app_logger, app_paths, bode_calc, data_logger, device_detection, filter_sweep,
+│                        # filter_test, fy6900_commands, fy6900_protocol, measurement, rs305p_protocol,
+│                        # scpi_commands, scpi_protocol, serial_connection, serial_exchange_logger, version
+├── config/              # settings.py (chargement/sauvegarde), config.json
 ├── ui/
-│   ├── widgets/         # connection_status (2 indicateurs), measurement_display, mode_bar, range_selector, rate_selector, math_panel, history_table, advanced_params, etc.
-│   ├── dialogs/         # serial_config, save_config, device_detection, view_config, help_dialog (F1)
-│   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view, power_supply_view (Alimentation RS305P)
-└── resources/           # thèmes (dark.qss, light.qss) ; icônes optionnelles (phase ultérieure)
+│   ├── widgets/         # connection_status, measurement_display, mode_bar, range_selector, rate_selector,
+│   │                    # math_panel, history_table, advanced_params
+│   ├── dialogs/         # serial_config, save_config, device_detection, view_config, view_log,
+│   │                    # help_dialog (F1), about_dialog
+│   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view,
+│                        # bode_plot_widget, power_supply_view (Alimentation RS305P)
+└── resources/themes/    # dark.qss, light.qss (thèmes clair/foncé)
 ```
 
 **Maquette :** le répertoire `maquette/` permet de développer et valider **uniquement l’interface** (données factices), puis d’intégrer le code validé dans le logiciel. Lancer avec `python maquette/main_maquette.py`. Voir [maquette/README.md](maquette/README.md).
@@ -77,14 +84,31 @@ Avec `python clean.py --all`, supprime aussi le rapport de couverture `htmlcov/`
 
 ---
 
-## Exécutable Windows
+## Version
 
-Pour générer un **exécutable unique** (`BancTestAuto.exe`) avec PyInstaller :
+Le numéro de version et la date sont centralisés dans **`core/version.py`**. Pour les mettre à jour après une modification :
 
 ```bash
-pip install pyinstaller
-pyinstaller BancTestAuto.spec
+python bump_version.py patch   # 1.0.0 → 1.0.1 (correctif)
+python bump_version.py minor   # 1.0.1 → 1.1.0 (nouvelle fonctionnalité)
+python bump_version.py major   # 1.1.0 → 2.0.0 (changement majeur)
 ```
+
+La date `__version_date__` est mise à jour automatiquement avec la date du jour.
+
+---
+
+## Exécutable Windows
+
+Pour générer un **exécutable unique** (`BancTestAuto.exe`) avec PyInstaller, **depuis l'environnement virtuel** :
+
+```bash
+# Activer le venv puis lancer le script de build
+.\.venv\Scripts\Activate.ps1   # Windows
+python build_exe.py
+```
+
+Ou manuellement : `pip install pyinstaller` puis `pyinstaller BancTestAuto.spec`.
 
 L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.json` et le dossier `logs/` sont créés à côté de l’exécutable. Voir [Créer l’exécutable](docs/BUILD_EXE.md) pour le détail.
 
@@ -146,7 +170,8 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `serial_generator` | Port, débit, timeouts (générateur FY6900) |
 | `measurement` | Vitesse par défaut, auto-plage, intervalle de rafraîchissement |
 | `display` | Taille de police, **thème (clair/foncé)**, affichage secondaire |
-| `logging` | Dossier de sortie, intervalle et durée par défaut |
+| `limits` | Taille de l'historique, options de débit série |
+| `logging` | Dossier de sortie, niveau de log, intervalle et durée par défaut |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
 | `filter_test` | Voie générateur (1 ou 2), f_min, f_max, nombre de points, échelle, délai, tension Ue |
 
