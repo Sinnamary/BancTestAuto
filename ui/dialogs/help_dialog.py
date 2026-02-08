@@ -106,11 +106,9 @@ class HelpDialog(QDialog):
         self._search_edit.textChanged.connect(self._on_search_text_changed)
 
     def _default_help_path(self) -> Path:
-        """Chemin par défaut vers docs/AIDE.md (racine = parent de ui/)."""
-        # ui/dialogs/help_dialog.py → racine = parent.parent.parent
-        this_file = Path(__file__).resolve()
-        root = this_file.parent.parent.parent
-        return root / "docs" / "AIDE.md"
+        """Chemin par défaut vers docs/AIDE.md (compatible exe PyInstaller)."""
+        from core.app_paths import get_base_path
+        return get_base_path() / "docs" / "AIDE.md"
 
     def _focus_search(self):
         self._search_edit.setFocus()

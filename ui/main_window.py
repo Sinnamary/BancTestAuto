@@ -471,7 +471,8 @@ class MainWindow(QMainWindow):
 
     def _on_help(self):
         """Ouvre la fenêtre d'aide (manuel utilisateur avec recherche)."""
-        root = Path(__file__).resolve().parent.parent
+        from core.app_paths import get_base_path
+        root = get_base_path()
         help_path = root / "docs" / "AIDE.md"
         dlg = HelpDialog(help_path=help_path, parent=self)
         dlg.exec()

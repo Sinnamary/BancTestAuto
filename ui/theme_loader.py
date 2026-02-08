@@ -1,14 +1,17 @@
 """
 Charge les feuilles de style (QSS) des thèmes depuis resources/themes/.
 Permet d'appliquer un thème sombre ou clair à l'application.
+Compatible exécutable PyInstaller (ressources dans sys._MEIPASS).
 """
 from pathlib import Path
 
+from core.app_paths import get_base_path
+
 
 def get_resources_themes_dir(base_path: Path | None = None) -> Path:
-    """Retourne le répertoire resources/themes (par défaut depuis la racine du projet)."""
+    """Retourne le répertoire resources/themes (par défaut : racine projet ou MEIPASS si exe)."""
     if base_path is None:
-        base_path = Path(__file__).resolve().parent.parent
+        base_path = get_base_path()
     return base_path / "resources" / "themes"
 
 

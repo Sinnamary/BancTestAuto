@@ -1,12 +1,19 @@
 """
 Point d'entrée de l'application Banc de test automatique.
 Charge la config, lance la fenêtre principale avec connexions série et banc filtre.
+Compatible exécutable PyInstaller : config et logs à côté du .exe.
 """
 import sys
 from pathlib import Path
 
-# Racine du projet = répertoire parent de main.py
-_root = Path(__file__).resolve().parent
+# Racine du projet = répertoire parent de main.py (ou répertoire de l'exe si frozen)
+if getattr(sys, "frozen", False):
+    _root = Path(sys.executable).resolve().parent
+    # Répertoire de travail = répertoire de l'exe (pour config.json, ./logs, etc.)
+    import os
+    os.chdir(_root)
+else:
+    _root = Path(__file__).resolve().parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 

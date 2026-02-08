@@ -1,13 +1,16 @@
 """
 Chargement et sauvegarde de la configuration (config.json).
 Valeurs par défaut si une clé manque ; le JSON prime lorsqu'il est présent.
+Compatible exécutable PyInstaller : config.json à côté du .exe.
 """
 import json
 from pathlib import Path
 from typing import Any
 
-# Emplacement par défaut du fichier de configuration
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+from core.app_paths import get_config_path
+
+# Emplacement du fichier de configuration (à côté du .exe en mode frozen)
+DEFAULT_CONFIG_PATH = get_config_path()
 
 # Valeurs par défaut complètes (si clé absente du JSON)
 DEFAULTS = {

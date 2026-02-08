@@ -77,6 +77,19 @@ Avec `python clean.py --all`, supprime aussi le rapport de couverture `htmlcov/`
 
 ---
 
+## Exécutable Windows
+
+Pour générer un **exécutable unique** (`BancTestAuto.exe`) avec PyInstaller :
+
+```bash
+pip install pyinstaller
+pyinstaller BancTestAuto.spec
+```
+
+L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.json` et le dossier `logs/` sont créés à côté de l’exécutable. Voir [Créer l’exécutable](docs/BUILD_EXE.md) pour le détail.
+
+---
+
 ## Fonctionnalités
 
 ### Multimètre OWON (SCPI)
