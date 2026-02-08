@@ -3,6 +3,8 @@ Visualiseur Bode CSV — module totalement indépendant du banc de test.
 Aucune classe ni type partagé avec core ou les autres vues.
 Entrée : ouvrir par chemin de fichier CSV uniquement.
 """
+from typing import Optional
+
 from PyQt6.QtWidgets import QMessageBox
 
 from .dialog import BodeCsvViewerDialog
@@ -10,8 +12,10 @@ from .model import BodeCsvDataset
 from .csv_loader import BodeCsvFileLoader
 
 
-def open_viewer(parent=None, csv_path: str = "") -> None:
-    """Point d'entrée unique : charge le CSV et ouvre le dialogue (aucune donnée = message et sortie)."""
+def open_viewer(parent=None, csv_path: str = "", config: Optional[dict] = None) -> None:
+    """Point d'entrée unique : charge le CSV et ouvre le dialogue (aucune donnée = message et sortie).
+    config: configuration applicative optionnelle ; si fournie, le fond du graphique est initialisé
+    selon display.theme (clair/foncé)."""
     if not csv_path:
         return
     loader = BodeCsvFileLoader()
@@ -23,7 +27,7 @@ def open_viewer(parent=None, csv_path: str = "") -> None:
             "Aucune donnée valide trouvée. Format attendu : f_Hz;Us_V;Us_Ue;Gain_dB (séparateur ;)",
         )
         return
-    dlg = BodeCsvViewerDialog(parent, csv_path=csv_path, dataset=dataset)
+    dlg = BodeCsvViewerDialog(parent, csv_path=csv_path, dataset=dataset, config=config)
     dlg.exec()
 
 

@@ -75,6 +75,8 @@ class BodeCsvPlotWidget(QWidget):
         self._dataset: Optional[BodeCsvDataset] = None
         self._y_linear = False
         self._smooth_window = 0
+        self._last_target_gain_db: Optional[float] = None
+        self._last_target_fc_list: Optional[list] = None
         self._show_raw = False
         self._background_dark = True  # Noir par défaut
         self._apply_axis_fonts()
@@ -159,6 +161,9 @@ class BodeCsvPlotWidget(QWidget):
         else:
             self._plot_widget.setLabel("left", "Gain", units="dB")
         self._refresh()
+        # Réappliquer la ligne de gain cible avec la position Y adaptée au mode (dB ou Us/Ue)
+        if self._last_target_gain_db is not None:
+            self.set_target_gain_search(self._last_target_gain_db, self._last_target_fc_list)
 
     def set_grid_visible(self, visible: bool) -> None:
         self._grid.set_visible(visible)
@@ -227,12 +232,16 @@ class BodeCsvPlotWidget(QWidget):
     def set_target_gain_search(
         self, gain_db: Optional[float], fc_hz_list: Optional[list] = None
     ) -> None:
-        """Affiche la ligne gain cible et les fréquences d'intersection (recherche personnalisée)."""
+        """Affiche la ligne gain cible et les fréquences d'intersection (recherche personnalisée).
+        En mode gain linéaire (Us/Ue), la ligne est positionnée à 10^(gain_db/20)."""
+        self._last_target_gain_db = gain_db
+        self._last_target_fc_list = (fc_hz_list or []) if gain_db is not None else None
         if gain_db is None:
             self._cutoff_viz.set_target_gain(None)
             self._cutoff_viz.set_target_gain_frequencies([])
         else:
-            self._cutoff_viz.set_target_gain(gain_db, f"{gain_db:.1f} dB")
+            y_display = (10 ** (gain_db / 20.0)) if self._y_linear else gain_db
+            self._cutoff_viz.set_target_gain(gain_db, f"{gain_db:.1f} dB", y_display=y_display)
             self._cutoff_viz.set_target_gain_frequencies(fc_hz_list or [])
 
 

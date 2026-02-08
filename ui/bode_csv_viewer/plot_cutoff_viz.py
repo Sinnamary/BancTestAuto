@@ -45,6 +45,7 @@ class CutoffMarkerViz:
         self._target_line: Optional[Any] = None
         self._target_label: Optional[Any] = None
         self._target_y: Optional[float] = None
+        self._target_y_display: Optional[float] = None  # position Y à l'écran (dB ou Us/Ue)
         self._target_fc_lines: List[Any] = []
         self._target_fc_labels: List[Any] = []
 
@@ -96,9 +97,20 @@ class CutoffMarkerViz:
             self._plot_item.addItem(label)
             self._fc_labels.append(label)
 
-    def set_target_gain(self, gain_db: Optional[float], label: str = "") -> None:
-        """Affiche une ligne horizontale au gain cible (recherche personnalisée). gain_db=None masque."""
+    def set_target_gain(
+        self,
+        gain_db: Optional[float],
+        label: str = "",
+        y_display: Optional[float] = None,
+    ) -> None:
+        """
+        Affiche une ligne horizontale au gain cible (recherche personnalisée).
+        gain_db=None masque.
+        y_display: position Y pour le tracé (axe en dB → gain_db ; axe en Us/Ue → 10^(gain_db/20)).
+        Si None, utilise gain_db (comportement axe en dB).
+        """
         self._target_y = gain_db
+        self._target_y_display = y_display if y_display is not None else gain_db
         if self._target_line is None:
             self._target_line = pg.InfiniteLine(pos=0, angle=0, movable=False, pen=PEN_TARGET)
             self._target_line.setZValue(self.Z_LINE - 1)
@@ -109,17 +121,18 @@ class CutoffMarkerViz:
             self._target_label.setZValue(self.Z_LABEL)
             self._plot_item.addItem(self._target_label)
         if gain_db is not None:
-            self._target_line.setPos(gain_db)
+            self._target_line.setPos(self._target_y_display)
             self._target_line.setVisible(True)
             self._target_label.setText(label or f"{gain_db:.1f} dB")
             self._target_label.setVisible(True)
             vb = self._plot_item.getViewBox()
             if vb:
                 x_max = vb.viewRange()[0][1]
-                self._target_label.setPos(x_max, gain_db)
+                self._target_label.setPos(x_max, self._target_y_display)
         else:
             self._target_line.setVisible(False)
             self._target_label.setVisible(False)
+            self._target_y_display = None
 
     def set_target_gain_frequencies(self, fc_hz_list: List[float]) -> None:
         """Marqueurs verticaux aux fréquences où la courbe coupe le gain cible."""
@@ -127,7 +140,7 @@ class CutoffMarkerViz:
             self._plot_item.removeItem(item)
         self._target_fc_lines.clear()
         self._target_fc_labels.clear()
-        y_ref = self._target_y if self._target_y is not None else 0
+        y_ref = self._target_y_display if self._target_y_display is not None else (self._target_y if self._target_y is not None else 0)
         for k, fc_hz in enumerate(fc_hz_list):
             line = pg.InfiniteLine(pos=fc_hz, angle=90, movable=False, pen=PEN_TARGET_FC)
             line.setZValue(self.Z_FC - 1)
@@ -148,4 +161,5 @@ class CutoffMarkerViz:
             x_min, x_max = vb.viewRange()[0]
             self._label.setPos(x_max, self._y_level)
         if self._target_y is not None and self._target_label and self._target_label.isVisible() and vb:
-            self._target_label.setPos(vb.viewRange()[0][1], self._target_y)
+            y_pos = self._target_y_display if self._target_y_display is not None else self._target_y
+            self._target_label.setPos(vb.viewRange()[0][1], y_pos)

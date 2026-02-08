@@ -42,7 +42,13 @@ def _fmt_freq(hz: float) -> str:
 
 class BodeCsvViewerDialog(QDialog):
     """Dialogue autonome : charge et affiche un CSV Bode avec ses propres contrôles."""
-    def __init__(self, parent=None, csv_path: str = "", dataset: Optional[BodeCsvDataset] = None):
+    def __init__(
+        self,
+        parent=None,
+        csv_path: str = "",
+        dataset: Optional[BodeCsvDataset] = None,
+        config: Optional[dict] = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("Graphique Bode — Banc filtre")
         if csv_path:
@@ -54,6 +60,7 @@ class BodeCsvViewerDialog(QDialog):
         if csv_path and dataset is None:
             self._load_csv(csv_path)
         self._options = BodeViewOptions.default()
+        # Fond noir par défaut (l'utilisateur peut choisir Blanc dans Affichage)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -78,7 +85,7 @@ class BodeCsvViewerDialog(QDialog):
         self._background_combo = QComboBox()
         for label, dark in BodeViewOptions.BACKGROUND_CHOICES:
             self._background_combo.addItem(label, dark)
-        self._background_combo.setCurrentIndex(0)
+        self._background_combo.setCurrentIndex(0 if self._options.plot_background_dark else 1)
         self._background_combo.currentIndexChanged.connect(self._apply_options)
         disp_layout.addWidget(self._background_combo)
         disp_layout.addWidget(QLabel("Couleur courbe:"))
@@ -137,6 +144,10 @@ class BodeCsvViewerDialog(QDialog):
         self._search_target_btn.setToolTip("Affiche les fréquences où la courbe coupe ce gain")
         self._search_target_btn.clicked.connect(self._on_search_target_gain)
         search_layout.addWidget(self._search_target_btn)
+        self._clear_target_btn = QPushButton("Effacer la ligne")
+        self._clear_target_btn.setToolTip("Supprime la ligne de gain cible et les marqueurs de fréquence")
+        self._clear_target_btn.clicked.connect(self._on_clear_target_gain)
+        search_layout.addWidget(self._clear_target_btn)
         self._target_result_label = QLabel("")
         self._target_result_label.setStyleSheet("color: gray; font-size: 10px;")
         search_layout.addWidget(self._target_result_label)
@@ -332,6 +343,11 @@ class BodeCsvViewerDialog(QDialog):
             )
         else:
             self._target_result_label.setText("(aucune intersection)")
+
+    def _on_clear_target_gain(self) -> None:
+        """Supprime la ligne de gain cible et les marqueurs de fréquence du graphique."""
+        self._plot.set_target_gain_search(None)
+        self._target_result_label.setText("")
 
     def _on_export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(

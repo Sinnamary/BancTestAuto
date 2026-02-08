@@ -543,7 +543,7 @@ class MainWindow(QMainWindow):
             "CSV (*.csv);;Tous (*)"
         )
         if path:
-            open_bode_csv_viewer(self, path)
+            open_bode_csv_viewer(self, path, config=self._config)
 
     def _on_open_config(self):
         path, _ = QFileDialog.getOpenFileName(self, "Ouvrir la configuration", "", "JSON (*.json)")

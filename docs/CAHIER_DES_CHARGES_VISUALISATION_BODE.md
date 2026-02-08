@@ -1,6 +1,6 @@
 # Cahier des charges — Visualisation Bode (Banc filtre)
 
-**Version :** 1.1  
+**Version :** 1.2  
 **Date :** 8 février 2026  
 **Référence :** Banc de test automatique — Banc filtre
 
@@ -171,7 +171,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 | Élément | Description |
 |--------|-------------|
 | **Recherche gain cible** | Saisie d’un gain (dB), bouton « Rechercher » : affiche une **ligne horizontale** (couleur cyan, pointillé) à ce niveau et les **fréquences d’intersection** (lignes verticales + étiquettes). Par défaut -3 dB pour retrouver le comportement « ligne à -3 dB ». |
-| **Position** | Gain = valeur saisie (axe Y en dB) ; en mode gain linéaire (Us/Ue), la courbe reste en dB en interne, les intersections correspondent au même niveau. |
+| **Position** | Gain = valeur saisie (axe Y en dB). En mode gain linéaire (Us/Ue), la ligne est tracée à la position 10^(gain_dB/20) sur l’axe (ex. -3 dB → ≈ 0,708) ; les intersections correspondent au même niveau. |
 | **Étiquette** | Libellé du gain cible (ex. « -3.0 dB ») à droite de la ligne. |
 | **Panneau d’infos** | Sous le graphique : fc (-3 dB), G_max, N points (calculés automatiquement). |
 
@@ -184,7 +184,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 | **Framework graphique** | pyqtgraph (déjà utilisé dans BodePlotWidget) |
 | **Compatibilité** | PyQt6, Python 3.10+ |
 | **Performances** | Gestion fluide de courbes jusqu’à ~10 000 points |
-| **Thème** | Respect du thème clair/foncé (display.theme) |
+| **Thème** | Respect du thème clair/foncé (display.theme) : à l’ouverture du viewer Bode, le fond du graphique (Noir/Blanc) est initialisé selon la config `display.theme` si la config est fournie. |
 | **Axe X logarithmique** | En mode log, la ViewBox pyqtgraph attend la plage en **log10(Hz)** (exposants), pas en Hz. L’implémentation convertit les bornes F min / F max (Hz) en log10 avant d’appliquer la plage, et interprète la plage renvoyée par la vue en Hz pour les champs F min / F max, afin que « Appliquer les limites » et « Ajuster vue » affichent une échelle de fréquences correcte (0,1 ; 1 ; 10 ; 100 ; … Hz). |
 
 ---
@@ -220,17 +220,20 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 
 ## 8. Analyse de conformité et pistes d’amélioration (étude de la courbe)
 
-*Révision : 8 février 2026*
+*Révision : 8 février 2026 (v1.2 — conformité 100 %)*
 
-### 8.1 Déjà en place
+### 8.1 Conformité fonctionnelle
 
 | Exigence | Statut |
 |----------|--------|
-| Lecture CSV, colonnes flexibles, dossier par défaut | ✓ |
+| Menu **Fichier → Ouvrir CSV Banc filtre...** (libellé avec « ... ») | ✓ |
+| Lecture CSV, colonnes flexibles, dossier par défaut `datas/csv/` | ✓ |
 | Axe X log, axe Y dB ou linéaire, courbe principale, quadrillage, libellés | ✓ |
 | Fond noir/blanc, couleur courbe, courbe brute + lissée | ✓ |
+| **Thème** : fond du graphique initialisé selon `display.theme` à l'ouverture (si config fournie) | ✓ |
 | Lissage moyenne glissante (fenêtre 3–11), option activer/désactiver | ✓ |
 | Référence -3 dB : **Recherche gain cible** (ligne + intersections) ; panneau fc, G_max, N | ✓ |
+| **Axe Y linéaire** : ligne de gain cible positionnée à 10^(gain_dB/20) (ex. -3 dB → ≈ 0,708) | ✓ |
 | Plage manuelle (F min/max, gain min/max), Appliquer les limites, Ajuster vue | ✓ |
 | Zoom molette, zoom sur zone (glisser), pan | ✓ |
 | Export PNG, export points CSV | ✓ |
@@ -247,3 +250,7 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
 | **Lissage Savitzky-Golay** | P2 | ✓ Implémenté (option Algo, nécessite scipy) |
 | **Quadrillage mineur** | P1 (spec) | ✓ Implémenté (case « Quadrillage mineur ») |
 | **Export des points** | P2 | ✓ Implémenté (bouton « Exporter les points CSV ») |
+
+### 8.3 Note sur les algorithmes de lissage
+
+Le cahier des charges mentionne en option le **spline cubique** (UnivariateSpline). L'implémentation actuelle propose la **moyenne glissante** et le **Savitzky-Golay** ; le spline n'est pas proposé. Les deux algorithmes disponibles couvrent les besoins de lissage et de préservation des pics.
