@@ -6,7 +6,9 @@ Référence des **commandes SCPI** utilisables pour piloter l’oscilloscope HAN
 
 ## Identification et liaison
 
-- **Liaison** : USB (port COM virtuel), débit typique **115200** ou **9600** bauds.
+- **Liaison** :  
+  - **Série (COM)** : port COM virtuel, débit typique **115200** ou **9600** bauds (pilote CDC/série).  
+  - **USB (WinUSB/PyUSB)** : connexion directe USB sans port COM. Pilote **WinUSB** (ex. installé via [Zadig](https://zadig.akeo.ie/)), backend **libusb** et **PyUSB** (`pip install pyusb`). Dans l’onglet Oscilloscope, choisir le mode **USB (WinUSB/PyUSB)**, cliquer sur **Rafraîchir USB**, sélectionner le périphérique dans la liste puis **Connexion**.
 - **Terminaison** : les commandes doivent se terminer par un **retour à la ligne** (`\n`). Ne pas envoyer `\` + `n` en clair (échapper correctement en code).
 - **Identification** : `*IDN?` — réponse type fabricant, modèle, numéro de série (si supporté).
 

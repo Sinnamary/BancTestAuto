@@ -1,6 +1,7 @@
 # Dépendances du projet Banc de test automatique
 PyQt6>=6.4
 pyserial>=3.5
+pyusb>=1.2
 pyqtgraph>=0.13
 markdown>=3.4
 

@@ -20,16 +20,34 @@ class Dos1102Protocol:
         cmd = command.strip()
         if not cmd.endswith("\n"):
             cmd += "\n"
-        logger.debug("DOS1102 TX: %s", cmd.rstrip())
-        self._conn.write(cmd.encode("utf-8"))
+        data = cmd.encode("utf-8")
+        logger.debug("DOS1102 TX (%d octets): %r", len(data), cmd.rstrip())
+        try:
+            n = self._conn.write(data)
+            logger.debug("DOS1102 TX écrit: %d octets", n)
+        except Exception as e:
+            logger.exception("DOS1102 TX erreur: %s", e)
+            raise
 
     def ask(self, command: str) -> str:
         """Envoie une commande et retourne la réponse (jusqu'à LF)."""
+        logger.debug("DOS1102 ask: envoi commande %r", command.strip())
         self.write(command)
-        line = self._conn.readline()
-        reply = line.decode("utf-8", errors="replace").strip()
-        logger.debug("DOS1102 RX: %r", reply)
-        return reply
+        try:
+            logger.debug("DOS1102 ask: lecture réponse (readline)...")
+            line = self._conn.readline()
+            logger.debug("DOS1102 ask: reçu %d octets bruts: %r", len(line), line[:200] if len(line) > 200 else line)
+            reply = line.decode("utf-8", errors="replace").strip()
+            # Retirer le prompt DOS1102 en fin de ligne (ex. "->" ou "   HANMA,...->")
+            if reply.endswith("->"):
+                reply = reply[:-2].strip()
+            logger.debug("DOS1102 RX: %r", reply)
+            if not reply and len(line) > 0:
+                logger.debug("DOS1102 RX: réponse non vide mais strip() vide (caractères spéciaux?)")
+            return reply
+        except Exception as e:
+            logger.exception("DOS1102 ask erreur (timeout?) : %s", e)
+            raise
 
     def idn(self) -> str:
         """Identification (*IDN?)."""

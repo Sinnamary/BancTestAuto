@@ -304,6 +304,8 @@ class MainWindow(QMainWindow):
             logging_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
+            self._oscilloscope_view.load_config(self._config)
 
     def _init_views_without_connections(self):
         """Initialise les vues sans créer ni ouvrir de connexion série (aucun port ouvert au démarrage)."""
@@ -315,6 +317,8 @@ class MainWindow(QMainWindow):
             logging_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
+            self._oscilloscope_view.load_config(self._config)
 
     def _reconnect_serial(self):
         """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Charger config / Détecter / Paramètres OK)."""
@@ -408,6 +412,8 @@ class MainWindow(QMainWindow):
                 self._filter_test_view.load_config(self._config)
             if self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config"):
                 self._serial_terminal_view.load_config(self._config)
+            if self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config"):
+                self._oscilloscope_view.load_config(self._config)
             sm = get_serial_multimeter_config(self._config) if get_serial_multimeter_config else {}
             sg = get_serial_generator_config(self._config) if get_serial_generator_config else {}
             msg = f"Config : {config_path.name} — Multimètre {sm.get('port', '?')} @ {sm.get('baudrate', '?')} bauds, Générateur {sg.get('port', '?')} @ {sg.get('baudrate', '?')} bauds."
@@ -623,11 +629,14 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def closeEvent(self, event):
-        """À la fermeture : déconnexion de l'alimentation et du terminal série."""
+        """À la fermeture : déconnexion de l'alimentation, du terminal série et de l'oscilloscope."""
         if hasattr(self, "_power_supply_view") and self._power_supply_view is not None:
             if hasattr(self._power_supply_view, "_disconnect"):
                 self._power_supply_view._disconnect()
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view is not None:
             if hasattr(self._serial_terminal_view, "disconnect_serial"):
                 self._serial_terminal_view.disconnect_serial()
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view is not None:
+            if hasattr(self._oscilloscope_view, "_disconnect"):
+                self._oscilloscope_view._disconnect()
         super().closeEvent(event)
