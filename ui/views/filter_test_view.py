@@ -26,7 +26,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
-from ui.dialogs.bode_graph_dialog import BodeGraphDialog
+from ui.bode_csv_viewer import BodeCsvViewerDialog
+from ui.bode_csv_viewer.model import BodeCsvDataset, BodeCsvPoint
 
 
 # Worker thread pour exécuter le balayage sans bloquer l'UI
@@ -61,6 +62,7 @@ class FilterTestView(QWidget):
         self._filter_test = None
         self._worker = None
         self._results: list = []
+        self._config: dict | None = None
         self._stabilization_dialog: QDialog | None = None
         self._build_ui()
 
@@ -158,6 +160,7 @@ class FilterTestView(QWidget):
 
     def load_config(self, config: dict):
         """Charge les valeurs depuis la section filter_test de la config."""
+        self._config = config
         ft = config.get("filter_test", {})
         self._f_min.setValue(float(ft.get("f_min_hz", 10)))
         self._f_max.setValue(float(ft.get("f_max_hz", 100000)))
@@ -262,14 +265,22 @@ class FilterTestView(QWidget):
         QMessageBox.information(self, "Export", f"CSV enregistré : {path}")
 
     def _on_view_graph(self):
-        """Ouvre une fenêtre dédiée avec le graphique Bode et le choix d'échelle (linéaire / dB)."""
+        """Ouvre le visualiseur Bode complet avec les données du balayage (aucun choix de fichier)."""
         if not self._results:
             QMessageBox.information(
                 self, "Graphique Bode",
                 "Aucun résultat de balayage. Lancez un balayage puis cliquez sur « Voir le graphique Bode ».",
             )
             return
-        dlg = BodeGraphDialog(self, points=self._results)
+        # Données déjà collectées : on les injecte directement dans le graphique (pas de dialogue d'ouverture de fichier)
+        csv_points = [
+            BodeCsvPoint(f_hz=p.f_hz, us_v=p.us_v, gain_linear=p.gain_linear, gain_db=p.gain_db)
+            for p in self._results
+        ]
+        dataset = BodeCsvDataset(csv_points)
+        config = self._config if self._config is not None else {}
+        dlg = BodeCsvViewerDialog(self, csv_path="", dataset=dataset, config=config)
+        dlg.setWindowTitle("Graphique Bode — Résultat balayage")
         dlg.exec()
 
     def get_generator_channel(self) -> int:

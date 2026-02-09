@@ -1,6 +1,6 @@
 {
   "serial_multimeter": {
-    "port": "COM5",
+    "port": "COM8",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -10,7 +10,7 @@
     "log_exchanges": false
   },
   "serial_generator": {
-    "port": "COM7",
+    "port": "COM10",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -26,6 +26,7 @@
   },
   "display": {
     "font_size": "large",
+    "font_family": "Segoe UI",
     "theme": "light",
     "secondary_display": false
   },
@@ -61,5 +62,16 @@
     "scale": "log",
     "settling_ms": 200,
     "ue_rms": 1.0
+  },
+  "bode_viewer": {
+    "plot_background_dark": true,
+    "curve_color": "#e0c040",
+    "grid_visible": true,
+    "grid_minor_visible": false,
+    "smooth_window": 0,
+    "show_raw_curve": false,
+    "smooth_savgol": false,
+    "y_linear": false,
+    "peaks_visible": false
   }
 }

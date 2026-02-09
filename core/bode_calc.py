@@ -1,6 +1,6 @@
 """
 Calculs gain linéaire et gain dB (20×log₁₀(Us/Ue)).
-Réutilisable sans UI ; utilisé par filter_test et bode_plot_widget.
+Réutilisable sans UI ; utilisé par filter_test.
 """
 import math
 

@@ -18,7 +18,7 @@ if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplicationgit
 
 from config.settings import load_config
 from core.app_logger import init_app_logging

@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, PowerSupplyView, SerialTerminalView
+from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, FilterCalculatorView, PowerSupplyView, SerialTerminalView
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
@@ -179,6 +179,7 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(LoggingView(), "Enregistrement")
         self._filter_test_view = FilterTestView()
         self._tabs.addTab(self._filter_test_view, "Banc filtre")
+        self._tabs.addTab(FilterCalculatorView(), "Calcul filtre")
         self._power_supply_view = PowerSupplyView()
         self._tabs.addTab(self._power_supply_view, "Alimentation")
         self._serial_terminal_view = SerialTerminalView()
