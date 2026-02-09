@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, FilterCalculatorView, PowerSupplyView, SerialTerminalView
+from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, FilterCalculatorView, PowerSupplyView, SerialTerminalView, OscilloscopeView
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
@@ -163,6 +163,8 @@ class MainWindow(QMainWindow):
         sub_fy6900.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_FY6900.md"))
         sub_rs305p = help_menu.addMenu("Alimentation RS305P")
         sub_rs305p.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_RS305P.md"))
+        sub_dos1102 = help_menu.addMenu("Oscilloscope DOS1102")
+        sub_dos1102.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_HANMATEK_DOS1102.md"))
 
     def _build_central(self):
         central = QWidget()
@@ -184,6 +186,8 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._power_supply_view, "Alimentation")
         self._serial_terminal_view = SerialTerminalView()
         self._tabs.addTab(self._serial_terminal_view, "Terminal série")
+        self._oscilloscope_view = OscilloscopeView()
+        self._tabs.addTab(self._oscilloscope_view, "Oscilloscope")
         layout.addWidget(self._tabs)
 
         self.setCentralWidget(central)

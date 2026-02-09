@@ -34,6 +34,16 @@ DEFAULTS = {
         "write_timeout": 2.0,
         "log_exchanges": False,
     },
+    "serial_oscilloscope": {
+        "port": "COM5",
+        "baudrate": 115200,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1,
+        "timeout": 2.0,
+        "write_timeout": 2.0,
+        "log_exchanges": False,
+    },
     "measurement": {
         "default_rate": "F",
         "default_auto_range": True,
@@ -149,6 +159,11 @@ def get_serial_multimeter_config(config: dict[str, Any]) -> dict[str, Any]:
 def get_serial_generator_config(config: dict[str, Any]) -> dict[str, Any]:
     """Retourne la section serial_generator (pour la classe série générateur)."""
     return config.get("serial_generator", DEFAULTS["serial_generator"]).copy()
+
+
+def get_serial_oscilloscope_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section serial_oscilloscope (pour l'oscilloscope HANMATEK DOS1102)."""
+    return config.get("serial_oscilloscope", DEFAULTS["serial_oscilloscope"]).copy()
 
 
 def get_filter_test_config(config: dict[str, Any]) -> dict[str, Any]:

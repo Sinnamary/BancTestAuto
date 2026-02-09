@@ -5,6 +5,7 @@ from .filter_test_view import FilterTestView
 from .filter_calculator_view import FilterCalculatorView
 from .power_supply_view import PowerSupplyView
 from .serial_terminal_view import SerialTerminalView
+from .oscilloscope_view import OscilloscopeView
 
 __all__ = [
     "MeterView",
@@ -14,4 +15,5 @@ __all__ = [
     "FilterCalculatorView",
     "PowerSupplyView",
     "SerialTerminalView",
+    "OscilloscopeView",
 ]

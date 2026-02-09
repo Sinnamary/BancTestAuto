@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QFormLayout,
     QDoubleSpinBox,
+    QComboBox,
 )
 
 from core.filter_calculator import (
@@ -33,6 +34,12 @@ def _format_freq(hz: float | None) -> str:
     return f"{hz:.4g} Hz"
 
 
+# Facteurs de conversion vers unités SI (Ω, H, F)
+R_UNITS = [("Ω", 1.0), ("kΩ", 1e3), ("MΩ", 1e6)]
+L_UNITS = [("pH", 1e-12), ("nH", 1e-9), ("µH", 1e-6), ("mH", 1e-3), ("H", 1.0)]
+C_UNITS = [("pF", 1e-12), ("nF", 1e-9), ("µF", 1e-6), ("mF", 1e-3), ("F", 1.0)]
+
+
 class FilterCalculatorView(QWidget):
     """Vue pour le calcul des fréquences de coupure à partir de R, L, C."""
 
@@ -46,33 +53,66 @@ class FilterCalculatorView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
 
-        # === Entrées R, L, C ===
+        # === Entrées R, L, C (valeur + unité) ===
         params_gb = QGroupBox("Composants (entrée unique pour tous les filtres)")
         params_layout = QFormLayout(params_gb)
 
+        _spin_width = 100
+        _combo_width = 60
+
+        # R : spin + combo Ω / kΩ / MΩ
         self._r_spin = QDoubleSpinBox()
-        self._r_spin.setRange(0.1, 10e6)
-        self._r_spin.setValue(10000)
-        self._r_spin.setDecimals(2)
-        self._r_spin.setSuffix(" Ω")
-        self._r_spin.setToolTip("Résistance en ohms")
-        params_layout.addRow("R (résistance)", self._r_spin)
+        self._r_spin.setRange(0.0001, 1e10)
+        self._r_spin.setValue(10)
+        self._r_spin.setDecimals(4)
+        self._r_spin.setMinimumWidth(_spin_width)
+        self._r_combo = QComboBox()
+        for label, _ in R_UNITS:
+            self._r_combo.addItem(label)
+        self._r_combo.setCurrentIndex(1)  # kΩ par défaut
+        self._r_combo.setMinimumWidth(_combo_width)
+        self._r_prev_unit_idx = 1
+        row_r = QHBoxLayout()
+        row_r.addWidget(self._r_spin)
+        row_r.addWidget(self._r_combo)
+        row_r.addStretch()
+        params_layout.addRow("R (résistance)", row_r)
 
+        # L : spin + combo pH / nH / µH / mH / H
         self._l_spin = QDoubleSpinBox()
-        self._l_spin.setRange(1e-9, 10)
-        self._l_spin.setValue(0.001)
-        self._l_spin.setDecimals(6)
-        self._l_spin.setSuffix(" H")
-        self._l_spin.setToolTip("Inductance (self) en henrys (ex. 0.001 = 1 mH)")
-        params_layout.addRow("L (self / inductance)", self._l_spin)
+        self._l_spin.setRange(0, 1e10)
+        self._l_spin.setValue(0)
+        self._l_spin.setDecimals(4)
+        self._l_spin.setMinimumWidth(_spin_width)
+        self._l_combo = QComboBox()
+        for label, _ in L_UNITS:
+            self._l_combo.addItem(label)
+        self._l_combo.setCurrentIndex(3)  # mH par défaut
+        self._l_combo.setMinimumWidth(_combo_width)
+        self._l_prev_unit_idx = 3
+        row_l = QHBoxLayout()
+        row_l.addWidget(self._l_spin)
+        row_l.addWidget(self._l_combo)
+        row_l.addStretch()
+        params_layout.addRow("L (self / inductance)", row_l)
 
+        # C : spin + combo pF / nF / µF / mF / F
         self._c_spin = QDoubleSpinBox()
-        self._c_spin.setRange(1e-12, 0.01)
-        self._c_spin.setValue(1e-6)
-        self._c_spin.setDecimals(9)
-        self._c_spin.setSuffix(" F")
-        self._c_spin.setToolTip("Capacité en farads (ex. 1e-6 = 1 µF)")
-        params_layout.addRow("C (condensateur)", self._c_spin)
+        self._c_spin.setRange(0, 1e10)
+        self._c_spin.setValue(1)
+        self._c_spin.setDecimals(4)
+        self._c_spin.setMinimumWidth(_spin_width)
+        self._c_combo = QComboBox()
+        for label, _ in C_UNITS:
+            self._c_combo.addItem(label)
+        self._c_combo.setCurrentIndex(2)  # µF par défaut
+        self._c_combo.setMinimumWidth(_combo_width)
+        self._c_prev_unit_idx = 2
+        row_c = QHBoxLayout()
+        row_c.addWidget(self._c_spin)
+        row_c.addWidget(self._c_combo)
+        row_c.addStretch()
+        params_layout.addRow("C (condensateur)", row_c)
 
         layout.addWidget(params_gb)
 
@@ -106,11 +146,54 @@ class FilterCalculatorView(QWidget):
         self._r_spin.valueChanged.connect(self._update_results)
         self._l_spin.valueChanged.connect(self._update_results)
         self._c_spin.valueChanged.connect(self._update_results)
+        self._r_combo.currentIndexChanged.connect(self._on_r_unit_changed)
+        self._l_combo.currentIndexChanged.connect(self._on_l_unit_changed)
+        self._c_combo.currentIndexChanged.connect(self._on_c_unit_changed)
+
+    def _get_r_si(self) -> float:
+        return self._r_spin.value() * R_UNITS[self._r_combo.currentIndex()][1]
+
+    def _get_l_si(self) -> float:
+        return self._l_spin.value() * L_UNITS[self._l_combo.currentIndex()][1]
+
+    def _get_c_si(self) -> float:
+        return self._c_spin.value() * C_UNITS[self._c_combo.currentIndex()][1]
+
+    def _on_r_unit_changed(self):
+        """Lors du changement d'unité, convertir la valeur affichée pour préserver la valeur SI."""
+        prev = self._r_prev_unit_idx
+        si = self._r_spin.value() * R_UNITS[prev][1]
+        self._r_prev_unit_idx = self._r_combo.currentIndex()
+        mult = R_UNITS[self._r_combo.currentIndex()][1]
+        self._r_spin.blockSignals(True)
+        self._r_spin.setValue(si / mult if mult else 0)
+        self._r_spin.blockSignals(False)
+        self._update_results()
+
+    def _on_l_unit_changed(self):
+        prev = self._l_prev_unit_idx
+        si = self._l_spin.value() * L_UNITS[prev][1]
+        self._l_prev_unit_idx = self._l_combo.currentIndex()
+        mult = L_UNITS[self._l_combo.currentIndex()][1]
+        self._l_spin.blockSignals(True)
+        self._l_spin.setValue(si / mult if mult else 0)
+        self._l_spin.blockSignals(False)
+        self._update_results()
+
+    def _on_c_unit_changed(self):
+        prev = self._c_prev_unit_idx
+        si = self._c_spin.value() * C_UNITS[prev][1]
+        self._c_prev_unit_idx = self._c_combo.currentIndex()
+        mult = C_UNITS[self._c_combo.currentIndex()][1]
+        self._c_spin.blockSignals(True)
+        self._c_spin.setValue(si / mult if mult else 0)
+        self._c_spin.blockSignals(False)
+        self._update_results()
 
     def _update_results(self):
-        r = self._r_spin.value()
-        l_val = self._l_spin.value()
-        c = self._c_spin.value()
+        r = self._get_r_si()
+        l_val = self._get_l_si()
+        c = self._get_c_si()
 
         self._result_labels["rc_lowpass"].setText(_format_freq(rc_passe_bas_fc(r, c)))
         self._result_labels["rc_highpass"].setText(_format_freq(rc_passe_haut_fc(r, c)))
