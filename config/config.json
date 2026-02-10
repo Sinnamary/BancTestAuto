@@ -1,6 +1,6 @@
 {
   "serial_multimeter": {
-    "port": "COM8",
+    "port": "COM11",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -10,7 +10,7 @@
     "log_exchanges": false
   },
   "serial_generator": {
-    "port": "COM10",
+    "port": "COM13",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -20,7 +20,7 @@
     "log_exchanges": false
   },
   "serial_oscilloscope": {
-    "port": "COM5",
+    "port": "COM4",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -30,7 +30,7 @@
     "log_exchanges": false
   },
   "serial_power_supply": {
-    "port": "COM6",
+    "port": "COM4",
     "baudrate": 9600,
     "bytesize": 8,
     "parity": "N",

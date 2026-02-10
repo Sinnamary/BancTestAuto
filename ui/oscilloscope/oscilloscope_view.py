@@ -159,6 +159,13 @@ class OscilloscopeView(QWidget):
             self._conn_panel.set_port(port)
         self._conn_panel.refresh_ports()
 
+    def get_current_serial_port(self) -> str | None:
+        """Port série actuellement sélectionné (mode Série uniquement), sinon None."""
+        if self._conn_panel.is_serial_mode():
+            port = self._conn_panel.get_port().strip()
+            return port or None
+        return None
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
         self._conn_panel.refresh_ports()

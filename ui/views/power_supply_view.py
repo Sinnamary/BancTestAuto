@@ -61,6 +61,18 @@ class PowerSupplyView(QWidget):
         self._build_ui()
         self._refresh_ports()
 
+    def load_config(self, config: dict) -> None:
+        """Optionnel : port par défaut depuis config.serial_power_supply.port."""
+        ps = config.get("serial_power_supply") or {}
+        port = (ps.get("port") or "").strip()
+        if port:
+            self._port_combo.setCurrentText(port)
+        self._refresh_ports()
+
+    def get_port(self) -> str:
+        """Retourne le port série actuellement sélectionné (pour mise à jour de config)."""
+        return self._port_combo.currentText().strip()
+
     def _build_ui(self):
         layout = QVBoxLayout(self)
 

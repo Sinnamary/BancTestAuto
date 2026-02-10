@@ -13,7 +13,9 @@ from .app_logger import get_logger
 logger = get_logger(__name__)
 
 # Constantes pour transferts bulk (timeout ms)
-USB_READ_TIMEOUT = 2000
+# Certains échanges (mesures, forme d'onde complète) peuvent être un peu longs ;
+# on utilise un timeout de lecture plus large pour laisser le temps à l'oscilloscope.
+USB_READ_TIMEOUT = 5000
 USB_WRITE_TIMEOUT = 2000
 READ_CHUNK_SIZE = 256
 
@@ -209,7 +211,34 @@ class Dos1102UsbConnection:
                 try:
                     chunk = self._ep_in.read(chunk_size, timeout=self._read_timeout)
                 except Exception as e:
-                    logger.exception("USB read(%d) erreur: %s", size, e)
+                    # Même logique que readline() : sous libusb0, un timeout remonte
+                    # souvent comme USBError avec le message 'timeout error' mais
+                    # errno=None. On le traite comme "pas de données reçues" pour
+                    # laisser la couche supérieure décider quoi faire.
+                    msg = str(e)
+                    if "timeout error" in msg:
+                        logger.warning(
+                            "USB read: timeout (%d ms) sans données (demande=%d octets, chunk=%d)",
+                            self._read_timeout,
+                            size,
+                            chunk_size,
+                        )
+                        break
+                    if (
+                        "reaping request failed" in msg
+                        or "périphérique attaché au système ne fonctionne pas correctement" in msg
+                        or "device not functioning" in msg
+                    ):
+                        # Erreur périphérique / pipe cassé : on log en erreur mais on
+                        # arrête proprement la lecture pour que l'application puisse
+                        # continuer et réinitialiser la connexion si besoin.
+                        logger.error(
+                            "USB read: erreur périphérique (%s), arrêt de la lecture (demande=%d octets)",
+                            msg,
+                            size,
+                        )
+                        break
+                    logger.exception("USB read(%d) erreur (non-timeout): %s", size, e)
                     raise
                 chunk = bytes(chunk)
                 if not chunk:
@@ -223,21 +252,59 @@ class Dos1102UsbConnection:
         with self._lock:
             if self._dev is None or self._ep_in is None:
                 raise OSError("Connexion USB non ouverte")
-            logger.debug("USB readline: attente réponse (timeout=%d ms, endpoint IN 0x%02x)", self._read_timeout, self._ep_in.bEndpointAddress)
+            logger.debug(
+                "USB readline: attente réponse (timeout=%d ms, endpoint IN 0x%02x)",
+                self._read_timeout,
+                self._ep_in.bEndpointAddress,
+            )
             buf = []
             try:
                 while True:
-                    chunk = self._ep_in.read(READ_CHUNK_SIZE, timeout=self._read_timeout)
+                    try:
+                        chunk = self._ep_in.read(READ_CHUNK_SIZE, timeout=self._read_timeout)
+                    except Exception as e:
+                        # Sous libusb0, un timeout remonte souvent comme USBError avec
+                        # le message 'timeout error' mais errno=None. On le traite
+                        # comme "pas de données reçues" plutôt que comme une erreur
+                        # fatale pour laisser la couche protocole décider quoi faire.
+                        msg = str(e)
+                        if "timeout error" in msg:
+                            logger.warning(
+                                "USB readline: timeout (%d ms) sans données (endpoint 0x%02x)",
+                                self._read_timeout,
+                                self._ep_in.bEndpointAddress,
+                            )
+                            break
+                        if (
+                            "reaping request failed" in msg
+                            or "périphérique attaché au système ne fonctionne pas correctement" in msg
+                            or "device not functioning" in msg
+                        ):
+                            # Erreur périphérique / pipe cassé : on log en erreur mais on
+                            # arrête proprement la lecture pour que l'application puisse
+                            # continuer et éventuellement rouvrir la connexion.
+                            logger.error(
+                                "USB readline: erreur périphérique (%s), arrêt de la lecture (endpoint 0x%02x)",
+                                msg,
+                                self._ep_in.bEndpointAddress,
+                            )
+                            break
+                        logger.exception("USB readline erreur (non-timeout): %s", e)
+                        raise
                     if not chunk:
                         logger.debug("USB readline: chunk vide, fin")
                         break
                     chunk = bytes(chunk)
                     buf.append(chunk)
-                    logger.debug("USB readline: reçu %d octets: %r", len(chunk), chunk[:80] if len(chunk) > 80 else chunk)
+                    logger.debug(
+                        "USB readline: reçu %d octets: %r",
+                        len(chunk),
+                        chunk[:80] if len(chunk) > 80 else chunk,
+                    )
                     if b"\n" in chunk:
                         break
-            except Exception as e:
-                logger.exception("USB readline erreur (timeout?): %s", e)
+            except Exception:
+                # Les erreurs non liées au timeout sont déjà loguées ci‑dessus.
                 raise
             line = b"".join(buf)
             logger.debug("USB readline: total %d octets", len(line))

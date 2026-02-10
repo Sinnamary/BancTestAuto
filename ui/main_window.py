@@ -288,7 +288,7 @@ class MainWindow(QMainWindow):
         # _inject_views() est appelée par l'appelant (__init__ ou _reconnect_serial) pour éviter de l'exécuter deux fois
 
     def _inject_views(self):
-        """Passe les références core aux vues (multimètre, générateur, enregistrement)."""
+        """Passe les références core aux vues (multimètre, générateur, enregistrement, etc.)."""
         meter = self._tabs.widget(0)
         if hasattr(meter, "set_measurement") and self._measurement:
             meter.set_measurement(self._measurement)
@@ -302,6 +302,11 @@ class MainWindow(QMainWindow):
             logging_view.set_data_logger(self._data_logger)
         if hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
+        # Alimentation : appliquer le port par défaut depuis config.serial_power_supply si possible
+        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
+            self._power_supply_view, "load_config"
+        ) and self._config:
+            self._power_supply_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
@@ -315,6 +320,10 @@ class MainWindow(QMainWindow):
         logging_view = self._tabs.widget(2) if self._tabs.count() > 2 else None
         if logging_view and hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
+        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
+            self._power_supply_view, "load_config"
+        ) and self._config:
+            self._power_supply_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
@@ -412,6 +421,8 @@ class MainWindow(QMainWindow):
                 self._filter_test_view.load_config(self._config)
             if self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config"):
                 self._serial_terminal_view.load_config(self._config)
+            if self._power_supply_view and hasattr(self._power_supply_view, "load_config"):
+                self._power_supply_view.load_config(self._config)
             if self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config"):
                 self._oscilloscope_view.load_config(self._config)
             sm = get_serial_multimeter_config(self._config) if get_serial_multimeter_config else {}
@@ -567,14 +578,39 @@ class MainWindow(QMainWindow):
             if self.statusBar():
                 self.statusBar().showMessage(f"Config chargée : {path}")
 
+    def _update_config_from_views(self) -> None:
+        """Recopie les ports sélectionnés dans les onglets vers self._config avant sauvegarde."""
+        if not self._config:
+            return
+        # Oscilloscope : port série courant si mode Série
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(
+            self._oscilloscope_view, "get_current_serial_port"
+        ):
+            port = self._oscilloscope_view.get_current_serial_port()
+            if port:
+                osc = dict(self._config.get("serial_oscilloscope") or {})
+                osc["port"] = port
+                self._config["serial_oscilloscope"] = osc
+        # Alimentation RS305P : port série courant
+        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
+            self._power_supply_view, "get_port"
+        ):
+            ps_port = (self._power_supply_view.get_port() or "").strip()
+            if ps_port:
+                ps = dict(self._config.get("serial_power_supply") or {})
+                ps["port"] = ps_port
+                self._config["serial_power_supply"] = ps
+
     def _on_save_config(self):
         if save_config and self._config:
+            self._update_config_from_views()
             save_config(self._config)
             self.statusBar().showMessage("Config enregistrée.") if hasattr(self, "statusBar") and self.statusBar() else None
 
     def _on_save_config_as(self):
         path, _ = QFileDialog.getSaveFileName(self, "Enregistrer la configuration sous", "", "JSON (*.json)")
         if path and save_config and self._config:
+            self._update_config_from_views()
             save_config(self._config, path)
             self.statusBar().showMessage(f"Config enregistrée : {path}") if hasattr(self, "statusBar") and self.statusBar() else None
 

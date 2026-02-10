@@ -44,6 +44,16 @@ DEFAULTS = {
         "write_timeout": 2.0,
         "log_exchanges": False,
     },
+    "serial_power_supply": {
+        "port": "COM6",
+        "baudrate": 9600,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1,
+        "timeout": 2.0,
+        "write_timeout": 2.0,
+        "log_exchanges": False,
+    },
     "measurement": {
         "default_rate": "F",
         "default_auto_range": True,
@@ -164,6 +174,11 @@ def get_serial_generator_config(config: dict[str, Any]) -> dict[str, Any]:
 def get_serial_oscilloscope_config(config: dict[str, Any]) -> dict[str, Any]:
     """Retourne la section serial_oscilloscope (pour l'oscilloscope HANMATEK DOS1102)."""
     return config.get("serial_oscilloscope", DEFAULTS["serial_oscilloscope"]).copy()
+
+
+def get_serial_power_supply_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section serial_power_supply (pour l'alimentation RS305P)."""
+    return config.get("serial_power_supply", DEFAULTS["serial_power_supply"]).copy()
 
 
 def get_filter_test_config(config: dict[str, Any]) -> dict[str, Any]:

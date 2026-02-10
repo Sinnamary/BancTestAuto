@@ -15,7 +15,16 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 
 from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView
+from ui.views import (
+    MeterView,
+    GeneratorView,
+    LoggingView,
+    FilterTestView,
+    FilterCalculatorView,
+    PowerSupplyView,
+    SerialTerminalView,
+    OscilloscopeView,
+)
 from ui.dialogs import DeviceDetectionDialog
 
 
@@ -54,6 +63,10 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(GeneratorView(), "Générateur")
         self._tabs.addTab(LoggingView(), "Enregistrement")
         self._tabs.addTab(FilterTestView(), "Banc filtre")
+        self._tabs.addTab(FilterCalculatorView(), "Calcul filtre")
+        self._tabs.addTab(PowerSupplyView(), "Alimentation")
+        self._tabs.addTab(SerialTerminalView(), "Terminal série")
+        self._tabs.addTab(OscilloscopeView(), "Oscilloscope")
         layout.addWidget(self._tabs)
 
         self.setCentralWidget(central)

@@ -162,10 +162,9 @@ class Dos1102Protocol:
         Sinon lit une ligne (réponse ASCII).
         timeout_override_sec : timeout plus long pour les grosses courbes (optionnel).
         """
-        cmd = CMD.WAVEFORM_DATA_ALL.strip()
-        if not cmd.endswith("\n"):
-            cmd += "\n"
-        self.write(cmd.encode("utf-8"))
+        # On envoie la commande sous forme de chaîne ; Dos1102Protocol.write
+        # se charge d'ajouter le LF final et d'encoder en UTF‑8.
+        self.write(CMD.WAVEFORM_DATA_ALL)
         first = self._conn.read(1)
         if not first:
             return ""
