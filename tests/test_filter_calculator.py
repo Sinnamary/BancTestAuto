@@ -10,7 +10,9 @@ from core.filter_calculator import (
     rc_passe_bas_fc,
     rc_passe_haut_fc,
     pont_wien_fc,
+    pont_wien_fc_general,
     rlc_resonance_fc,
+    rlc_quality_factor,
     double_t_fc,
 )
 
@@ -61,6 +63,40 @@ class TestPontWienFc:
         fc = pont_wien_fc(10e3, 10e-9)
         assert fc is not None
         assert fc == pytest.approx(1591.55, rel=1e-2)
+
+
+class TestPontWienFcGeneral:
+    def test_symmetric_equals_rc(self):
+        r, c = 10e3, 1e-6
+        assert pont_wien_fc_general(r, r, c, c) == pytest.approx(
+            pont_wien_fc(r, c), rel=1e-9
+        )
+
+    def test_general_formula(self):
+        # fc = 1 / (2π √(R1 R2 C1 C2))
+        r1, r2, c1, c2 = 10e3, 20e3, 1e-6, 500e-9
+        fc = pont_wien_fc_general(r1, r2, c1, c2)
+        expected = 1.0 / (2 * math.pi * math.sqrt(r1 * r2 * c1 * c2))
+        assert fc == pytest.approx(expected, rel=1e-9)
+
+    def test_invalid_returns_none(self):
+        assert pont_wien_fc_general(0, 10e3, 1e-6, 1e-6) is None
+        assert pont_wien_fc_general(10e3, 10e3, 0, 1e-6) is None
+
+
+class TestRlcQualityFactor:
+    def test_formula_q(self):
+        # Q = (1/R) √(L/C) ; R=100, L=1mH, C=1µF → √(L/C)=√1000≈31.62 → Q≈0.316
+        r, l_h, c_f = 100.0, 1e-3, 1e-6
+        q = rlc_quality_factor(r, l_h, c_f)
+        expected = math.sqrt(l_h / c_f) / r
+        assert q == pytest.approx(expected, rel=1e-9)
+        assert q == pytest.approx(0.3162, rel=1e-2)
+
+    def test_invalid_returns_none(self):
+        assert rlc_quality_factor(0, 1e-3, 1e-6) is None
+        assert rlc_quality_factor(100, 0, 1e-6) is None
+        assert rlc_quality_factor(100, 1e-3, 0) is None
 
 
 class TestRlcResonanceFc:

@@ -14,6 +14,11 @@ datas = [
     ("resources/themes/light.qss", "resources/themes"),
     ("resources/themes/arrow-up.svg", "resources/themes"),
     ("resources/themes/arrow-down.svg", "resources/themes"),
+    ("resources/filters/rc_passe_bas.svg", "resources/filters"),
+    ("resources/filters/rc_passe_haut.svg", "resources/filters"),
+    ("resources/filters/pont_wien.svg", "resources/filters"),
+    ("resources/filters/rlc_resonance.svg", "resources/filters"),
+    ("resources/filters/double_t.svg", "resources/filters"),
     ("docs/AIDE.md", "docs"),
 ]
 
@@ -22,6 +27,7 @@ hiddenimports = [
     "PyQt6.QtCore",
     "PyQt6.QtGui",
     "PyQt6.QtWidgets",
+    "PyQt6.QtSvgWidgets",
     "serial",
     "serial.tools.list_ports",
     "markdown",

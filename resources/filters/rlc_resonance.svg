@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 70" width="160" height="70">
+  <title>Circuit RLC résonance</title>
+  <g stroke="#333" stroke-width="1.5" fill="none">
+    <path d="M10 35 L30 35"/>
+    <rect x="30" y="28" width="28" height="14" rx="1"/>
+    <path d="M58 35 L78 35"/>
+    <path d="M78 28 L78 42 L82 38 L86 42 L86 28 L82 32 L78 28"/>
+    <path d="M86 35 L106 35"/>
+    <path d="M106 28 L106 42 L110 26 L114 30 L118 26 L114 42 L114 28"/>
+    <path d="M118 35 L140 35"/>
+    <path d="M70 35 L70 52 M66 52 L74 52 M68 49 L72 49 M70 46 L70 49"/>
+    <path d="M70 52 L70 60 M66 60 L74 60"/>
+  </g>
+  <text x="38" y="52" font-size="9" fill="#666">R</text>
+  <text x="82" y="52" font-size="9" fill="#666">L</text>
+  <text x="108" y="52" font-size="9" fill="#666">C</text>
+  <text x="5" y="32" font-size="10" fill="#333">V</text>
+  <text x="143" y="32" font-size="10" fill="#333">V</text>
+  <text x="5" y="42" font-size="8" fill="#555">in</text>
+  <text x="143" y="42" font-size="8" fill="#555">out</text>
+</svg>

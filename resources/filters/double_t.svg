@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 95" width="150" height="95">
+  <title>Filtre Double T (Twin-T)</title>
+  <g stroke="#333" stroke-width="1.2" fill="none">
+    <path d="M75 5 L75 25"/>
+    <path d="M75 25 L45 55 L45 70 M45 55 L75 55 L105 55 L105 70"/>
+    <path d="M75 25 L105 55"/>
+    <path d="M45 25 L45 55"/>
+    <path d="M105 25 L105 55"/>
+    <rect x="38" y="18" width="14" height="14" rx="1"/>
+    <rect x="98" y="18" width="14" height="14" rx="1"/>
+    <path d="M45 35 L45 28 M42 28 L48 28 M45 25 L45 28"/>
+    <path d="M75 48 L75 41 M72 41 L78 41 M75 38 L75 41"/>
+    <path d="M105 35 L105 28 M102 28 L108 28 M105 25 L105 28"/>
+    <path d="M45 70 L45 78 M42 78 L48 78"/>
+    <path d="M75 70 L75 78 M72 78 L78 78"/>
+    <path d="M105 70 L105 78 M102 78 L108 78"/>
+    <path d="M10 55 L45 55"/>
+    <path d="M105 55 L140 55"/>
+  </g>
+  <text x="40" y="52" font-size="7" fill="#666">R</text>
+  <text x="72" y="45" font-size="7" fill="#666">R/2</text>
+  <text x="102" y="52" font-size="7" fill="#666">R</text>
+  <text x="5" y="58" font-size="9" fill="#555">Vin</text>
+  <text x="135" y="58" font-size="9" fill="#555">Vout</text>
+</svg>

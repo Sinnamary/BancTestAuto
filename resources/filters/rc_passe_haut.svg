@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 70" width="140" height="70">
+  <title>Filtre RC passe-haut (CR)</title>
+  <g stroke="#333" stroke-width="1.5" fill="none">
+    <path d="M10 35 L30 35 L30 20 M30 35 L30 50"/>
+    <path d="M30 20 L30 12 M25 12 L35 12 M28 9 L32 9 M30 6 L30 9"/>
+    <path d="M30 50 L30 58 M25 58 L35 58"/>
+    <path d="M30 35 L55 35"/>
+    <rect x="55" y="28" width="30" height="14" rx="1"/>
+    <path d="M85 35 L110 35"/>
+  </g>
+  <text x="5" y="32" font-size="10" fill="#333">V</text>
+  <text x="18" y="18" font-size="9" fill="#555">in</text>
+  <text x="118" y="32" font-size="10" fill="#333">V</text>
+  <text x="118" y="42" font-size="9" fill="#555">out</text>
+  <text x="38" y="45" font-size="9" fill="#666">C</text>
+  <text x="62" y="52" font-size="9" fill="#666">R</text>
+</svg>
