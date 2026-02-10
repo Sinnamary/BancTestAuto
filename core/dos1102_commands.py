@@ -58,7 +58,7 @@ TRIG_TYPE_ALT = ":TRIG:TYPE ALT"
 # Mesures — requêtes générales
 MEAS_QUERY = ":MEAS?"
 
-# Mesures par canal (CH1 ou CH2) et type
+# Mesures par canal (CH1 ou CH2) et type (tuple pour compatibilité)
 MEAS_TYPES = (
     "PERiod", "FREQuency", "AVERage", "PKPK", "SQUARESUM", "MAX", "MIN",
     "VTOP", "VBASe", "VAMP", "VPRESHOOT", "PREShoot", "RTime", "FTime",
@@ -66,6 +66,51 @@ MEAS_TYPES = (
     "CYCRms", "WORKPERIOD", "RISEPHASEDELAY", "PPULSENUM", "NPULSENUM",
     "RISINGEDGENUM", "FALLINGEDGENUM", "AREA", "CYCLEAREA",
 )
+
+# Liste (libellé, type SCPI) pour toutes les mesures utilisables sur une voie (CH1 ou CH2)
+MEAS_TYPES_PER_CHANNEL = (
+    ("Période", "PERiod"),
+    ("Fréquence", "FREQuency"),
+    ("Moyenne", "AVERage"),
+    ("Crête à crête", "PKPK"),
+    ("SQUARESUM", "SQUARESUM"),
+    ("Max", "MAX"),
+    ("Min", "MIN"),
+    ("Sommet", "VTOP"),
+    ("Base", "VBASe"),
+    ("Amplitude", "VAMP"),
+    ("VPRESHOOT", "VPRESHOOT"),
+    ("PREShoot", "PREShoot"),
+    ("Temps montée", "RTime"),
+    ("Temps descente", "FTime"),
+    ("Largeur imp. +", "PWIDth"),
+    ("Largeur imp. -", "NWIDth"),
+    ("Rapport cyclique +", "PDUTy"),
+    ("Rapport cyclique -", "NDUTy"),
+    ("Délai montée (vs réf)", "RDELay"),
+    ("Délai descente (vs réf)", "FDELay"),
+    ("RMS", "TRUERMS"),
+    ("CYCRms", "CYCRms"),
+    ("WORKPERIOD", "WORKPERIOD"),
+    ("Délai phase montée (vs réf)", "RISEPHASEDELAY"),
+    ("PPULSENUM", "PPULSENUM"),
+    ("NPULSENUM", "NPULSENUM"),
+    ("RISINGEDGENUM", "RISINGEDGENUM"),
+    ("FALLINGEDGENUM", "FALLINGEDGENUM"),
+    ("AREA", "AREA"),
+    ("CYCLEAREA", "CYCLEAREA"),
+)
+
+# Mesures inter-canal : délai de CH2 par rapport à CH1 (à requêter sur CH2)
+MEAS_TYPES_INTER_CHANNEL = (
+    ("Délai phase montée (CH2 vs CH1)", "RISEPHASEDELAY"),
+    ("Délai montée (CH2 vs CH1)", "RDELay"),
+    ("Délai descente (CH2 vs CH1)", "FDELay"),
+)
+
+# Forme d'onde — données de courbe (DSO2000 : :WAVeform:DATA:ALL? ; syntaxe courte possible)
+WAVEFORM_DATA_ALL = ":WAV:DATA:ALL?"
+WAVEFORM_DATA_ALL_LONG = ":WAVeform:DATA:ALL?"
 
 
 def MEAS_CH_QUERY(ch: int, meas_type: str):  # noqa: N802

@@ -10,7 +10,12 @@ Référence des **commandes SCPI** utilisables pour piloter l’oscilloscope HAN
   - **Série (COM)** : port COM virtuel, débit typique **115200** ou **9600** bauds (pilote CDC/série).  
   - **USB (WinUSB/PyUSB)** : connexion directe USB sans port COM. Pilote **WinUSB** (ex. installé via [Zadig](https://zadig.akeo.ie/)), backend **libusb** et **PyUSB** (`pip install pyusb`). Dans l’onglet Oscilloscope, choisir le mode **USB (WinUSB/PyUSB)**, cliquer sur **Rafraîchir USB**, sélectionner le périphérique dans la liste puis **Connexion**.
 - **Terminaison** : les commandes doivent se terminer par un **retour à la ligne** (`\n`). Ne pas envoyer `\` + `n` en clair (échapper correctement en code).
-- **Identification** : `*IDN?` — réponse type fabricant, modèle, numéro de série (si supporté).
+- **Identification et réinitialisation** :
+
+| Commande | Rôle | Notes |
+|----------|------|--------|
+| `*IDN?` | Identification | Réponse type fabricant, modèle, numéro de série (si supporté). |
+| `*RST` | Réinitialisation | Remet l'appareil dans un état par défaut. |
 
 ---
 
@@ -33,30 +38,19 @@ Syntaxe observée sur DOS1102 (certaines variantes utilisent `CH1`/`CH2` au lieu
 | `:CH1:COUP DC` | Couplage voie 1 : DC | |
 | `:CH1:COUP AC` | Couplage voie 1 : AC | |
 | `:CH1:COUP GND` | Couplage voie 1 : GND | |
-| `:CH2:COUP DC` | Couplage voie 2 : DC | |
-| `:CH2:COUP AC` | Couplage voie 2 : AC | |
-| `:CH2:COUP GND` | Couplage voie 2 : GND | |
-| `:CH1:SCA <valeur>` | Échelle verticale voie 1 (V/div) | |
-| `:CH2:SCA <valeur>` | Échelle verticale voie 2 | |
-| `:CH1:POS <valeur>` | Position verticale voie 1 | |
-| `:CH2:POS <valeur>` | Position verticale voie 2 | |
-| `:CH1:OFFS <valeur>` | Offset vertical voie 1 | |
-| `:CH2:OFFS <valeur>` | Offset vertical voie 2 | |
-| `:CH1:PROBE 1X` | Sonde voie 1 : 1X | |
-| `:CH1:PROBE 10X` | Sonde voie 1 : 10X | |
-| `:CH1:PROBE 100X` | Sonde voie 1 : 100X | |
-| `:CH1:PROBE 1000X` | Sonde voie 1 : 1000X | |
-| `:CH2:PROBE 1X` / `10X` / `100X` / `1000X` | Idem voie 2 | |
-| `:CH1:INV OFF` | Inversion voie 1 désactivée | |
-| `:CH1:INV ON` | Inversion voie 1 activée | |
-| `:CH2:INV OFF` / `ON` | Idem voie 2 | |
+| `:CH2:COUP DC` / `AC` / `GND` | Couplage voie 2 | Idem pour CH2. |
+| `:CH<n>:SCA <valeur>` | Échelle verticale (V/div) | n = 1 ou 2. |
+| `:CH<n>:POS <valeur>` | Position verticale | |
+| `:CH<n>:OFFS <valeur>` | Offset vertical | |
+| `:CH<n>:PROBE 1X` / `10X` / `100X` / `1000X` | Rapport de sonde | |
+| `:CH<n>:INV OFF` / `ON` | Inversion de voie | |
 
 ### Base de temps (horizontal)
 
 | Commande | Rôle | Notes |
 |----------|------|--------|
-| `:HOR:OFFS <valeur>` | Offset horizontal (position du trigger) | |
-| `:HOR:SCAL <valeur>` | Échelle horizontale (temps/div, ex. s ou ms) | |
+| `:HOR:OFFS <valeur>` | Offset horizontal | Position du trigger. |
+| `:HOR:SCAL <valeur>` | Échelle horizontale | Temps/div (s ou ms). |
 
 ### Trigger
 
@@ -67,7 +61,7 @@ Syntaxe observée sur DOS1102 (certaines variantes utilisent `CH1`/`CH2` au lieu
 | `:TRIG:TYPE SING` | Mode single | |
 | `:TRIG:TYPE ALT` | Mode alternate | |
 
-*(Source source et niveau du trigger à confirmer selon modèle ; voir manuel DSO2000 pour `:TRIGger:EDGe:SOURce`, `:TRIGger:EDGe:LEVel`, etc.)*
+*(Source et niveau du trigger à confirmer selon modèle ; voir manuel DSO2000 pour `:TRIGger:EDGe:SOURce`, `:TRIGger:EDGe:LEVel`, etc.)*
 
 ### Mesures (requêtes)
 
@@ -94,6 +88,32 @@ Syntaxe observée sur DOS1102 (certaines variantes utilisent `CH1`/`CH2` au lieu
 
 ---
 
+### Mesures inter-canal (différence de phase entre les deux voies)
+
+Pour un **diagramme de Bode phase** (φ en degrés en fonction de la fréquence), on utilise les mesures de **délai** entre CH1 et CH2, puis on calcule la phase à partir de la période :
+
+| Mesure (sur CH2) | Commande typique | Rôle |
+|------------------|------------------|------|
+| Délai phase montée | `:MEAS:CH2:RISEPHASEDELAY?` | Délai de la montée CH2 par rapport à CH1 (en s) |
+| Délai montée | `:MEAS:CH2:RDELay?` | Idem (variante) |
+| Délai descente | `:MEAS:CH2:FDELay?` | Délai de la descente CH2 vs CH1 |
+
+**Formule :** φ (°) = (délai / période) × 360. La période peut être lue avec `:MEAS:CH1:PERiod?` ou `:MEAS:CH2:PERiod?`.
+
+L'application propose **« Toutes les mesures »** (par voie CH1, CH2, ou inter-canal) pour récupérer en une fois toutes les valeurs nécessaires au Bode phase.
+
+### Récupération des données de courbe (forme d'onde)
+
+Pour **afficher les signaux** (courbes CH1/CH2 en fonction du temps) :
+
+| Commande | Rôle |
+|----------|------|
+| `:WAV:DATA:ALL?` ou `:WAVeform:DATA:ALL?` | Données de courbe (ASCII ou bloc binaire SCPI `#n<longueur><données>`) |
+
+Le format exact dépend du modèle. L'onglet Oscilloscope propose **« Récupérer forme d'onde »** et **« Afficher courbe »** si les données sont une liste de nombres (ASCII).
+
+---
+
 ## Référence manuel DSO2000 (Hantek)
 
 Le **DSO2000 Series SCPI Programmers Manual** (Hantek) décrit une syntaxe plus complète avec les sous-systèmes :
@@ -111,9 +131,9 @@ Sur le DOS1102, la syntaxe courte (`:CH1:`, `:ACQ:MODE`) peut être acceptée ; 
 
 ## Implémentation dans BancTestAuto
 
-- **Commandes** : `core/dos1102_commands.py`
-- **Protocole** : `core/dos1102_protocol.py` (envoi/réception sur `SerialConnection`)
-- **Vue** : `ui/views/oscilloscope_view.py` (onglet Oscilloscope)
+- **Commandes** : `core/dos1102_commands.py` (constantes SCPI, `MEAS_TYPES_PER_CHANNEL`, `MEAS_TYPES_INTER_CHANNEL`, `WAVEFORM_DATA_ALL`, `MEAS_CH_QUERY`, etc.)
+- **Protocole** : `core/dos1102_protocol.py` — envoi/réception sur `SerialConnection` ou `Dos1102UsbConnection` ; `meas_all_per_channel(ch)`, `meas_all_inter_channel()`, `waveform_data_raw()` pour Bode phase et affichage des signaux
+- **Vue** : `ui/views/oscilloscope_view.py` — onglet Oscilloscope : connexion, acquisition, trigger, mesures (une par canal + **toutes les mesures** par voie ou inter-canal pour Bode phase), **forme d'onde** (récupération + affichage courbe si données ASCII)
 
 ---
 

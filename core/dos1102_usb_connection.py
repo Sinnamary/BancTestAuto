@@ -96,7 +96,7 @@ def list_usb_devices() -> List[Tuple[int, int, str]]:
 class Dos1102UsbConnection:
     """
     Connexion USB type WinUSB/libusb pour le DOS1102.
-    Même interface que SerialConnection : write(data: bytes), readline() -> bytes, is_open(), close().
+    Même interface que SerialConnection : write(data: bytes), read(size), readline() -> bytes, is_open(), close().
     """
 
     def __init__(
@@ -194,6 +194,29 @@ class Dos1102UsbConnection:
             except Exception as e:
                 logger.exception("USB write erreur: %s", e)
                 raise
+
+    def read(self, size: int = 1) -> bytes:
+        """Lit jusqu'à size octets (pour format bloc SCPI ex. forme d'onde)."""
+        with self._lock:
+            if self._dev is None or self._ep_in is None:
+                raise OSError("Connexion USB non ouverte")
+            if size <= 0:
+                return b""
+            buf = []
+            need = size
+            while need > 0:
+                chunk_size = min(need, READ_CHUNK_SIZE)
+                try:
+                    chunk = self._ep_in.read(chunk_size, timeout=self._read_timeout)
+                except Exception as e:
+                    logger.exception("USB read(%d) erreur: %s", size, e)
+                    raise
+                chunk = bytes(chunk)
+                if not chunk:
+                    break
+                buf.append(chunk)
+                need -= len(chunk)
+            return b"".join(buf)
 
     def readline(self) -> bytes:
         """Lit jusqu'à un LF (0x0a). Lit par paquets pour constituer une ligne."""

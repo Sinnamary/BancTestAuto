@@ -19,6 +19,26 @@
     "write_timeout": 2,
     "log_exchanges": false
   },
+  "serial_oscilloscope": {
+    "port": "COM5",
+    "baudrate": 115200,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 2,
+    "write_timeout": 2,
+    "log_exchanges": false
+  },
+  "serial_power_supply": {
+    "port": "COM6",
+    "baudrate": 9600,
+    "bytesize": 8,
+    "parity": "N",
+    "stopbits": 1,
+    "timeout": 2,
+    "write_timeout": 2,
+    "log_exchanges": false
+  },
   "measurement": {
     "default_rate": "F",
     "default_auto_range": true,

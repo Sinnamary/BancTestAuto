@@ -122,3 +122,71 @@ class Dos1102Protocol:
     def meas_ch(self, ch: int, meas_type: str) -> str:
         """Ex. meas_ch(1, 'FREQuency') -> :MEAS:CH1:FREQuency?"""
         return self.ask(CMD.MEAS_CH_QUERY(ch, meas_type))
+
+    def meas_all_per_channel(self, ch: int) -> dict[str, str]:
+        """
+        Requête toutes les mesures disponibles sur une voie (CH1 ou CH2).
+        Retourne un dict { libellé: valeur } pour chaque type de MEAS_TYPES_PER_CHANNEL.
+        Les mesures en erreur ou vides sont omises ou mises à '—'.
+        """
+        out: dict[str, str] = {}
+        for label, meas_type in CMD.MEAS_TYPES_PER_CHANNEL:
+            try:
+                r = self.ask(CMD.MEAS_CH_QUERY(ch, meas_type))
+                out[label] = r.strip() if r else "—"
+            except Exception as e:
+                logger.debug("meas_all_per_channel CH%d %s: %s", ch, meas_type, e)
+                out[label] = f"Erreur: {e}"
+        return out
+
+    def meas_all_inter_channel(self) -> dict[str, str]:
+        """
+        Requête les mesures inter-canal (délai CH2 vs CH1).
+        Utilise CH2 pour RISEPHASEDELAY, RDELay, FDELay.
+        Utile pour diagramme de Bode phase : phase_deg = (délai / période) × 360.
+        """
+        out: dict[str, str] = {}
+        for label, meas_type in CMD.MEAS_TYPES_INTER_CHANNEL:
+            try:
+                r = self.ask(CMD.MEAS_CH_QUERY(2, meas_type))
+                out[label] = r.strip() if r else "—"
+            except Exception as e:
+                logger.debug("meas_all_inter_channel %s: %s", meas_type, e)
+                out[label] = f"Erreur: {e}"
+        return out
+
+    def waveform_data_raw(self, timeout_override_sec: float | None = 5.0) -> str | bytes:
+        """
+        Envoie :WAV:DATA:ALL? et lit la réponse (ASCII ou bloc SCPI #n...).
+        Si la réponse commence par #, lit un bloc binaire SCPI (# + 1 chiffre + n chiffres = longueur + données).
+        Sinon lit une ligne (réponse ASCII).
+        timeout_override_sec : timeout plus long pour les grosses courbes (optionnel).
+        """
+        cmd = CMD.WAVEFORM_DATA_ALL.strip()
+        if not cmd.endswith("\n"):
+            cmd += "\n"
+        self.write(cmd.encode("utf-8"))
+        first = self._conn.read(1)
+        if not first:
+            return ""
+        if first == b"#":
+            # Format bloc SCPI : #n<ndigits> puis n chiffres donnant la longueur, puis les octets
+            n_dig = self._conn.read(1)
+            if not n_dig or not n_dig.isdigit():
+                return first + (n_dig or b"")
+            n = int(n_dig.decode())
+            len_buf = self._conn.read(n)
+            if len(len_buf) != n:
+                return first + n_dig + len_buf
+            try:
+                length = int(len_buf.decode())
+            except ValueError:
+                return first + n_dig + len_buf
+            data = self._conn.read(length)
+            return data
+        # Réponse ASCII (une ligne)
+        rest = self._conn.readline()
+        try:
+            return (first + rest).decode("utf-8", errors="replace").strip()
+        except Exception:
+            return first + rest

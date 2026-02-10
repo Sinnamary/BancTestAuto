@@ -6,6 +6,7 @@ from .range_selector import RangeSelector
 from .rate_selector import RateSelector
 from .math_panel import MathPanel
 from .advanced_params import AdvancedParamsPanel
+from .status_indicator import StatusIndicator
 
 __all__ = [
     "ConnectionStatusBar",
@@ -16,4 +17,5 @@ __all__ = [
     "RateSelector",
     "MathPanel",
     "AdvancedParamsPanel",
+    "StatusIndicator",
 ]
