@@ -5,7 +5,27 @@ Fichier local analysé : `docs/osc_interface.py` (copie de ce dépôt).
 
 ---
 
-Ce document décrit **l'ordre chronologique exact** des commandes envoyées à l'oscilloscope Hanmatek DOS1102 par `osc_interface.py` (dépôt GitHub ci-dessus).  à l’oscilloscope
+Ce document décrit **l'ordre chronologique exact** des commandes envoyées à l'oscilloscope Hanmatek DOS1102 par `osc_interface.py` (dépôt GitHub ci-dessus).
+
+### Chronologie globale (script lancé avec `verbose=True`)
+
+Ordre d'envoi **complet** : d'abord `__init__`, puis le bloc `if __name__ == '__main__'`.
+
+| Ordre | Commande envoyée | Contexte (osc_interface.py) |
+|-------|------------------|-----------------------------|
+| 1 | `*IDN?` | `__init__` (l. 65) |
+| 2 | `:DATA:WAVE:SCREen:HEAD?` | `__init__` → `get_meta_data()` (l. 66) |
+| 3 | `:RUNNING RUN` | main (l. 316) |
+| 4 | *(pause 0,01 s)* | `time.sleep(0.01)` (l. 313) |
+| 5 | `:RUNNING STOP` | main (l. 318) |
+| 6 | `:DATA:WAVE:SCREen:HEAD?` | `get_meta_data()` (l. 319) |
+| 7 | `:DATA:WAVE:SCREen:HEAD?` | `get_time_base()` → `get_meta_data()` (l. 320) |
+| 8 | `:DATA:WAVE:SCREen:HEAD?` | `get_channel_waveform_data(1)` → `get_meta_data()` (l. 321) |
+| 9 | `:DATA:WAVE:SCREEN:CH1?` | `get_channel_waveform_data(1)` (l. 171) |
+| 10 | `:DATA:WAVE:SCREen:HEAD?` | `get_channel_waveform_data(2)` → `get_meta_data()` (l. 336) |
+| 11 | `:DATA:WAVE:SCREEN:CH2?` | `get_channel_waveform_data(2)` (l. 171) |
+| 12 | `:MEAS:CH1?` | `get_channel_measurement_data(1)` (l. 348) |
+| 13 | `:MEAS:CH2?` | `get_channel_measurement_data(2)` (l. 351) |
 
 ---
 
@@ -20,23 +40,23 @@ Si l’appareil est trouvé et `verbose=True` :
 
 ---
 
-## 2. Exécution du bloc `if __name__ == '__main__'`
+## 2. Bloc `if __name__ == '__main__'` (l. 310–358)
 
-Ordre exact des commandes lorsque le script est lancé directement :
+Ordre des envois **dans le bloc main uniquement** (après `__init__`). Correspond aux ordres 3–13 du tableau « Chronologie globale » ci-dessus.
 
-| # | Ordre | Commande envoyée | Méthode / Contexte |
-|---|-------|------------------|---------------------|
-| 1 | 1 | `:RUNNING RUN` | `osci.write(':RUNNING RUN')` – démarrage de l’acquisition |
-| 2 | 2 | *(pause 0,01 s)* | `time.sleep(0.01)` |
-| 3 | 3 | `:RUNNING STOP` | `osci.write(':RUNNING STOP')` – arrêt de l’acquisition |
-| 4 | 4 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_meta_data()` – métadonnées |
-| 5 | 5 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_time_base()` → `get_meta_data()` |
-| 6 | 6 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_channel_waveform_data(ch=1)` → `get_meta_data()` |
-| 7 | 7 | `:DATA:WAVE:SCREEN:CH1?` | `get_channel_waveform_data(1)` – données brutes canal 1 |
-| 8 | 8 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_channel_waveform_data(ch=2)` → `get_meta_data()` |
-| 9 | 9 | `:DATA:WAVE:SCREEN:CH2?` | `get_channel_waveform_data(2)` – données brutes canal 2 |
-| 10 | 10 | `:MEAS:CH1?` | `osci.get_channel_measurement_data(ch=1)` – mesures canal 1 |
-| 11 | 11 | `:MEAS:CH2?` | `osci.get_channel_measurement_data(ch=2)` – mesures canal 2 |
+| # | Ordre (main) | Commande envoyée | Méthode / Ligne |
+|---|---------------|------------------|------------------|
+| 1 | 1 | `:RUNNING RUN` | `osci.write(':RUNNING RUN')` (l. 316) |
+| 2 | 2 | *(pause 0,01 s)* | `time.sleep(0.01)` (l. 313) |
+| 3 | 3 | `:RUNNING STOP` | `osci.write(':RUNNING STOP')` (l. 318) |
+| 4 | 4 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_meta_data()` (l. 319) |
+| 5 | 5 | `:DATA:WAVE:SCREen:HEAD?` | `osci.get_time_base()` → `get_meta_data()` (l. 320) |
+| 6 | 6 | `:DATA:WAVE:SCREen:HEAD?` | `get_channel_waveform_data(1)` → `get_meta_data()` (l. 321) |
+| 7 | 7 | `:DATA:WAVE:SCREEN:CH1?` | `get_channel_waveform_data(1)` (l. 171) – données brutes CH1 |
+| 8 | 8 | `:DATA:WAVE:SCREen:HEAD?` | `get_channel_waveform_data(2)` → `get_meta_data()` (l. 336) |
+| 9 | 9 | `:DATA:WAVE:SCREEN:CH2?` | `get_channel_waveform_data(2)` (l. 171) – données brutes CH2 |
+| 10 | 10 | `:MEAS:CH1?` | `get_channel_measurement_data(1)` (l. 348) |
+| 11 | 11 | `:MEAS:CH2?` | `get_channel_measurement_data(2)` (l. 351) |
 
 ---
 
