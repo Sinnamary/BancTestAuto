@@ -170,6 +170,27 @@ class Dos1102UsbConnection:
                 ep_out.bEndpointAddress, ep_in.bEndpointAddress,
             )
 
+    def flush_input(self, timeout_ms: int = 50, max_reads: int = 50) -> int:
+        """
+        Vide le tampon d'entrée USB (données en attente d'une session précédente).
+        Lit par blocs avec timeout court jusqu'à vide ou max_reads. Retourne le nombre d'octets jetés.
+        """
+        if self._dev is None or self._ep_in is None:
+            return 0
+        total = 0
+        for _ in range(max_reads):
+            try:
+                data = self.read(1024, timeout_ms=timeout_ms)
+                if not data:
+                    break
+                total += len(data)
+                logger.debug("USB flush_input: jeté %d octets (total %d)", len(data), total)
+            except Exception:
+                break
+        if total:
+            logger.debug("USB flush_input: total %d octets jetés", total)
+        return total
+
     def close(self) -> None:
         with self._lock:
             if self._dev is None:
@@ -197,29 +218,33 @@ class Dos1102UsbConnection:
                 logger.exception("USB write erreur: %s", e)
                 raise
 
-    def read(self, size: int = 1) -> bytes:
-        """Lit jusqu'à size octets (pour format bloc SCPI ex. forme d'onde)."""
+    def read(self, size: int = 1, timeout_ms: Optional[int] = None) -> bytes:
+        """Lit jusqu'à size octets (pour format bloc SCPI ex. forme d'onde). timeout_ms optionnel pour cette lecture."""
         with self._lock:
             if self._dev is None or self._ep_in is None:
                 raise OSError("Connexion USB non ouverte")
             if size <= 0:
                 return b""
+            timeout = timeout_ms if timeout_ms is not None else self._read_timeout
+            logger.debug(
+                "USB read: entrée size=%d, timeout=%d ms, endpoint IN=0x%02x",
+                size, timeout, self._ep_in.bEndpointAddress,
+            )
             buf = []
             need = size
             while need > 0:
                 chunk_size = min(need, READ_CHUNK_SIZE)
                 try:
-                    chunk = self._ep_in.read(chunk_size, timeout=self._read_timeout)
+                    chunk = self._ep_in.read(chunk_size, timeout=timeout)
                 except Exception as e:
-                    # Même logique que readline() : sous libusb0, un timeout remonte
-                    # souvent comme USBError avec le message 'timeout error' mais
-                    # errno=None. On le traite comme "pas de données reçues" pour
-                    # laisser la couche supérieure décider quoi faire.
+                    # Même logique que readline() : sous libusb0, timeout → 'timeout error' ;
+                    # sous libusb1/Windows → "[Errno 10060] Operation timed out".
+                    # On traite comme "pas de données reçues" pour garder le thread de lecture actif.
                     msg = str(e)
-                    if "timeout error" in msg:
-                        logger.warning(
+                    if "timeout error" in msg or "Operation timed out" in msg or "10060" in msg:
+                        logger.debug(
                             "USB read: timeout (%d ms) sans données (demande=%d octets, chunk=%d)",
-                            self._read_timeout,
+                            timeout,
                             size,
                             chunk_size,
                         )
@@ -242,10 +267,18 @@ class Dos1102UsbConnection:
                     raise
                 chunk = bytes(chunk)
                 if not chunk:
+                    logger.debug("USB read: chunk vide, sortie")
                     break
+                logger.debug(
+                    "USB read: reçu chunk %d octets: %r",
+                    len(chunk),
+                    chunk[:120] if len(chunk) > 120 else chunk,
+                )
                 buf.append(chunk)
                 need -= len(chunk)
-            return b"".join(buf)
+            result = b"".join(buf)
+            logger.debug("USB read: retour total %d octets", len(result))
+            return result
 
     def readline(self) -> bytes:
         """Lit jusqu'à un LF (0x0a). Lit par paquets pour constituer une ligne."""

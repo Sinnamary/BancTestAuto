@@ -2,7 +2,52 @@
 Helpers pour les mesures DOS1102 : formatage des résultats, calcul de phase.
 Réutilisable sans UI (ex. banc filtre Bode phase, scripts).
 """
+import json
+import re
+
 from . import dos1102_commands as CMD
+
+
+def format_meas_general_response(raw: str | bytes) -> str:
+    """
+    Formate la réponse brute de :MEAS? pour affichage lisible.
+    Corrige les problèmes d'encodage et tente un affichage structuré (JSON ou paires clé:valeur).
+    """
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return "—"
+    if isinstance(raw, bytes):
+        try:
+            text = raw.decode("utf-8", errors="replace")
+        except Exception:
+            text = raw.decode("latin-1", errors="replace")
+    else:
+        text = "".join(c if ord(c) < 0x110000 else "\uFFFD" for c in str(raw))
+    text = text.strip()
+    if not text:
+        return "—"
+    # Essai parsing JSON (réponse possible du type {"CH1":{"PERiod":"?,OFF",...}} ou chaîne)
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            lines = []
+            for key, val in data.items():
+                if isinstance(val, dict):
+                    lines.append(f"{key}:")
+                    for k2, v2 in val.items():
+                        lines.append(f"  {k2}: {v2}")
+                else:
+                    lines.append(f"{key}: {val}")
+            return "\n".join(lines) if lines else text
+    except (json.JSONDecodeError, TypeError):
+        pass
+    # Essai extraction de paires "key": "value" ou "key": "value"
+    parts = re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', text)
+    if parts:
+        return "\n".join(f"{k}: {v}" for k, v in parts)
+    # Sinon découper par virgules pour aérer (garde les lignes courtes)
+    if len(text) > 80 and "," in text:
+        return "\n".join(s.strip() for s in text.split(",") if s.strip())
+    return text
 
 
 def format_measurements_text(measurements: dict[str, str], add_bode_hint: bool = False) -> str:

@@ -4,7 +4,9 @@ Réutilisable : set_protocol(), set_connected(). Utilise core.dos1102_measuremen
 """
 from typing import Any, Optional
 
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
+    QApplication,
     QGroupBox,
     QVBoxLayout,
     QHBoxLayout,
@@ -17,7 +19,28 @@ from PyQt6.QtWidgets import (
 )
 
 from core import dos1102_commands as CMD
-from core.dos1102_measurements import format_measurements_text, get_measure_types_per_channel
+from core.dos1102_measurements import (
+    format_measurements_text,
+    format_meas_general_response,
+    get_measure_types_per_channel,
+)
+
+
+class MeasGeneralWorker(QThread):
+    """Thread pour exécuter :MEAS? sans bloquer l'UI."""
+    result_ready = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, protocol: Any, parent=None):
+        super().__init__(parent)
+        self._protocol = protocol
+
+    def run(self):
+        try:
+            r = self._protocol.meas()
+            self.result_ready.emit(r if r else "")
+        except Exception as e:
+            self.error_occurred.emit(str(e))
 
 
 class OscilloscopeMeasurementPanel(QWidget):
@@ -77,13 +100,18 @@ class OscilloscopeMeasurementPanel(QWidget):
         # Mesure générale (MEAS?)
         general_gb = QGroupBox("Mesure générale (:MEAS?)")
         general_layout = QFormLayout(general_gb)
-        self._meas_general_label = QLabel("—")
-        general_layout.addRow(QLabel("Résultat:"), self._meas_general_label)
+        self._meas_general_text = QPlainTextEdit()
+        self._meas_general_text.setReadOnly(True)
+        self._meas_general_text.setPlaceholderText("Résultat formaté (une ligne par mesure)")
+        self._meas_general_text.setMaximumHeight(140)
+        self._meas_general_text.setPlainText("—")
+        general_layout.addRow(QLabel("Résultat:"), self._meas_general_text)
         self._meas_query_btn = QPushButton("Mesure générale")
         self._meas_query_btn.clicked.connect(self._on_meas_general)
         self._meas_query_btn.setEnabled(False)
         general_layout.addRow("", self._meas_query_btn)
         meas_layout.addWidget(general_gb)
+        self._meas_general_worker: Optional[MeasGeneralWorker] = None
 
         layout.addWidget(meas_gb)
 
@@ -125,19 +153,32 @@ class OscilloscopeMeasurementPanel(QWidget):
         self._meas_ch2_result.setText(text)
 
     def set_general_result(self, text: str) -> None:
-        self._meas_general_label.setText(text)
+        self._meas_general_text.setPlainText(text if text else "—")
 
     def _on_meas_general(self) -> None:
-        if not self._protocol:
+        if not self._protocol or self._meas_general_worker is not None and self._meas_general_worker.isRunning():
             return
-        try:
-            r = self._protocol.meas()
-            t = r if r else "—"
-            self._meas_general_label.setText(t)
-            # On reflète aussi sur les résultats de voie pour cohérence visuelle.
-            self.set_result(t)
-        except Exception as e:
-            self._meas_result_label.setText(f"Erreur: {e}")
+        self._meas_query_btn.setEnabled(False)
+        self._meas_general_text.setPlainText("En cours…")
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        self._meas_general_worker = MeasGeneralWorker(self._protocol, self)
+        self._meas_general_worker.result_ready.connect(self._on_meas_general_result)
+        self._meas_general_worker.error_occurred.connect(self._on_meas_general_error)
+        self._meas_general_worker.finished.connect(self._on_meas_general_finished)
+        self._meas_general_worker.start()
+
+    def _on_meas_general_result(self, raw: str) -> None:
+        formatted = format_meas_general_response(raw)
+        self._meas_general_text.setPlainText(formatted)
+        self.set_result(formatted.split("\n")[0] if formatted else "—")
+
+    def _on_meas_general_error(self, message: str) -> None:
+        self._meas_general_text.setPlainText(f"Erreur : {message}")
+
+    def _on_meas_general_finished(self) -> None:
+        QApplication.restoreOverrideCursor()
+        self._meas_query_btn.setEnabled(True)
+        self._meas_general_worker = None
 
     def _on_meas_ch1(self) -> None:
         self._measure_channel(1, self._meas_ch1_type_combo, self._meas_ch1_result)

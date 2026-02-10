@@ -78,6 +78,13 @@ class OscilloscopeWaveformPanel(QWidget):
                 lines.append(f"CH1 min/max : {min(ch1_arr):.4f} V / {max(ch1_arr):.4f} V")
             if ch2_arr:
                 lines.append(f"CH2 min/max : {min(ch2_arr):.4f} V / {max(ch2_arr):.4f} V")
+            # Si les deux canaux sont plats à 0 V, rappeler le couplage GND
+            if ch1_arr and ch2_arr:
+                m1, M1 = min(ch1_arr), max(ch1_arr)
+                m2, M2 = min(ch2_arr), max(ch2_arr)
+                if abs(M1 - m1) < 1e-9 and abs(M2 - m2) < 1e-9 and abs(m1) < 1e-9 and abs(m2) < 1e-9:
+                    lines.append("")
+                    lines.append("Les deux voies sont à 0 V (trait continu). Si les sondes sont branchées, passez le couplage en DC (ou AC) dans le panneau Canaux puis « Appliquer canaux ».")
             self._text.setPlainText("\n".join(lines))
             self._plot_btn.setEnabled(n > 0)
         except Exception as e:

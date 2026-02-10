@@ -57,6 +57,10 @@ class OscilloscopeView(QWidget):
         self._panels.append(self._acq_trig_panel)
         layout.addWidget(self._acq_trig_panel)
 
+        self._channels_panel = OscilloscopeChannelsPanel(self)
+        self._panels.append(self._channels_panel)
+        layout.addWidget(self._channels_panel)
+
         self._meas_panel = OscilloscopeMeasurementPanel(self)
         self._panels.append(self._meas_panel)
         layout.addWidget(self._meas_panel)
@@ -64,10 +68,6 @@ class OscilloscopeView(QWidget):
         self._waveform_panel = OscilloscopeWaveformPanel(self)
         self._panels.append(self._waveform_panel)
         layout.addWidget(self._waveform_panel)
-
-        self._channels_panel = OscilloscopeChannelsPanel(self)
-        self._panels.append(self._channels_panel)
-        layout.addWidget(self._channels_panel)
 
         layout.addStretch()
         scroll.setWidget(content)
