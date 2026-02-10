@@ -8,44 +8,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
     QProgressBar,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPainter, QPaintEvent
 
-
-class StatusIndicator(QFrame):
-    """Pastille verte (connecté) ou rouge (déconnecté)."""
-    def __init__(self, connected: bool = True, parent=None):
-        super().__init__(parent)
-        self._connected = connected
-        self.setFixedSize(14, 14)
-        self.setStyleSheet("""
-            StatusIndicator {
-                border-radius: 7px;
-                background-color: #2ecc71;
-            }
-        """ if connected else """
-            StatusIndicator {
-                border-radius: 7px;
-                background-color: #e74c3c;
-            }
-        """)
-
-    def set_connected(self, connected: bool):
-        self._connected = connected
-        self.setStyleSheet("""
-            StatusIndicator {
-                border-radius: 7px;
-                background-color: #2ecc71;
-            }
-        """ if connected else """
-            StatusIndicator {
-                border-radius: 7px;
-                background-color: #e74c3c;
-            }
-        """)
+from .status_indicator import StatusIndicator
 
 
 class ConnectionStatusBar(QWidget):

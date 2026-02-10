@@ -24,36 +24,11 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
 )
-from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtCore import Qt
 
 from ui.bode_csv_viewer import BodeCsvViewerDialog
 from ui.bode_csv_viewer.model import BodeCsvDataset, BodeCsvPoint
-
-
-# Worker thread pour exécuter le balayage sans bloquer l'UI
-class SweepWorker(QThread):
-    point_received = pyqtSignal(object, int, int)  # BodePoint, index, total
-    progress = pyqtSignal(int, int)
-    finished_sweep = pyqtSignal(list)  # list[BodePoint]
-    error = pyqtSignal(str)
-    stabilization_started = pyqtSignal()
-    stabilization_ended = pyqtSignal()
-
-    def __init__(self, filter_test):
-        super().__init__()
-        self._filter_test = filter_test
-
-    def run(self):
-        try:
-            results = self._filter_test.run_sweep(
-                on_point=lambda p, i, t: self.point_received.emit(p, i, t),
-                on_progress=lambda i, t: self.progress.emit(i, t),
-                on_stabilization_started=lambda: self.stabilization_started.emit(),
-                on_stabilization_ended=lambda: self.stabilization_ended.emit(),
-            )
-            self.finished_sweep.emit(results)
-        except Exception as e:
-            self.error.emit(str(e))
+from ui.workers import SweepWorker
 
 
 class FilterTestView(QWidget):

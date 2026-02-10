@@ -4,7 +4,6 @@ Connectée au config et au core (connexions série, FilterTest).
 """
 from pathlib import Path
 
-from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -22,6 +21,7 @@ from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, Filt
 from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
+from ui.workers import DetectionWorker
 
 # Import core et config (optionnel si non disponibles)
 try:
@@ -74,18 +74,6 @@ except ImportError:
     get_latest_log_path = None
 
 logger = get_logger(__name__)
-
-
-class DetectionWorker(QThread):
-    """Thread pour la détection des équipements (évite de bloquer l'UI)."""
-    result = pyqtSignal(object, object, object, object)  # m_port, m_baud, g_port, g_baud
-
-    def run(self):
-        if detect_devices is None:
-            self.result.emit(None, None, None, None)
-            return
-        m_port, m_baud, g_port, g_baud, _log_lines = detect_devices()
-        self.result.emit(m_port, m_baud, g_port, g_baud)
 
 
 class MainWindow(QMainWindow):
@@ -447,11 +435,12 @@ class MainWindow(QMainWindow):
             return
         self._connection_bar.show_detection_progress()
         self._detection_worker = DetectionWorker()
-        self._detection_worker.result.connect(self._on_detection_result)
+        self._detection_worker.result.connect(self._on_detection_result_5)
         self._detection_worker.finished.connect(self._on_detection_finished)
         self._detection_worker.start()
 
-    def _on_detection_result(self, multimeter_port, multimeter_baud, generator_port, generator_baud):
+    def _on_detection_result_5(self, multimeter_port, multimeter_baud, generator_port, generator_baud, _log_lines=None):
+        """Reçoit le signal du DetectionWorker (5 arguments ; log_lines non utilisé ici)."""
         logger.info("Détection: multimètre=%s@%s, générateur=%s@%s", multimeter_port, multimeter_baud, generator_port, generator_baud)
         self._config = update_config_ports(
             self._config,

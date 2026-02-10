@@ -14,24 +14,12 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QMessageBox,
 )
-from PyQt6.QtCore import QThread, pyqtSignal
-
 try:
     from core.device_detection import detect_devices, update_config_ports, list_serial_ports
 except ImportError:
     detect_devices = update_config_ports = list_serial_ports = None
 
-
-class DetectionWorker(QThread):
-    """Thread pour exécuter la détection sans bloquer l'UI."""
-    result = pyqtSignal(object, object, object, object, object)  # m_port, m_baud, g_port, g_baud, log_lines
-
-    def run(self):
-        if detect_devices is None:
-            self.result.emit(None, None, None, None, [])
-            return
-        m_port, m_baud, g_port, g_baud, log_lines = detect_devices()
-        self.result.emit(m_port, m_baud, g_port, g_baud, log_lines)
+from ui.workers import DetectionWorker
 
 
 class DeviceDetectionDialog(QDialog):

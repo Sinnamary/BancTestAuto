@@ -161,7 +161,8 @@ BancTestAuto/
 │   ├── main_window.py
 │   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
 │   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params, status_indicator
-│   ├── dialogs/             # serial_config, save_config, device_detection, view_config, view_log, help_dialog, about_dialog
+│   ├── workers/             # detection_worker (DetectionWorker), sweep_worker (SweepWorker)
+│   ├── dialogs/             # serial_config, serial_form (SerialConfigForm), save_config, device_detection, view_config, view_log, help_dialog, about_dialog
 │   ├── oscilloscope/        # oscilloscope_view, connection_panel, channels_panel, acquisition_trigger_panel, measurement_panel, waveform_panel (DOS1102)
 │   ├── bode_csv_viewer/     # Visualiseur Bode (CSV banc filtre) : dialog, csv_loader, plot_*, panels, cutoff, smoothing
 │   └── views/               # meter_view, generator_view, logging_view, filter_test_view, filter_calculator_view, power_supply_view, serial_terminal_view, oscilloscope_view
@@ -364,6 +365,14 @@ Le développement se fait en **petits fichiers**, avec des **classes distinctes 
 **Exemple de chaîne d’appel :**
 - `filter_test.py` (banc filtre) reçoit la config (f_min, f_max, etc.), crée ou reçoit les instances **Measurement** (ScpiProtocol) et **Fy6900Protocol**, puis les **appelle** pour régler la fréquence, lancer une mesure, etc.
 - Les vues UI (multimètre seul, générateur seul, banc filtre) s’appuient sur les mêmes classes d’appareils.
+
+#### 3.4.1 Répartition effective — classes partagées, pas de doublons
+
+- **StatusIndicator** : une seule classe dans `ui/widgets/status_indicator.py` ; utilisée par `connection_status`, `power_supply_view`, `oscilloscope/connection_panel`.
+- **Workers (QThread)** : `ui/workers/detection_worker.py` (DetectionWorker), `ui/workers/sweep_worker.py` (SweepWorker) ; utilisés par `main_window`, `device_detection_dialog`, `filter_test_view`.
+- **Formulaire série** : `ui/dialogs/serial_form.py` (classe `SerialConfigForm`) ; utilisé par `serial_config_dialog` pour les onglets Multimètre et Générateur.
+- **Classes utilisées** : toutes les classes des modules `ui/`, `core/` et `config/` sont utilisées par l'application principale. Aucune classe morte.
+- **Maquette** : le dossier `maquette/` n'est **pas importé** par l'application ; c'est une maquette autonome (données factices, lancement via `main_maquette.py`).
 
 ---
 

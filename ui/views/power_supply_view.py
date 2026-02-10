@@ -13,8 +13,9 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QMessageBox,
     QFormLayout,
-    QFrame,
 )
+
+from ui.widgets import StatusIndicator
 
 
 def _list_serial_ports():
@@ -24,29 +25,6 @@ def _list_serial_ports():
         return [p.device for p in ports]
     except Exception:
         return []
-
-
-class StatusIndicator(QFrame):
-    """Pastille verte (connecté) ou rouge (déconnecté)."""
-
-    def __init__(self, connected: bool = False, parent=None):
-        super().__init__(parent)
-        self._connected = connected
-        self.setFixedSize(14, 14)
-        self._update_style()
-
-    def _update_style(self):
-        color = "#2ecc71" if self._connected else "#e74c3c"
-        self.setStyleSheet(f"""
-            StatusIndicator {{
-                border-radius: 7px;
-                background-color: {color};
-            }}
-        """)
-
-    def set_connected(self, connected: bool):
-        self._connected = connected
-        self._update_style()
 
 
 class PowerSupplyView(QWidget):
