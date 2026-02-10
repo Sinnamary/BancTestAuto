@@ -104,13 +104,17 @@ L'application propose **« Toutes les mesures »** (par voie CH1, CH2, ou inter-
 
 ### Récupération des données de courbe (forme d'onde)
 
-Pour **afficher les signaux** (courbes CH1/CH2 en fonction du temps) :
+Pour **afficher les signaux** (courbes CH1/CH2 en fonction du temps), l'application utilise l'API Hanmatek/OWON (référence : [hanmatek_DOS1102_python_wrapper](https://github.com/danielphili/hanmatek_DOS1102_python_wrapper)) :
 
 | Commande | Rôle |
 |----------|------|
-| `:WAV:DATA:ALL?` ou `:WAVeform:DATA:ALL?` | Données de courbe (ASCII ou bloc binaire SCPI `#n<longueur><données>`) |
+| `:DATA:WAVE:SCREen:HEAD?` | Méta-données (4 octets puis JSON : échelles, offset, sample rate, DATALEN, etc.) |
+| `:DATA:WAVE:SCREEN:CH1?` | Données brutes canal 1 : 4 octets + int16 signé (little-endian) par point |
+| `:DATA:WAVE:SCREEN:CH2?` | Données brutes canal 2 : idem |
 
-Le format exact dépend du modèle. L'onglet Oscilloscope propose **« Récupérer forme d'onde »** et **« Afficher courbe »** si les données sont une liste de nombres (ASCII).
+Formule de conversion en tension (V) : `voltage = scale * (adc_val - offset*8.25) / 410` (scale inclut le facteur de sonde). L'onglet Oscilloscope **« Récupérer forme d'onde »** envoie HEAD? puis CH1?/CH2?, décode les binaires et affiche **« Afficher courbe »** (temps en s, CH1/CH2 en V).
+
+*Ancienne commande (selon modèle) :* `:WAV:DATA:ALL?` / `:WAVeform:DATA:ALL?` (ASCII ou bloc SCPI).
 
 ---
 
@@ -131,9 +135,10 @@ Sur le DOS1102, la syntaxe courte (`:CH1:`, `:ACQ:MODE`) peut être acceptée ; 
 
 ## Implémentation dans BancTestAuto
 
-- **Commandes** : `core/dos1102_commands.py` (constantes SCPI, `MEAS_TYPES_PER_CHANNEL`, `MEAS_TYPES_INTER_CHANNEL`, `WAVEFORM_DATA_ALL`, `MEAS_CH_QUERY`, etc.)
-- **Protocole** : `core/dos1102_protocol.py` — envoi/réception sur `SerialConnection` ou `Dos1102UsbConnection` ; `meas_all_per_channel(ch)`, `meas_all_inter_channel()`, `waveform_data_raw()` pour Bode phase et affichage des signaux
-- **Vue** : `ui/views/oscilloscope_view.py` — onglet Oscilloscope : connexion, acquisition, trigger, mesures (une par canal + **toutes les mesures** par voie ou inter-canal pour Bode phase), **forme d'onde** (récupération + affichage courbe si données ASCII)
+- **Commandes** : `core/dos1102_commands.py` (constantes SCPI, `WAVEFORM_HEAD`, `WAVEFORM_SCREEN_CH(ch)`, `MEAS_TYPES_PER_CHANNEL`, etc.)
+- **Protocole** : `core/dos1102_protocol.py` — envoi/réception sur `SerialConnection` ou `Dos1102UsbConnection` ; `waveform_meta_data()`, `waveform_screen_raw(ch, n_points)`, **`get_waveform_screen()`** (HEAD? + CH1?/CH2? → meta, time, ch1, ch2) ; `meas_all_per_channel(ch)`, `meas_all_inter_channel()` pour Bode phase
+- **Parsing forme d'onde** : `core/dos1102_waveform.py` — `decode_screen_channel()`, `time_base_from_meta()`, `decode_screen_waveform()` pour le binaire Hanmatek/OWON
+- **Vue** : `ui/oscilloscope/` — onglet Oscilloscope : connexion, acquisition, trigger, mesures, **forme d'onde** (récupération via `get_waveform_screen()` + affichage courbe CH1/CH2 en V vs temps en s)
 
 ---
 

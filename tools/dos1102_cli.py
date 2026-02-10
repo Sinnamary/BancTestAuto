@@ -94,13 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--waveform",
         action="store_true",
-        help="Envoie :WAV:DATA:ALL? (forme courte) et affiche un résumé de la réponse.",
+        help="Récupère la forme d'onde (HEAD? + SCREEN:CH1?/CH2?) et affiche un résumé.",
     )
     group.add_argument(
         "--waveform-long",
         dest="waveform_long",
         action="store_true",
-        help="Envoie :WAVeform:DATA:ALL? (forme longue) et affiche un résumé de la réponse.",
+        help="Identique à --waveform (conservé pour compatibilité).",
     )
     group.add_argument(
         "--scan-meas",
@@ -177,26 +177,26 @@ def cmd_write(proto: Dos1102Protocol, command: str) -> int:
     return 0
 
 
-def cmd_waveform(proto: Dos1102Protocol, use_long: bool = False) -> int:
-    if use_long:
-        print("TX: :WAVeform:DATA:ALL?")
-    else:
-        print("TX: :WAV:DATA:ALL?")
+def cmd_waveform(proto: Dos1102Protocol) -> int:
+    """Récupère la forme d'onde via :DATA:WAVE:SCREen:HEAD? + SCREEN:CH1?/CH2? et affiche un résumé."""
+    print("TX: :DATA:WAVE:SCREen:HEAD? puis :DATA:WAVE:SCREEN:CH1? / CH2?")
     try:
-        data = proto.waveform_data_raw(use_long_command=use_long)
+        result = proto.get_waveform_screen()
     except Exception as exc:  # pragma: no cover - outil manuel
-        cmd = ":WAVeform:DATA:ALL?" if use_long else ":WAV:DATA:ALL?"
-        print(f"ERREUR lors de {cmd}: {exc}", file=sys.stderr)
+        print(f"ERREUR lors de la récupération forme d'onde: {exc}", file=sys.stderr)
         return 1
 
-    if isinstance(data, bytes):
-        size = len(data)
-        preview = data[:32]
-        print(f"RX: bloc binaire ({size} octets)")
-        print(f"    Aperçu (32 octets max): {preview!r}")
-    else:
-        text = str(data)
-        print(f"RX (texte): {text!r}")
+    meta = result["meta"]
+    time_arr = result["time"]
+    ch1 = result["ch1"]
+    ch2 = result["ch2"]
+    n = len(time_arr)
+    sr = meta.get("SAMPLE", {}).get("SAMPLERATE", "?")
+    print(f"RX: {n} points, sample rate {sr}")
+    if ch1:
+        print(f"    CH1: min={min(ch1):.4f} V, max={max(ch1):.4f} V")
+    if ch2:
+        print(f"    CH2: min={min(ch2):.4f} V, max={max(ch2):.4f} V")
     return 0
 
 
@@ -294,7 +294,7 @@ def run_repl(proto: Dos1102Protocol) -> int:
         "Mode interactif DOS1102.\n"
         "  - Les lignes terminées par '?' sont envoyées avec lecture de réponse (ask).\n"
         "  - Les autres lignes sont envoyées sans lecture (write).\n"
-        "  - Commandes spéciales : 'waveform' pour :WAV:DATA:ALL?, 'exit' ou Ctrl+C pour quitter.\n"
+        "  - Commandes spéciales : 'waveform' pour récupérer forme d'onde (HEAD?+SCREEN), 'exit' ou Ctrl+C pour quitter.\n"
     )
     while True:  # pragma: no cover - outil manuel
         try:
@@ -356,10 +356,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             return cmd_ask(proto, args.ask)
         if args.write_cmd:
             return cmd_write(proto, args.write_cmd)
-        if args.waveform:
-            return cmd_waveform(proto, use_long=False)
-        if getattr(args, "waveform_long", False):
-            return cmd_waveform(proto, use_long=True)
+        if args.waveform or getattr(args, "waveform_long", False):
+            return cmd_waveform(proto)
         if getattr(args, "scan_meas", False):
             return cmd_scan_measurements(proto)
         # Par défaut, on lance le REPL pour faciliter le debug.

@@ -2,11 +2,16 @@
 Protocole SCPI pour l'oscilloscope HANMATEK DOS1102.
 Envoi/réception sur une SerialConnection (USB virtuelle série).
 """
+import json
+
 from .serial_connection import SerialConnection
 from . import dos1102_commands as CMD
 from .app_logger import get_logger
 
 logger = get_logger(__name__)
+
+# Taille de lecture pour :DATA:WAVE:SCREen:HEAD? (réponse = 4 octets + JSON)
+WAVEFORM_HEAD_READ_SIZE = 8192
 
 
 class Dos1102Protocol:
@@ -155,6 +160,49 @@ class Dos1102Protocol:
                 out[label] = f"Erreur: {e}"
         return out
 
+    def waveform_meta_data(self) -> dict:
+        """
+        Envoie :DATA:WAVE:SCREen:HEAD? et retourne le JSON de méta-données
+        (échelles, offset, sample rate, DATALEN, etc.).
+        Réponse appareil : 4 octets + chaîne JSON (éventuellement précédée de \\n).
+        """
+        self.write(CMD.WAVEFORM_HEAD)
+        data = self._conn.read(WAVEFORM_HEAD_READ_SIZE)
+        if len(data) < 5:
+            raise ValueError("Réponse HEAD trop courte ou vide")
+        # Certains appareils envoient \\n + 4 octets + JSON : chercher le début du JSON
+        raw = data
+        start = raw.find(b"{")
+        if start < 0:
+            start = 4
+        body = raw[start:].decode("utf-8", errors="replace").strip()
+        if body.endswith("->"):
+            body = body[:-2].strip()
+        return json.loads(body)
+
+    def waveform_screen_raw(self, ch: int, n_points: int) -> bytes:
+        """
+        Envoie :DATA:WAVE:SCREEN:CHn? et lit la réponse binaire.
+        Réponse : 4 octets + n_points × 2 octets (int16 LE).
+        """
+        self.write(CMD.WAVEFORM_SCREEN_CH(ch))
+        size = 4 + 2 * n_points
+        return self._conn.read(size)
+
+    def get_waveform_screen(self) -> dict:
+        """
+        Récupère les formes d'onde via :DATA:WAVE:SCREen:HEAD? et :DATA:WAVE:SCREEN:CHn?.
+        Retourne un dict avec les clés : meta, time (s), ch1 (V), ch2 (V).
+        """
+        from .dos1102_waveform import decode_screen_waveform
+
+        meta = self.waveform_meta_data()
+        n = int(meta["SAMPLE"]["DATALEN"])
+        raw1 = self.waveform_screen_raw(1, n)
+        raw2 = self.waveform_screen_raw(2, n)
+        time_arr, ch1_arr, ch2_arr = decode_screen_waveform(meta, raw1, raw2)
+        return {"meta": meta, "time": time_arr, "ch1": ch1_arr, "ch2": ch2_arr}
+
     def waveform_data_raw(
         self,
         timeout_override_sec: float | None = 5.0,
@@ -162,20 +210,14 @@ class Dos1102Protocol:
     ) -> str | bytes:
         """
         Envoie :WAV:DATA:ALL? et lit la réponse (ASCII ou bloc SCPI #n...).
-        Si la réponse commence par #, lit un bloc binaire SCPI (# + 1 chiffre + n chiffres = longueur + données).
-        Sinon lit une ligne (réponse ASCII).
-        timeout_override_sec : timeout plus long pour les grosses courbes (optionnel).
-        use_long_command : si True, utilise la forme longue :WAVeform:DATA:ALL?.
+        Préférer get_waveform_screen() pour une récupération fiable (API Hanmatek/OWON).
         """
-        # On envoie la commande sous forme de chaîne ; Dos1102Protocol.write
-        # se charge d'ajouter le LF final et d'encoder en UTF‑8.
         cmd = CMD.WAVEFORM_DATA_ALL_LONG if use_long_command else CMD.WAVEFORM_DATA_ALL
         self.write(cmd)
         first = self._conn.read(1)
         if not first:
             return ""
         if first == b"#":
-            # Format bloc SCPI : #n<ndigits> puis n chiffres donnant la longueur, puis les octets
             n_dig = self._conn.read(1)
             if not n_dig or not n_dig.isdigit():
                 return first + (n_dig or b"")
@@ -189,7 +231,6 @@ class Dos1102Protocol:
                 return first + n_dig + len_buf
             data = self._conn.read(length)
             return data
-        # Réponse ASCII (une ligne)
         rest = self._conn.readline()
         try:
             return (first + rest).decode("utf-8", errors="replace").strip()

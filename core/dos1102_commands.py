@@ -120,6 +120,15 @@ MEAS_TYPES_INTER_CHANNEL = (
 WAVEFORM_DATA_ALL = ":WAV:DATA:ALL?"
 WAVEFORM_DATA_ALL_LONG = ":WAVeform:DATA:ALL?"
 
+# Forme d'onde — API Hanmatek/OWON (méta JSON + binaire par canal)
+# Référence : hanmatek_DOS1102_python_wrapper (danielphili)
+WAVEFORM_HEAD = ":DATA:WAVE:SCREen:HEAD?"
+
+
+def WAVEFORM_SCREEN_CH(ch: int):  # noqa: N802
+    """Données binaires canal ch (1 ou 2). Réponse : 4 octets + int16 LE par point."""
+    return f":DATA:WAVE:SCREEN:CH{ch}?"
+
 
 def MEAS_CH_QUERY(ch: int, meas_type: str):  # noqa: N802
     """Ex. MEAS_CH_QUERY(1, 'FREQuency') -> :MEAS:CH1:FREQuency?"""
