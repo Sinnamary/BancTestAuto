@@ -40,17 +40,22 @@ BancTestAuto/
 ├── serve_htmlcov.py     # Serveur local + ouverture du rapport de couverture (htmlcov) dans le navigateur
 ├── BancTestAuto.spec    # Spécification PyInstaller (utilisée par build_exe.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
-├── core/                # app_logger, app_paths, bode_calc, data_logger, device_detection, filter_sweep,
-│                        # filter_test, fy6900_commands, fy6900_protocol, measurement, rs305p_protocol,
-│                        # scpi_commands, scpi_protocol, serial_connection, serial_exchange_logger, version
+├── core/                # app_logger, app_paths, bode_calc, bode_utils, data_logger, device_detection,
+│                        # dos1102_commands, dos1102_measurements, dos1102_protocol, dos1102_usb_connection,
+│                        # dos1102_waveform, filter_calculator, filter_sweep, filter_test, fy6900_commands,
+│                        # fy6900_protocol, measurement, rs305p_protocol, scpi_commands, scpi_protocol,
+│                        # serial_connection, serial_exchange_logger, version
 ├── config/              # settings.py (chargement/sauvegarde), config.json
 ├── ui/
 │   ├── widgets/         # connection_status, measurement_display, mode_bar, range_selector, rate_selector,
-│   │                    # math_panel, history_table, advanced_params
+│   │                    # math_panel, history_table, advanced_params, status_indicator
 │   ├── dialogs/         # serial_config, save_config, device_detection, view_config, view_log,
 │   │                    # help_dialog (F1), about_dialog
+│   ├── oscilloscope/    # oscilloscope_view, connexion, canaux, trigger, mesures, forme d'onde (DOS1102)
+│   ├── bode_csv_viewer/ # Visualiseur Bode (CSV banc filtre) : chargement, courbes, coupure, export
 │   └── views/           # meter_view, generator_view (voie 1/2), logging_view, filter_test_view,
-│                        # bode_plot_widget, power_supply_view (Alimentation RS305P), serial_terminal_view (Terminal série)
+│                        # filter_calculator_view, power_supply_view (RS305P), serial_terminal_view,
+│                        # oscilloscope_view (Hanmatek DOS1102)
 └── resources/themes/    # dark.qss, light.qss (thèmes clair/foncé)
 ```
 
@@ -145,6 +150,16 @@ L’exe est créé dans `dist/BancTestAuto.exe`. Au premier lancement, `config.j
 
 Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
 
+### Oscilloscope Hanmatek DOS1102
+
+- **Onglet dédié** : connexion USB (WinUSB/PyUSB) ou série selon modèle ; une seule connexion par onglet.
+- **Panneaux** : Connexion (USB ou COM), Canaux (couplage DC/AC/GND, échelle, position), Acquisition/Trigger, Mesures (par canal ou inter-canal pour Bode phase), Forme d'onde (récupération HEAD? + CH1?/CH2?, affichage courbe temps vs tension).
+- **Commandes** : identification (*IDN?), couplage (:CH1:COUP DC, etc.), récupération forme d'onde (:DATA:WAVE:SCREen:HEAD?, :DATA:WAVE:SCREEN:CH1?/CH2?), mesures (:MEAS:CH1?, :MEAS:CH2?, etc.). Voir [Commandes Hanmatek DOS1102](docs/COMMANDES_HANMATEK_DOS1102.md) et [Tableau commandes osc](docs/TABLEAU_COMMANDES_OSC_INTERFACE.md).
+
+### Calcul filtre
+
+- **Onglet dédié** : calcul de composants pour filtres (passe-bas, passe-haut, etc.) à partir des fréquences de coupure et de l'ordre souhaité. Utilise `core/filter_calculator.py` et `core/bode_utils.py`.
+
 ### Terminal série
 
 - **Onglet dédié** : connexion sur un port série au choix (indépendant du multimètre/générateur), envoi et réception de commandes. **Cases à cocher CR/LF** pour ajouter `\r` et/ou `\n` en fin de chaîne à l'envoi. Aucune vérification d'appareil ; utile pour tester des commandes (ex. FY6900) ou tout équipement série. Voir message d'aide si le port est déjà utilisé (ex. par l'onglet Alimentation).
@@ -184,6 +199,8 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `logging` | Dossier de sortie, niveau de log, intervalle et durée par défaut |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
 | `filter_test` | Voie générateur (1 ou 2), f_min, f_max, points par décade, échelle, délai, tension Ue |
+| `usb_oscilloscope` | Connexion USB (PyUSB) oscilloscope DOS1102 : vendor_id, product_id, timeouts lecture/écriture |
+| `serial_power_supply` | Port, débit, timeouts pour l'alimentation RS305P (onglet Alimentation) |
 | `bode_viewer` | Options fenêtre graphique Bode (fond, couleur, quadrillage, lissage, etc.) ; sauvegardées à la fermeture du graphique |
 
 Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIER_DES_CHARGES.md).
@@ -232,6 +249,8 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Commandes OWON (multimètre)](docs/COMMANDES_OWON.md) | Tableau des commandes SCPI implémentées pour le multimètre OWON XDM |
 | [Commandes FY6900 (générateur)](docs/COMMANDES_FY6900.md) | Tableau des commandes série implémentées pour le générateur FeelTech FY6900 |
 | [Commandes RS305P (alimentation)](docs/COMMANDES_RS305P.md) | Protocole Modbus RTU et registres pour l'alimentation Rockseed RS305P |
+| [Commandes Hanmatek DOS1102 (oscilloscope)](docs/COMMANDES_HANMATEK_DOS1102.md) | Commandes SCPI et récupération forme d'onde pour l'oscilloscope DOS1102 |
+| [Tableau commandes oscilloscope](docs/TABLEAU_COMMANDES_OSC_INTERFACE.md) | Chronologie des commandes (référence externe osc_interface.py) et équivalent projet (core/dos1102_*) |
 
 ---
 
@@ -240,3 +259,4 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 - **Multimètre** OWON XDM1041 / XDM2041 (SCPI, USB)
 - **Générateur** FeelTech FY6900 (optionnel ; requis pour le banc de test filtre)
 - **Alimentation** Rockseed RS305P (Modbus RTU, USB ; optionnel, onglet autonome)
+- **Oscilloscope** Hanmatek DOS1102 (SCPI, USB WinUSB/PyUSB ou port COM virtuel ; optionnel, onglet Oscilloscope)

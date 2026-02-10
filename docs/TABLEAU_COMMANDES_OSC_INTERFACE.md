@@ -1,7 +1,8 @@
 # Tableau chronologique des commandes – osc_interface.py
 
-**Référence (programme d'origine)** : [hanmatek_DOS1102_python_wrapper](https://github.com/danielphili/hanmatek_DOS1102_python_wrapper) — Daniel Alexander Philipps ([@danielphili](https://github.com/danielphili)). Python, pyUSB, extraction de données Hanmatek DOS1102 via USB. Licence GNU GPL v3.  
-Fichier local analysé : `docs/osc_interface.py` (copie de ce dépôt).
+**Référence (programme d'origine)** : [hanmatek_DOS1102_python_wrapper](https://github.com/danielphili/hanmatek_DOS1102_python_wrapper) — Daniel Alexander Philipps ([@danielphili](https://github.com/danielphili)). Python, pyUSB, extraction de données Hanmatek DOS1102 via USB. Licence GNU GPL v3.
+
+**Note :** Le fichier `osc_interface.py` n'est **pas inclus** dans ce dépôt ; il s'agit d'une référence externe. Le projet BancTestAuto utilise les modules `core/dos1102_*.py` pour la connexion, le protocole et le décodage (voir § 5 ci-dessous).
 
 ---
 

@@ -1,7 +1,7 @@
 # Conception de l’interface PyQt6 — Banc de test automatique
 
-**Version :** 1.0  
-**Date :** 7 février 2025  
+**Version :** 1.1  
+**Date :** 10 février 2026  
 **Objectif :** Décrire l’interface en détail **avant** la programmation Python, pour valider la maquette et guider l’implémentation.
 
 **Références :** [Cahier des charges §4](CAHIER_DES_CHARGES.md), [Guide de développement §3](DEVELOPPEMENT.md), [Banc de test filtre §9](BANC_TEST_FILTRE.md).
@@ -21,11 +21,11 @@
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │  Banc de test automatique                                    [_] [□] [X]        │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  Fichier   Outils   ?                                                             │
+│  Fichier   Outils   Configuration   Aide                                            │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [Barre de connexion : pastille multimètre + label | pastille générateur + label | Paramètres] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Alimentation ]  [ Terminal série ]  │
+│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Calcul filtre ]  [ Alimentation ]  [ Terminal série ]  [ Oscilloscope ]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  (Contenu de l’onglet sélectionné)                                               │
@@ -39,9 +39,9 @@
 
 | Élément | Widget PyQt6 | Rôle |
 |--------|---------------|------|
-| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Sauvegarder config, Enregistrer sous, **Voir config JSON (lecture seule)**, Quitter), Outils (**Détecter les équipements** → détection par protocole, mise à jour JSON), Aide |
+| Menu bar | `QMenuBar` | Fichier (Ouvrir config, Ouvrir CSV Banc filtre, Sauvegarder config, Enregistrer sous, Voir config JSON, Lire le dernier log, Quitter), Outils (Détecter les équipements), Configuration (Thème Clair/Foncé, Niveau de log), Aide (Manuel F1, À propos, sous-menus doc OWON/FY6900/RS305P/DOS1102) |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
-| Onglets | `QTabWidget` | 6 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série |
+| Onglets | `QTabWidget` | 8 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentation, Terminal série, Oscilloscope |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |
 
 **Menu Outils :** au moins une action **« Détecter les équipements »** : parcourt les ports COM, identifie le multimètre OWON (SCPI *IDN?) et le générateur FY6900 par protocole, affecte le bon port à chaque équipement et met à jour `config.json` (voir cahier des charges § 3.2). Implémentation côté logique : `core/device_detection.py`.
@@ -265,29 +265,41 @@ Terminal série **indépendant** (port au choix, sans lien avec multimètre/gén
 
 ---
 
-## 8. Dialogues
+## 8. Onglet « Oscilloscope » (Hanmatek DOS1102)
 
-### 7.1 Configuration série (multimètre et/ou générateur)
+Connexion **USB (WinUSB/PyUSB)** ou série selon modèle ; une seule connexion par onglet. **Panneaux** : Connexion (liste périphériques USB ou port COM, Rafraîchir, Connexion/Déconnexion), Canaux (couplage DC/AC/GND, échelle, position — **Appliquer canaux**), Acquisition/Trigger, Mesures (par canal CH1/CH2 ou inter-canal pour Bode phase ; **Toutes les mesures**), Forme d'onde (boutons **Récupérer forme d'onde** et **Afficher courbe** : envoi HEAD? puis CH1?/CH2?, décodage dans `core/dos1102_waveform.py`). Voir [COMMANDES_HANMATEK_DOS1102.md](COMMANDES_HANMATEK_DOS1102.md) et [TABLEAU_COMMANDES_OSC_INTERFACE.md](TABLEAU_COMMANDES_OSC_INTERFACE.md).
+
+---
+
+## 9. Onglet « Calcul filtre »
+
+Calcul de composants pour filtres (passe-bas, passe-haut, etc.) à partir des fréquences de coupure et de l'ordre. Utilise `core/filter_calculator.py` et `core/bode_utils.py`. Pas de connexion matérielle ; vue autonome.
+
+---
+
+## 10. Dialogues
+
+### 10.1 Configuration série (multimètre et/ou générateur)
 
 - **Classe :** `QDialog`
 - **Champs :** Port (`QComboBox` rempli avec les ports disponibles), Débit (`QComboBox` : 9600, 19200, …), Timeout lecture, Timeout écriture (`QDoubleSpinBox`), « Logger les échanges » (`QCheckBox`).
 - **Boutons :** `QDialogButtonBox` (OK, Annuler). Option : « Tester la connexion » (`QPushButton`).
 - **Contexte :** selon l’appel, préremplir pour le multimètre ou le générateur (section `serial_multimeter` ou `serial_generator` du config).
 
-### 7.2 Sauvegarde configuration JSON
+### 10.2 Sauvegarde configuration JSON
 
 - **Classe :** `QDialog` ou réutilisation d’un `QFileDialog` en mode sauvegarde.
 - **Contenu :** chemin du fichier (`QLineEdit` + « Parcourir »), option « Enregistrer sous » (autre chemin). Fichier par défaut : `config/config.json`.
 - **Boutons :** Enregistrer, Annuler.
 
-### 7.3 Détecter les équipements (menu Outils)
+### 10.3 Détecter les équipements (menu Outils)
 
 - **Classe :** `QDialog` (`DeviceDetectionDialog`).
 - **Rôle :** parcourir les ports COM, identifier le multimètre OWON (SCPI *IDN?) et le générateur FY6900 par protocole, afficher le résultat (port par équipement), permettre de **mettre à jour** `config.json` avec les ports détectés.
 - **Contenu :** texte d’explication ; zone résultat (`QTextEdit` ou labels) ; bouton « Lancer la détection » ; barre de progression (pendant le scan) ; bouton « Mettre à jour config.json » ; Fermer.
 - **Logique :** déléguée à `core/device_detection.py` (classe `DeviceDetection`).
 
-### 7.4 Voir config JSON (lecture seule) — menu Fichier
+### 10.4 Voir config JSON (lecture seule) — menu Fichier
 
 - **Classe :** `QDialog` (`ViewConfigDialog`).
 - **Rôle :** afficher le contenu du fichier `config.json` (ou du dictionnaire de config courant) en lecture seule, pour vérification ou debug.
@@ -296,19 +308,19 @@ Terminal série **indépendant** (port au choix, sans lien avec multimètre/gén
 
 ---
 
-## 9. Thème et apparence
+## 11. Thème et apparence
 
-### 8.1 Thème par défaut : sombre
+### 11.1 Thème par défaut
 
 - **Palette :** fond sombre (ex. `#1e1e1e`), texte clair (`#e0e0e0`), accents (boutons, sélection) dans une teinte lisible (ex. bleu/gris clair).
 - **Application :** `QApplication.setStyle()` (ex. `Fusion`) + `QPalette` personnalisée ou feuille de style `QSS` dans `resources/themes/dark.qss`.
 
-### 8.2 Polices
+### 11.2 Polices
 
 - **Affichage mesure (LCD-like) :** police monospace, grande taille (28–36 pt), ex. Consolas, JetBrains Mono, ou « DSEG » pour style LCD.
 - **Interface générale :** police système ou une police lisible (Segoe UI, sans-serif) 10–12 pt.
 
-### 8.3 Codes visuels
+### 11.3 Codes visuels
 
 | Élément | Règle |
 |--------|--------|
@@ -318,14 +330,14 @@ Terminal série **indépendant** (port au choix, sans lien avec multimètre/gén
 | Unités | Toujours affichées à côté des valeurs (V, A, Ω, Hz, etc.) |
 | Bouton « en cours » | Désactiver le bouton ou afficher un indicateur (roue dentée / « En cours… ») pendant les requêtes longues |
 
-### 8.4 Options de personnalisation (config.json)
+### 11.4 Options de personnalisation (config.json)
 
 - Taille de police des mesures : petit / moyen / grand (mapping vers 20 / 28 / 36 pt ou équivalent).
 - Thème : clair / sombre (chargement du QSS correspondant).
 
 ---
 
-## 10. Récapitulatif des widgets PyQt6 par fichier cible
+## 12. Récapitulatif des widgets PyQt6 par fichier cible
 
 À utiliser comme checklist pour l’implémentation (voir [DEVELOPPEMENT.md §3.2–3.3](DEVELOPPEMENT.md)).
 
@@ -349,6 +361,10 @@ Terminal série **indépendant** (port au choix, sans lien avec multimètre/gén
 | `views/filter_results_table.py` | `QTableWidget` f | Us | Us/Ue | Gain dB |
 | `views/bode_plot_widget.py` | Graphique semi-log (pyqtgraph) |
 | `views/serial_terminal_view.py` | Terminal série : port, débit, Connexion/Déconnexion, CR/LF, envoi/réception |
+| `views/oscilloscope_view.py` | Vue oscilloscope DOS1102 : connexion USB/COM, canaux, trigger, mesures, forme d'onde (voir `ui/oscilloscope/`) |
+| `views/filter_calculator_view.py` | Calcul filtre : paramètres, formules, résultats (utilise core/filter_calculator) |
+| `oscilloscope/*.py` | Panneaux : connection_panel, channels_panel, acquisition_trigger_panel, measurement_panel, waveform_panel |
+| `bode_csv_viewer/*.py` | Visualiseur Bode (Fichier → Ouvrir CSV Banc filtre) : chargement CSV, courbes, coupure, export (dialog, plot_widget, panels) |
 | `dialogs/serial_config_dialog.py` | Port, débit, timeouts, log |
 | `dialogs/save_config_dialog.py` | Chemin fichier, Enregistrer sous |
 | `dialogs/device_detection_dialog.py` | Détecter les équipements : résultat, Lancer détection, Mettre à jour config.json |
@@ -356,9 +372,9 @@ Terminal série **indépendant** (port au choix, sans lien avec multimètre/gén
 
 ---
 
-## 11. Ordre de réalisation suggéré (interface seule)
+## 13. Ordre de réalisation suggéré (interface seule)
 
-1. **Fenêtre vide** : `QMainWindow`, menu bar (dont Outils → Détecter les équipements), barre de statut, `QTabWidget` avec 6 onglets (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
+1. **Fenêtre vide** : `QMainWindow`, menu bar (Fichier, Outils, Configuration → Thème / Niveau de log, Aide), barre de statut, `QTabWidget` avec 8 onglets (Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentation, Terminal série, Oscilloscope).
 2. **Barre de connexion** : **deux pastilles** (multimètre + générateur) + labels + séparateur + bouton Paramètres (sans logique série).
 3. **Onglet Multimètre** : zones une par une (modes → affichage → plage/vitesse → math → avancés → historique → boutons).
 4. **Dialogues** : configuration série, sauvegarde JSON, **Détecter les équipements** (squelette).
@@ -371,7 +387,7 @@ Une fois cette maquette validée (et ce document mis à jour si besoin), la prog
 
 ---
 
-## 12. Répertoire maquette (définir puis intégrer)
+## 14. Répertoire maquette (définir puis intégrer)
 
 Pour **définir uniquement l’interface** et la valider avant de coder la logique métier, le projet dispose d’un répertoire **`maquette/`** :
 

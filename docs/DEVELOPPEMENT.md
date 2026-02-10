@@ -131,7 +131,7 @@ BancTestAuto/
 │   ├── __init__.py
 │   ├── config.json          # Config par défaut : multimètre, générateur, banc filtre
 │   └── settings.py          # Chargement / sauvegarde config
-├── core/                    # Logique métier (série, SCPI, FY6900, RS305P, mesure, banc filtre)
+├── core/                    # Logique métier (série, SCPI, FY6900, RS305P, DOS1102, mesure, banc filtre)
 │   ├── __init__.py
 │   ├── app_logger.py        # Logging application (fichiers horodatés)
 │   ├── app_paths.py         # Chemins config/logs (compatible exe PyInstaller)
@@ -143,19 +143,28 @@ BancTestAuto/
 │   ├── fy6900_protocol.py
 │   ├── fy6900_commands.py
 │   ├── rs305p_protocol.py   # Protocole Modbus RTU pour alimentation RS305P
+│   ├── dos1102_commands.py  # Constantes SCPI oscilloscope Hanmatek DOS1102
+│   ├── dos1102_protocol.py  # Protocole envoi/réception (série ou USB)
+│   ├── dos1102_usb_connection.py  # Connexion USB PyUSB (WinUSB) pour DOS1102
+│   ├── dos1102_waveform.py # Décodage forme d'onde (HEAD, CH1/CH2)
+│   ├── dos1102_measurements.py    # Parsing mesures (:MEAS:CH1?, etc.)
 │   ├── data_logger.py
 │   ├── filter_test.py
 │   ├── filter_sweep.py
+│   ├── filter_calculator.py # Calcul composants filtres (passe-bas, etc.)
 │   ├── bode_calc.py
+│   ├── bode_utils.py        # Utilitaires Bode (coupure, etc.)
 │   ├── device_detection.py
 │   └── version.py           # __version__, __version_date__, get_version_date()
 ├── ui/
 │   ├── __init__.py
 │   ├── main_window.py
 │   ├── theme_loader.py      # Chargeur QSS (thèmes dark/light)
-│   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params
+│   ├── widgets/             # connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params, status_indicator
 │   ├── dialogs/             # serial_config, save_config, device_detection, view_config, view_log, help_dialog, about_dialog
-│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, power_supply_view, serial_terminal_view, bode_plot_widget
+│   ├── oscilloscope/        # oscilloscope_view, connection_panel, channels_panel, acquisition_trigger_panel, measurement_panel, waveform_panel (DOS1102)
+│   ├── bode_csv_viewer/     # Visualiseur Bode (CSV banc filtre) : dialog, csv_loader, plot_*, panels, cutoff, smoothing
+│   └── views/               # meter_view, generator_view, logging_view, filter_test_view, filter_calculator_view, power_supply_view, serial_terminal_view, oscilloscope_view
 ├── resources/
 │   └── themes/              # dark.qss, light.qss (thèmes clair/foncé)
 ├── maquette/                # Interface seule (données factices), lancement indépendant
@@ -171,6 +180,8 @@ BancTestAuto/
 │   ├── COMMANDES_FY6900.md  # Commandes série générateur FeelTech FY6900
 │   ├── COMMANDES_OWON.md    # Commandes SCPI multimètre OWON
 │   ├── COMMANDES_RS305P.md  # Protocole Modbus alimentation RS305P
+│   ├── COMMANDES_HANMATEK_DOS1102.md  # Commandes SCPI oscilloscope DOS1102
+│   ├── TABLEAU_COMMANDES_OSC_INTERFACE.md  # Chronologie commandes (réf. externe osc_interface.py)
 │   ├── DEVELOPPEMENT.md     # Ce fichier
 │   ├── DOC_AUDIT.md         # Audit doc/code, plan réduction écarts
 │   ├── FIX_VENV.md          # Dépannage venv
@@ -208,7 +219,14 @@ BancTestAuto/
 │   ├── data_logger.py             # Classe DataLogger : enregistrement CSV horodaté
 │   ├── filter_test.py             # Classe FilterTest : orchestration banc filtre (appelle Measurement + Fy6900Protocol)
 │   ├── filter_sweep.py            # Génération liste de fréquences (log/lin), pas de balayage
+│   ├── filter_calculator.py       # Calcul composants filtres (passe-bas, passe-haut, etc.)
 │   ├── bode_calc.py               # Calculs gain linéaire, gain dB (20*log10) — réutilisable sans UI
+│   ├── bode_utils.py              # Utilitaires Bode (coupure, etc.)
+│   ├── dos1102_commands.py        # Constantes SCPI oscilloscope Hanmatek DOS1102
+│   ├── dos1102_protocol.py        # Protocole envoi/réception (série ou USB), get_waveform_screen(), mesures
+│   ├── dos1102_usb_connection.py  # Connexion USB PyUSB (WinUSB) pour DOS1102
+│   ├── dos1102_waveform.py        # Décodage forme d'onde (HEAD, CH1/CH2)
+│   ├── dos1102_measurements.py    # Parsing :MEAS:CH1?, :MEAS:CH2?
 │   └── device_detection.py        # Détection auto : parcours des ports COM, identification OWON (SCPI *IDN?) et FY6900, mise à jour config
 │
 ├── config/
@@ -249,7 +267,11 @@ BancTestAuto/
 │   │   ├── filter_test_view.py    # Vue banc filtre : config balayage + tableau + graphique Bode (panneau/tableau intégrés)
 │   │   ├── power_supply_view.py   # Vue alimentation RS305P (connexion série gérée dans l'onglet)
 │   │   ├── serial_terminal_view.py  # Terminal série : port au choix, envoi/réception, CR/LF en fin de chaîne
-│   │   └── bode_plot_widget.py    # Widget graphique Bode (semi-log, gain dB vs fréquence) — réutilisable
+│   │   ├── oscilloscope_view.py    # Vue oscilloscope DOS1102 (connexion, canaux, trigger, mesures, forme d'onde)
+│   │   └── filter_calculator_view.py  # Calcul composants filtres (passe-bas, etc.)
+│   │
+│   ├── oscilloscope/              # Panneaux DOS1102 : connection_panel, channels_panel, acquisition_trigger_panel, measurement_panel, waveform_panel
+│   ├── bode_csv_viewer/           # Visualiseur Bode (Fichier → Ouvrir CSV Banc filtre) : dialog, csv_loader, plot_*, panels
 │   │
 │   └── (optionnel) mixins/
 │       └── __init__.py            # Mixins UI si besoin (ex. ExportMixin pour CSV)
@@ -319,8 +341,17 @@ BancTestAuto/
 | **ui/views/generator_view.py** | Vue générateur FY6900 : Voie 1/2, forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie. | main_window |
 | **ui/views/logging_view.py** | Vue enregistrement : texte (mesures multimètre uniquement), config + graphique + contrôles. | main_window |
 | **ui/views/filter_test_view.py** | Vue banc filtre : config balayage + tableau + Bode (panneau et tableau intégrés dans la vue). | main_window |
-| **ui/views/bode_plot_widget.py** | Graphique Bode semi-log (réutilisable). | filter_test_view, export image |
+| **ui/views/filter_calculator_view.py** | Calcul composants filtres (passe-bas, etc.). Utilise core/filter_calculator. | main_window |
 | **ui/views/serial_terminal_view.py** | Terminal série : connexion port au choix, envoi/réception, cases CR/LF. | main_window |
+| **ui/views/oscilloscope_view.py** | Vue oscilloscope DOS1102 : connexion USB/COM, canaux, trigger, mesures, forme d'onde. | main_window |
+| **ui/oscilloscope/*.py** | Panneaux : connection_panel, channels_panel, acquisition_trigger_panel, measurement_panel, waveform_panel. | oscilloscope_view |
+| **ui/bode_csv_viewer/*.py** | Visualiseur Bode (Fichier → Ouvrir CSV Banc filtre) : dialog, chargement CSV, courbes, coupure, export. | main_window |
+| **core/dos1102_commands.py** | Constantes SCPI DOS1102 (couplage, forme d'onde, mesures). Aucune I/O. | dos1102_protocol, oscilloscope |
+| **core/dos1102_protocol.py** | Envoi/réception SCPI DOS1102 (SerialConnection ou Dos1102UsbConnection) ; get_waveform_screen(), meas_all_per_channel(). | oscilloscope_view |
+| **core/dos1102_usb_connection.py** | Connexion USB PyUSB (WinUSB) pour DOS1102 (write/read synchrone). | dos1102_protocol |
+| **core/dos1102_waveform.py** | Décodage binaire forme d'onde (HEAD, CH1/CH2 → temps, tensions). | dos1102_protocol, oscilloscope |
+| **core/dos1102_measurements.py** | Parsing réponses :MEAS:CH1?, :MEAS:CH2? (JSON). | dos1102_protocol, oscilloscope |
+| **core/filter_calculator.py** | Calcul composants filtres (fréquence coupure, ordre). | filter_calculator_view |
 
 ### 3.4 Principes de développement — petits fichiers et classes par appareil
 
@@ -397,4 +428,6 @@ Convention : **MAJEUR.MINEUR.PATCH**. L’utilisateur voit la version via **Aide
 | **Banc de test filtre** (`BANC_TEST_FILTRE.md`) | Caractérisation filtre format Bode, balayage modifiable pour qualification |
 | **Manuel SCPI OWON** (`XDM1000_Digital_Multimeter_Programming_Manual.pdf`) | Commandes SCPI du multimètre |
 | **Manuel FY6900** (`FY6900_communication_protocol.pdf`) | Protocole FeelTech générateur |
+| **Commandes DOS1102** (`COMMANDES_HANMATEK_DOS1102.md`) | Commandes SCPI et forme d'onde oscilloscope Hanmatek DOS1102 |
+| **Tableau commandes osc** (`TABLEAU_COMMANDES_OSC_INTERFACE.md`) | Chronologie des commandes (référence externe osc_interface.py) et équivalent projet (core/dos1102_*) |
 | **Configuration** (`config/config.json`) | Paramètres par défaut ; **le logiciel doit permettre de sauvegarder un JSON** (configuration complète vers ce fichier ou un autre) |
