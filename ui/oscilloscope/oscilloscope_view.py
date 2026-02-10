@@ -28,6 +28,11 @@ class OscilloscopeView(QWidget):
         self._conn = None
         self._protocol = None
         self._panels: list[QWidget] = []
+        # Config USB (PyUSB) pour le DOS1102 ; alimentée par config.json si présent.
+        self._usb_vendor_id: int | None = None
+        self._usb_product_id: int | None = None
+        self._usb_read_timeout_ms: int | None = None
+        self._usb_write_timeout_ms: int | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -103,7 +108,14 @@ class OscilloscopeView(QWidget):
             from core.dos1102_usb_connection import Dos1102UsbConnection
             from core.dos1102_protocol import Dos1102Protocol
 
-            self._conn = Dos1102UsbConnection(id_vendor=vid, id_product=pid)
+            # Timeouts : on utilise ceux de la config si présents, sinon ceux de Dos1102UsbConnection.
+            kwargs: dict = {}
+            if isinstance(self._usb_read_timeout_ms, int):
+                kwargs["read_timeout_ms"] = self._usb_read_timeout_ms
+            if isinstance(self._usb_write_timeout_ms, int):
+                kwargs["write_timeout_ms"] = self._usb_write_timeout_ms
+
+            self._conn = Dos1102UsbConnection(id_vendor=vid, id_product=pid, **kwargs)
             self._conn.open()
             self._protocol = Dos1102Protocol(self._conn)
             self._on_connect_success()
@@ -152,12 +164,25 @@ class OscilloscopeView(QWidget):
             self._meas_panel.set_general_result("—")
 
     def load_config(self, config: dict) -> None:
-        """Remplit le port depuis config.serial_oscilloscope."""
-        osc = config.get("serial_oscilloscope") or {}
-        port = (osc.get("port") or "").strip()
-        if port:
-            self._conn_panel.set_port(port)
+        """Remplit les préférences USB depuis la config (connexion PyUSB uniquement)."""
+        # Ports série : uniquement pour les autres appareils ; l'oscilloscope est piloté en USB/PyUSB.
         self._conn_panel.refresh_ports()
+
+        # Paramètres USB (PyUSB) : on ne change pas le mode automatiquement, mais on
+        # mémorise le périphérique préféré et les timeouts éventuels.
+        usb_cfg = config.get("usb_oscilloscope") or {}
+        vid = usb_cfg.get("vendor_id")
+        pid = usb_cfg.get("product_id")
+        if isinstance(vid, int) and isinstance(pid, int):
+            self._usb_vendor_id = vid
+            self._usb_product_id = pid
+            self._conn_panel.set_preferred_usb_device(vid, pid)
+        rt = usb_cfg.get("read_timeout_ms")
+        wt = usb_cfg.get("write_timeout_ms")
+        if isinstance(rt, int):
+            self._usb_read_timeout_ms = rt
+        if isinstance(wt, int):
+            self._usb_write_timeout_ms = wt
 
     def get_current_serial_port(self) -> str | None:
         """Port série actuellement sélectionné (mode Série uniquement), sinon None."""
@@ -165,6 +190,10 @@ class OscilloscopeView(QWidget):
             port = self._conn_panel.get_port().strip()
             return port or None
         return None
+
+    def get_current_usb_device(self) -> tuple[int, int] | None:
+        """Périphérique USB actuellement sélectionné (VID, PID), ou None si non sélectionné."""
+        return self._conn_panel.get_usb_selection()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

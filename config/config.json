@@ -19,15 +19,11 @@
     "write_timeout": 2,
     "log_exchanges": false
   },
-  "serial_oscilloscope": {
-    "port": "COM4",
-    "baudrate": 115200,
-    "bytesize": 8,
-    "parity": "N",
-    "stopbits": 1,
-    "timeout": 2,
-    "write_timeout": 2,
-    "log_exchanges": false
+  "usb_oscilloscope": {
+    "vendor_id": 21317,
+    "product_id": 4660,
+    "read_timeout_ms": 5000,
+    "write_timeout_ms": 2000
   },
   "serial_power_supply": {
     "port": "COM4",

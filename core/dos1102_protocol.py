@@ -155,16 +155,22 @@ class Dos1102Protocol:
                 out[label] = f"Erreur: {e}"
         return out
 
-    def waveform_data_raw(self, timeout_override_sec: float | None = 5.0) -> str | bytes:
+    def waveform_data_raw(
+        self,
+        timeout_override_sec: float | None = 5.0,
+        use_long_command: bool = False,
+    ) -> str | bytes:
         """
         Envoie :WAV:DATA:ALL? et lit la réponse (ASCII ou bloc SCPI #n...).
         Si la réponse commence par #, lit un bloc binaire SCPI (# + 1 chiffre + n chiffres = longueur + données).
         Sinon lit une ligne (réponse ASCII).
         timeout_override_sec : timeout plus long pour les grosses courbes (optionnel).
+        use_long_command : si True, utilise la forme longue :WAVeform:DATA:ALL?.
         """
         # On envoie la commande sous forme de chaîne ; Dos1102Protocol.write
         # se charge d'ajouter le LF final et d'encoder en UTF‑8.
-        self.write(CMD.WAVEFORM_DATA_ALL)
+        cmd = CMD.WAVEFORM_DATA_ALL_LONG if use_long_command else CMD.WAVEFORM_DATA_ALL
+        self.write(cmd)
         first = self._conn.read(1)
         if not first:
             return ""

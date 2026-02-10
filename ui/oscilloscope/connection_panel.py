@@ -44,6 +44,7 @@ class OscilloscopeConnectionPanel(QWidget):
         self._on_connect_serial = on_connect_serial
         self._on_connect_usb = on_connect_usb
         self._on_disconnect = on_disconnect
+        self._preferred_usb: Optional[tuple[int, int]] = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -99,8 +100,10 @@ class OscilloscopeConnectionPanel(QWidget):
         self._speed_label.setVisible(is_serial)
         self._usb_combo.setVisible(not is_serial)
         self._usb_refresh_btn.setVisible(not is_serial)
-        if not is_serial and self._usb_combo.count() == 0:
-            self._refresh_usb()
+        if not is_serial:
+            if self._usb_combo.count() == 0:
+                self._refresh_usb()
+            self._apply_preferred_usb_selection()
 
     def _refresh_usb(self) -> None:
         try:
@@ -120,6 +123,7 @@ class OscilloscopeConnectionPanel(QWidget):
         for vid, pid, desc in devices:
             self._usb_combo.addItem(desc, (vid, pid))
         self._usb_combo.setCurrentIndex(0)
+        self._apply_preferred_usb_selection()
 
     def _on_connect_clicked(self) -> None:
         if self._connect_btn.text() == "Déconnexion":
@@ -179,3 +183,24 @@ class OscilloscopeConnectionPanel(QWidget):
 
     def set_port(self, port: str) -> None:
         self._port_combo.setCurrentText(port)
+
+    def set_preferred_usb_device(self, vid: int, pid: int) -> None:
+        """Enregistre le périphérique USB préféré (sera sélectionné si présent dans la liste)."""
+        self._preferred_usb = (vid, pid)
+        # Si on est déjà en mode USB et que la liste est remplie, on applique tout de suite.
+        if not self.is_serial_mode() and self._usb_combo.count() > 0:
+            self._apply_preferred_usb_selection()
+
+    def _apply_preferred_usb_selection(self) -> None:
+        """Sélectionne dans la liste USB le périphérique préféré s'il est connu."""
+        if not self._preferred_usb:
+            return
+        vid_pref, pid_pref = self._preferred_usb
+        for idx in range(self._usb_combo.count()):
+            data = self._usb_combo.itemData(idx)
+            if not data or data[0] is None:
+                continue
+            vid, pid = data
+            if vid == vid_pref and pid == pid_pref:
+                self._usb_combo.setCurrentIndex(idx)
+                break

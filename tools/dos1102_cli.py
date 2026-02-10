@@ -94,7 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--waveform",
         action="store_true",
-        help="Envoie :WAV:DATA:ALL? et affiche un résumé de la réponse.",
+        help="Envoie :WAV:DATA:ALL? (forme courte) et affiche un résumé de la réponse.",
+    )
+    group.add_argument(
+        "--waveform-long",
+        dest="waveform_long",
+        action="store_true",
+        help="Envoie :WAVeform:DATA:ALL? (forme longue) et affiche un résumé de la réponse.",
     )
     group.add_argument(
         "--scan-meas",
@@ -171,12 +177,16 @@ def cmd_write(proto: Dos1102Protocol, command: str) -> int:
     return 0
 
 
-def cmd_waveform(proto: Dos1102Protocol) -> int:
-    print("TX: :WAV:DATA:ALL?")
+def cmd_waveform(proto: Dos1102Protocol, use_long: bool = False) -> int:
+    if use_long:
+        print("TX: :WAVeform:DATA:ALL?")
+    else:
+        print("TX: :WAV:DATA:ALL?")
     try:
-        data = proto.waveform_data_raw()
+        data = proto.waveform_data_raw(use_long_command=use_long)
     except Exception as exc:  # pragma: no cover - outil manuel
-        print(f"ERREUR lors de :WAV:DATA:ALL?: {exc}", file=sys.stderr)
+        cmd = ":WAVeform:DATA:ALL?" if use_long else ":WAV:DATA:ALL?"
+        print(f"ERREUR lors de {cmd}: {exc}", file=sys.stderr)
         return 1
 
     if isinstance(data, bytes):
@@ -347,7 +357,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.write_cmd:
             return cmd_write(proto, args.write_cmd)
         if args.waveform:
-            return cmd_waveform(proto)
+            return cmd_waveform(proto, use_long=False)
+        if getattr(args, "waveform_long", False):
+            return cmd_waveform(proto, use_long=True)
         if getattr(args, "scan_meas", False):
             return cmd_scan_measurements(proto)
         # Par défaut, on lance le REPL pour faciliter le debug.

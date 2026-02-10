@@ -34,15 +34,13 @@ DEFAULTS = {
         "write_timeout": 2.0,
         "log_exchanges": False,
     },
-    "serial_oscilloscope": {
-        "port": "COM5",
-        "baudrate": 115200,
-        "bytesize": 8,
-        "parity": "N",
-        "stopbits": 1,
-        "timeout": 2.0,
-        "write_timeout": 2.0,
-        "log_exchanges": False,
+    # Paramètres par défaut pour la connexion USB (PyUSB) de l'oscilloscope DOS1102.
+    # Ces valeurs peuvent être surchargées dans config.json (section "usb_oscilloscope").
+    "usb_oscilloscope": {
+        "vendor_id": 0x5345,
+        "product_id": 0x1234,
+        "read_timeout_ms": 5000,
+        "write_timeout_ms": 2000,
     },
     "serial_power_supply": {
         "port": "COM6",
@@ -171,9 +169,9 @@ def get_serial_generator_config(config: dict[str, Any]) -> dict[str, Any]:
     return config.get("serial_generator", DEFAULTS["serial_generator"]).copy()
 
 
-def get_serial_oscilloscope_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Retourne la section serial_oscilloscope (pour l'oscilloscope HANMATEK DOS1102)."""
-    return config.get("serial_oscilloscope", DEFAULTS["serial_oscilloscope"]).copy()
+def get_usb_oscilloscope_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Retourne la section usb_oscilloscope (paramètres PyUSB pour le DOS1102)."""
+    return config.get("usb_oscilloscope", DEFAULTS["usb_oscilloscope"]).copy()
 
 
 def get_serial_power_supply_config(config: dict[str, Any]) -> dict[str, Any]:

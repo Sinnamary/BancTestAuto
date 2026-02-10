@@ -579,18 +579,20 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Config chargée : {path}")
 
     def _update_config_from_views(self) -> None:
-        """Recopie les ports sélectionnés dans les onglets vers self._config avant sauvegarde."""
+        """Recopie les ports / paramètres sélectionnés dans les onglets vers self._config avant sauvegarde."""
         if not self._config:
             return
-        # Oscilloscope : port série courant si mode Série
+        # Oscilloscope (USB / PyUSB uniquement) : dernier périphérique sélectionné
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(
-            self._oscilloscope_view, "get_current_serial_port"
+            self._oscilloscope_view, "get_current_usb_device"
         ):
-            port = self._oscilloscope_view.get_current_serial_port()
-            if port:
-                osc = dict(self._config.get("serial_oscilloscope") or {})
-                osc["port"] = port
-                self._config["serial_oscilloscope"] = osc
+            usb_dev = self._oscilloscope_view.get_current_usb_device()
+            if usb_dev:
+                vid, pid = usb_dev
+                usb_cfg = dict(self._config.get("usb_oscilloscope") or {})
+                usb_cfg["vendor_id"] = int(vid)
+                usb_cfg["product_id"] = int(pid)
+                self._config["usb_oscilloscope"] = usb_cfg
         # Alimentation RS305P : port série courant
         if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
             self._power_supply_view, "get_port"
