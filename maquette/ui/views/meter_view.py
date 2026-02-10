@@ -1,22 +1,26 @@
 """
-Vue onglet Multimètre — maquette avec données factices.
+Vue onglet Multimètre — maquette alignée sur l'onglet réel.
+Aucune logique de mesure, uniquement la structure et les widgets d'interface.
 """
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGroupBox,
-    QLabel,
     QPushButton,
-    QComboBox,
-    QRadioButton,
-    QButtonGroup,
-    QCheckBox,
-    QTableWidget,
-    QTableWidgetItem,
     QScrollArea,
 )
 from PyQt6.QtCore import Qt
+
+from ui.widgets import (
+    ModeBar,
+    MeasurementDisplay,
+    RangeSelector,
+    RateSelector,
+    MathPanel,
+    AdvancedParamsPanel,
+    HistoryTable,
+)
 
 
 class MeterView(QWidget):
@@ -32,77 +36,45 @@ class MeterView(QWidget):
         content = QWidget()
         layout = QVBoxLayout(content)
 
-        # --- Modes de mesure ---
-        modes_gb = QGroupBox("Modes de mesure")
-        modes_layout = QHBoxLayout(modes_gb)
-        self._mode_group = QButtonGroup(self)
-        modes = ["V⎓", "V~", "A⎓", "A~", "Ω", "Ω 4W", "Hz", "s", "F", "°C", "⊿", "⚡"]
-        for m in modes:
-            btn = QPushButton(m)
-            btn.setCheckable(True)
-            self._mode_group.addButton(btn)
-            modes_layout.addWidget(btn)
-        self._mode_group.buttons()[0].setChecked(True)
-        layout.addWidget(modes_gb)
+        # --- Barre de modes (identique à l'onglet réel) ---
+        self._mode_bar = ModeBar()
+        layout.addWidget(self._mode_bar)
 
         # --- Affichage principal + secondaire ---
-        display_gb = QGroupBox("Affichage")
-        display_layout = QHBoxLayout(display_gb)
-        self._value_label = QLabel("12.345 V")
-        self._value_label.setStyleSheet("font-size: 28px; font-family: Consolas, monospace;")
-        self._value_label.setMinimumWidth(200)
-        display_layout.addWidget(self._value_label)
-        display_layout.addStretch()
-        self._secondary_check = QCheckBox("Afficher Hz")
-        display_layout.addWidget(self._secondary_check)
-        self._secondary_label = QLabel("1.234 kHz")
-        self._secondary_label.setStyleSheet("font-size: 14px;")
-        display_layout.addWidget(self._secondary_label)
-        layout.addWidget(display_gb)
+        self._display = MeasurementDisplay()
+        # Valeurs factices pour la maquette
+        self._display.set_value("12.345 V")
+        self._display.set_secondary("1.234 kHz")
+        layout.addWidget(self._display)
 
         # --- Plage + Vitesse + Math ---
         row = QWidget()
         row_layout = QHBoxLayout(row)
-        # Plage
-        range_gb = QGroupBox("Plage")
-        range_layout = QVBoxLayout(range_gb)
-        range_layout.addWidget(QRadioButton("Auto"))
-        range_layout.addWidget(QRadioButton("Manuel"))
-        range_layout.addWidget(QComboBox())  # liste plages
-        row_layout.addWidget(range_gb)
-        # Vitesse
-        rate_gb = QGroupBox("Vitesse")
-        rate_layout = QVBoxLayout(rate_gb)
-        rate_layout.addWidget(QRadioButton("Rapide"))
-        rate_layout.addWidget(QRadioButton("Moyenne"))
-        rate_layout.addWidget(QRadioButton("Lente"))
-        row_layout.addWidget(rate_gb)
-        # Math
-        math_gb = QGroupBox("Fonctions math")
-        math_layout = QVBoxLayout(math_gb)
-        math_layout.addWidget(QRadioButton("Aucun"))
-        math_layout.addWidget(QRadioButton("Rel"))
-        math_layout.addWidget(QRadioButton("dB"))
-        math_layout.addWidget(QRadioButton("dBm"))
-        math_layout.addWidget(QRadioButton("Moyenne"))
-        row_layout.addWidget(math_gb)
+        self._range_selector = RangeSelector()
+        # Plages factices pour illustrer le fonctionnement
+        self._range_selector.set_ranges(
+            [("500 mV", 0.5), ("5 V", 5.0), ("50 V", 50.0), ("500 V", 500.0)]
+        )
+        row_layout.addWidget(self._range_selector)
+
+        self._rate_selector = RateSelector()
+        row_layout.addWidget(self._rate_selector)
+
+        self._math_panel = MathPanel()
         layout.addWidget(row)
+        row_layout.addWidget(self._math_panel)
+
+        # --- Paramètres avancés (RTD, continuité, buzzer) ---
+        self._advanced_params = AdvancedParamsPanel()
+        layout.addWidget(self._advanced_params)
 
         # --- Historique ---
-        hist_gb = QGroupBox("Historique")
-        hist_layout = QVBoxLayout(hist_gb)
-        self._history_table = QTableWidget(5, 3)
-        self._history_table.setHorizontalHeaderLabels(["#", "Valeur", "Unité"])
-        for i in range(3):
-            self._history_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-            self._history_table.setItem(i, 1, QTableWidgetItem("12.34" + str(i)))
-            self._history_table.setItem(i, 2, QTableWidgetItem("V"))
-        hist_layout.addWidget(self._history_table)
-        btn_row = QHBoxLayout()
-        btn_row.addWidget(QPushButton("Exporter CSV"))
-        btn_row.addWidget(QPushButton("Effacer"))
-        hist_layout.addLayout(btn_row)
-        layout.addWidget(hist_gb)
+        self._history_widget = HistoryTable()
+        # Quelques lignes factices pour la maquette
+        self._history_widget.set_rows(
+            [("12.340", "V"), ("12.341", "V"), ("12.342", "V")]
+        )
+        layout.addWidget(self._history_widget)
 
         # --- Actions ---
         actions = QHBoxLayout()
