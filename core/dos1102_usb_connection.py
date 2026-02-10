@@ -264,11 +264,13 @@ class Dos1102UsbConnection:
                         chunk = self._ep_in.read(READ_CHUNK_SIZE, timeout=self._read_timeout)
                     except Exception as e:
                         # Sous libusb0, un timeout remonte souvent comme USBError avec
-                        # le message 'timeout error' mais errno=None. On le traite
-                        # comme "pas de données reçues" plutôt que comme une erreur
-                        # fatale pour laisser la couche protocole décider quoi faire.
+                        # le message 'timeout error' mais errno=None. Sous libusb1
+                        # (WinUSB), on obtient typiquement "[Errno 10060] Operation timed out".
+                        # Dans les deux cas, on traite cela comme "pas de données reçues"
+                        # plutôt que comme une erreur fatale pour laisser la couche
+                        # protocole décider quoi faire.
                         msg = str(e)
-                        if "timeout error" in msg:
+                        if "timeout error" in msg or "Operation timed out" in msg:
                             logger.warning(
                                 "USB readline: timeout (%d ms) sans données (endpoint 0x%02x)",
                                 self._read_timeout,

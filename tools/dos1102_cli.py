@@ -44,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  python -m tools.dos1102_cli --ask \":MEAS?\"\n"
             "  python -m tools.dos1102_cli --write \":CH1:COUP GND\"\n"
             "  python -m tools.dos1102_cli --waveform\n"
+            "  python -m tools.dos1102_cli --scan-meas\n"
             "  python -m tools.dos1102_cli --repl\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -94,6 +95,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--waveform",
         action="store_true",
         help="Envoie :WAV:DATA:ALL? et affiche un résumé de la réponse.",
+    )
+    group.add_argument(
+        "--scan-meas",
+        dest="scan_meas",
+        action="store_true",
+        help=(
+            "Envoie une série de commandes :MEAS:CH1:... et affiche un tableau\n"
+            "indiquant quelles mesures répondent et lesquelles ne répondent pas."
+        ),
     )
     group.add_argument(
         "--repl",
@@ -180,6 +190,95 @@ def cmd_waveform(proto: Dos1102Protocol) -> int:
     return 0
 
 
+def cmd_scan_measurements(proto: Dos1102Protocol, channel: str = "CH1") -> int:
+    """Envoie une série de mesures standard et affiche un tableau de résultats.
+
+    Pour chaque commande :MEAS:<channel>:... on indique si une réponse a été reçue
+    (non vide) ou non (timeout / aucune donnée).
+    """
+    # Suffixes observés dans les logs app_*.log
+    # Version « nettoyée » : uniquement les mesures qui répondent
+    # de manière fiable et qui sont cohérentes avec la documentation.
+    meas_suffixes = [
+        "PERiod?",
+        "FREQuency?",
+        "AVERage?",
+        "PKPK?",
+        "MAX?",
+        "MIN?",
+        "VTOP?",
+        "VBASe?",
+        "VAMP?",
+        "PREShoot?",
+        "RTime?",
+        "FTime?",
+        "PWIDth?",
+        "NWIDth?",
+        "PDUTy?",
+        "NDUTy?",
+        "RDELay?",
+        "FDELay?",
+        "CYCRms?",
+        "RISEPHASEDELAY?",
+    ]
+
+    rows: list[tuple[str, str, str]] = []
+
+    print(f"Scan des mesures : canal {channel!r}")
+    print("(les timeouts apparaîtront comme 'Aucune réponse')")
+
+    for suffix in meas_suffixes:
+        cmd = f":MEAS:{channel}:{suffix}"
+        print(f"TX: {cmd!r}")
+        status: str
+        reply_preview: str
+        try:
+            reply = proto.ask(cmd)
+        except Exception as exc:  # pragma: no cover - outil manuel
+            status = "ERREUR"
+            reply_preview = f"{type(exc).__name__}: {exc}"
+        else:
+            if reply:
+                status = "OK"
+                # Affiche aussi la réponse brute pendant le test
+                print(f"RX: {reply!r}")
+                # On tronque pour garder le tableau final lisible
+                reply_preview = str(reply).replace("\n", " ")[:40]
+            else:
+                status = "Aucune réponse"
+                reply_preview = ""
+
+        rows.append((cmd, status, reply_preview))
+
+    # Construction d'un petit tableau ASCII
+    header_cmd = "Commande"
+    header_status = "Statut"
+    header_reply = "Aperçu réponse"
+
+    cmd_width = max(len(header_cmd), *(len(cmd) for cmd, _, _ in rows))
+    status_width = max(len(header_status), *(len(status) for _, status, _ in rows))
+    reply_width = max(len(header_reply), *(len(rep) for _, _, rep in rows))
+
+    def _fmt_line(col1: str, col2: str, col3: str) -> str:
+        return (
+            f"{col1:<{cmd_width}}  "
+            f"{col2:<{status_width}}  "
+            f"{col3:<{reply_width}}"
+        )
+
+    print()
+    print(_fmt_line(header_cmd, header_status, header_reply))
+    print(
+        _fmt_line("-" * cmd_width, "-" * status_width, "-" * reply_width),
+    )
+    for cmd, status, reply_preview in rows:
+        print(_fmt_line(cmd, status, reply_preview))
+
+    # Code de retour 0 même si certaines mesures ne répondent pas :
+    # c'est informatif et pas forcément une erreur.
+    return 0
+
+
 def run_repl(proto: Dos1102Protocol) -> int:
     print(
         "Mode interactif DOS1102.\n"
@@ -249,6 +348,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             return cmd_write(proto, args.write_cmd)
         if args.waveform:
             return cmd_waveform(proto)
+        if getattr(args, "scan_meas", False):
+            return cmd_scan_measurements(proto)
         # Par défaut, on lance le REPL pour faciliter le debug.
         return run_repl(proto)
     finally:

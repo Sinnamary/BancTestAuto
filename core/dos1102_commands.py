@@ -59,27 +59,43 @@ TRIG_TYPE_ALT = ":TRIG:TYPE ALT"
 MEAS_QUERY = ":MEAS?"
 
 # Mesures par canal (CH1 ou CH2) et type (tuple pour compatibilité)
+# Version nettoyée : uniquement les types qui répondent de manière fiable
+# sur le DOS1102 (cf. tests via tools.dos1102_cli --scan-meas).
 MEAS_TYPES = (
-    "PERiod", "FREQuency", "AVERage", "PKPK", "SQUARESUM", "MAX", "MIN",
-    "VTOP", "VBASe", "VAMP", "VPRESHOOT", "PREShoot", "RTime", "FTime",
-    "PWIDth", "NWIDth", "PDUTy", "NDUTy", "RDELay", "FDELay", "TRUERMS",
-    "CYCRms", "WORKPERIOD", "RISEPHASEDELAY", "PPULSENUM", "NPULSENUM",
-    "RISINGEDGENUM", "FALLINGEDGENUM", "AREA", "CYCLEAREA",
+    "PERiod",
+    "FREQuency",
+    "AVERage",
+    "PKPK",
+    "MAX",
+    "MIN",
+    "VTOP",
+    "VBASe",
+    "VAMP",
+    "PREShoot",
+    "RTime",
+    "FTime",
+    "PWIDth",
+    "NWIDth",
+    "PDUTy",
+    "NDUTy",
+    "RDELay",
+    "FDELay",
+    "CYCRms",
+    "RISEPHASEDELAY",
 )
 
 # Liste (libellé, type SCPI) pour toutes les mesures utilisables sur une voie (CH1 ou CH2)
+# Nettoyée pour exclure les commandes qui ne renvoient rien (timeouts).
 MEAS_TYPES_PER_CHANNEL = (
     ("Période", "PERiod"),
     ("Fréquence", "FREQuency"),
     ("Moyenne", "AVERage"),
     ("Crête à crête", "PKPK"),
-    ("SQUARESUM", "SQUARESUM"),
     ("Max", "MAX"),
     ("Min", "MIN"),
     ("Sommet", "VTOP"),
     ("Base", "VBASe"),
     ("Amplitude", "VAMP"),
-    ("VPRESHOOT", "VPRESHOOT"),
     ("PREShoot", "PREShoot"),
     ("Temps montée", "RTime"),
     ("Temps descente", "FTime"),
@@ -89,16 +105,8 @@ MEAS_TYPES_PER_CHANNEL = (
     ("Rapport cyclique -", "NDUTy"),
     ("Délai montée (vs réf)", "RDELay"),
     ("Délai descente (vs réf)", "FDELay"),
-    ("RMS", "TRUERMS"),
     ("CYCRms", "CYCRms"),
-    ("WORKPERIOD", "WORKPERIOD"),
     ("Délai phase montée (vs réf)", "RISEPHASEDELAY"),
-    ("PPULSENUM", "PPULSENUM"),
-    ("NPULSENUM", "NPULSENUM"),
-    ("RISINGEDGENUM", "RISINGEDGENUM"),
-    ("FALLINGEDGENUM", "FALLINGEDGENUM"),
-    ("AREA", "AREA"),
-    ("CYCLEAREA", "CYCLEAREA"),
 )
 
 # Mesures inter-canal : délai de CH2 par rapport à CH1 (à requêter sur CH2)
