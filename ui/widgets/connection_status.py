@@ -64,31 +64,30 @@ class ConnectionStatusBar(QWidget):
         row2 = QHBoxLayout()
         row2.setSpacing(6)
         row2.addStretch()
+        # Détecter en premier : utilisé au démarrage pour affecter les ports puis sauvegarder la config
+        self._detect_btn = QPushButton("Détecter")
+        self._detect_btn.setObjectName("detectButton")
+        self._detect_btn.setMinimumWidth(110)
+        self._detect_btn.setToolTip(
+            "Parcourt les ports COM/USB et identifie les 4 équipements. "
+            "Ensuite : Mettre à jour config (en mémoire) puis Fichier → Sauvegarder config pour la prochaine fois."
+        )
+        self._detect_btn.setStyleSheet(
+            "QPushButton#detectButton { font-weight: bold; min-height: 22px; }"
+        )
+        row2.addWidget(self._detect_btn)
+
+        row2.addSpacing(16)
+
         self._connect_all_btn = QPushButton("Connecter tout")
         self._connect_all_btn.setObjectName("connectAllButton")
-        self._connect_all_btn.setToolTip("Connecter les 4 équipements selon la config (équivalent Charger config).")
+        self._connect_all_btn.setToolTip("Connecte les 4 équipements selon la config (relit config.json).")
         row2.addWidget(self._connect_all_btn)
 
         self._disconnect_all_btn = QPushButton("Déconnecter tout")
         self._disconnect_all_btn.setObjectName("disconnectAllButton")
         self._disconnect_all_btn.setToolTip("Déconnecter tous les équipements.")
         row2.addWidget(self._disconnect_all_btn)
-
-        row2.addSpacing(12)
-
-        self._load_config_btn = QPushButton("Charger config")
-        self._load_config_btn.setObjectName("loadConfigButton")
-        self._load_config_btn.setToolTip("Récupère la config depuis config.json et tente de se connecter.")
-        row2.addWidget(self._load_config_btn)
-
-        self._detect_btn = QPushButton("Détecter")
-        self._detect_btn.setObjectName("detectButton")
-        row2.addWidget(self._detect_btn)
-
-        self._params_btn = QPushButton("Paramètres")
-        self._params_btn.setObjectName("paramsButton")
-        self._params_btn.setToolTip("Configuration série (ports, débits). Sauvegarder avec Fichier → Sauvegarder config.")
-        row2.addWidget(self._params_btn)
 
         row2.addStretch()
         main_layout.addLayout(row2)
@@ -145,12 +144,6 @@ class ConnectionStatusBar(QWidget):
         full_name = next(f for k, _, f in EQUIPMENT_ORDER if k == "oscilloscope")
         detail = label or "USB" if connected else "—"
         self._update_label("oscilloscope", short_name, full_name, connected, detail)
-
-    def get_load_config_button(self):
-        return self._load_config_btn
-
-    def get_params_button(self):
-        return self._params_btn
 
     def get_detect_button(self):
         return self._detect_btn

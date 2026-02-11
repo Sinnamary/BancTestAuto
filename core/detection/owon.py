@@ -57,10 +57,15 @@ def detect_owon(
     return None
 
 
-def _try_owon_on_port(port: str, log_lines: List[str]) -> tuple[bool, Optional[int]]:
+def _try_owon_on_port(
+    port: str,
+    log_lines: List[str],
+    unusable_ports: Optional[Set[str]] = None,
+) -> tuple[bool, Optional[int]]:
     """Teste si un port répond en SCPI *IDN? et contient OWON ou XDM."""
     logger.debug("_try_owon_on_port: %s — débits à tester: %s", port, OWON_BAUDS)
     for baud in OWON_BAUDS:
+        ser = None
         _log(log_lines, f"{port} [OWON] Ouverture {baud} bauds...")
         logger.debug("_try_owon_on_port: %s ouverture @ %s bauds", port, baud)
         try:
@@ -89,9 +94,14 @@ def _try_owon_on_port(port: str, log_lines: List[str]) -> tuple[bool, Optional[i
             logger.debug("_try_owon_on_port: %s réponse invalide ou vide: %r", port, rx_str[:80] if rx_str else "(vide)")
         except Exception as e:
             _log(log_lines, f"{port} [OWON] Erreur: {e}")
-            logger.debug("_try_owon_on_port: %s exception — %s", port, e, exc_info=True)
+            if unusable_ports is not None and _is_port_open_error(e):
+                unusable_ports.add(port)
+                logger.debug("_try_owon_on_port: %s erreur grave d'ouverture — port exclu des phases suivantes", port)
+            else:
+                logger.debug("_try_owon_on_port: %s exception — %s", port, e, exc_info=True)
             try:
-                ser.close()
+                if ser is not None:
+                    ser.close()
             except Exception:
                 pass
     return (False, None)

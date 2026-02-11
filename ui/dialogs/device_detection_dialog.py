@@ -132,7 +132,7 @@ class DeviceDetectionDialog(QDialog):
         else:
             self._result_edit.append("Générateur FY6900 : non détecté")
         self._result_edit.append("")
-        self._result_edit.append("Ces débits sont ceux pour lesquels l’appareil a répondu. Pour en utiliser un autre, modifiez Paramètres (Configuration série) puis rechargez la config.")
+        self._result_edit.append("Ces débits sont ceux pour lesquels l’appareil a répondu. Pour en utiliser un autre, modifiez config.json (ou Fichier → Ouvrir la configuration) puis rechargez la config.")
         self._update_config_btn.setEnabled(True)
         self._serial_log_edit.setPlainText("\n".join(log_lines) if log_lines else "")
 

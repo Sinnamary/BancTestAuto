@@ -1,14 +1,23 @@
 """
 Détecteur générateur FeelTech FY6900 (commande WMW00 + LF, réponse non SCPI).
 """
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import serial
+from serial import SerialException
 
 from ..app_logger import get_logger
 from .result import SerialDetectionResult
 
 logger = get_logger(__name__)
+
+
+def _is_port_open_error(exc: BaseException) -> bool:
+    """True si l'exception indique une erreur grave d'ouverture de port."""
+    if isinstance(exc, (SerialException, OSError)):
+        return True
+    msg = str(exc).lower()
+    return "could not open" in msg or "timeout" in msg or "sémaphore" in msg or "accès refusé" in msg or "permission" in msg
 
 FY6900_BAUD = 115200
 TIMEOUT = 0.5
@@ -23,17 +32,21 @@ def _log(log_lines: List[str], msg: str) -> None:
         logger.debug("détection: %s", msg)
 
 
-def detect_fy6900(ports: List[str], log_lines: Optional[List[str]] = None) -> Optional[SerialDetectionResult]:
+def detect_fy6900(
+    ports: List[str],
+    log_lines: Optional[List[str]] = None,
+    unusable_ports: Optional[Set[str]] = None,
+) -> Optional[SerialDetectionResult]:
     """
     Cherche un générateur FY6900 sur la liste de ports (premier trouvé).
-    Rejette les réponses SCPI (OWON/XDM). Remplit log_lines si fourni.
+    Rejette les réponses SCPI (OWON/XDM). Les ports en erreur grave sont ajoutés à unusable_ports.
     """
     if log_lines is None:
         log_lines = []
     logger.debug("detect_fy6900: début — %d port(s) à tester: %s (baud=%s)", len(ports), ports, FY6900_BAUD)
     for i, port in enumerate(ports):
         logger.debug("detect_fy6900: test port %d/%d — %s", i + 1, len(ports), port)
-        if _try_fy6900_on_port(port, log_lines):
+        if _try_fy6900_on_port(port, log_lines, unusable_ports=unusable_ports):
             logger.info("Générateur FY6900 détecté sur %s", port)
             _log(log_lines, f"# Générateur trouvé sur {port}.")
             logger.debug("detect_fy6900: trouvé sur %s", port)
@@ -43,10 +56,15 @@ def detect_fy6900(ports: List[str], log_lines: Optional[List[str]] = None) -> Op
     return None
 
 
-def _try_fy6900_on_port(port: str, log_lines: List[str]) -> bool:
+def _try_fy6900_on_port(
+    port: str,
+    log_lines: List[str],
+    unusable_ports: Optional[Set[str]] = None,
+) -> bool:
     """Teste si le port répond au protocole FY6900 (WMW00) sans réponse SCPI."""
     logger.debug("_try_fy6900_on_port: %s ouverture @ %s bauds", port, FY6900_BAUD)
     _log(log_lines, f"{port} [FY6900] Ouverture {FY6900_BAUD} bauds...")
+    ser = None
     try:
         ser = serial.Serial(
             port=port,
@@ -81,9 +99,14 @@ def _try_fy6900_on_port(port: str, log_lines: List[str]) -> bool:
         return True
     except Exception as e:
         _log(log_lines, f"{port} [FY6900] Erreur: {e}")
-        logger.debug("_try_fy6900_on_port: %s exception — %s", port, e, exc_info=True)
+        if unusable_ports is not None and _is_port_open_error(e):
+            unusable_ports.add(port)
+            logger.debug("_try_fy6900_on_port: %s erreur grave d'ouverture — port exclu des phases suivantes", port)
+        else:
+            logger.debug("_try_fy6900_on_port: %s exception — %s", port, e, exc_info=True)
         try:
-            ser.close()
+            if ser is not None:
+                ser.close()
         except Exception:
             pass
         return False

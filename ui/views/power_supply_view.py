@@ -1,7 +1,11 @@
 """
-Vue onglet Alimentation RS305P — connexion série, tension, courant, sortie ON/OFF.
-Connexion et déconnexion gérées dans l'onglet. Aucune dépendance config.json.
+Vue onglet Alimentation RS305P — tension, courant, sortie ON/OFF.
+Utilise la connexion déjà établie par le bridge (Connecter tout / Charger config).
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -9,68 +13,46 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
     QPushButton,
-    QComboBox,
     QDoubleSpinBox,
     QMessageBox,
     QFormLayout,
 )
 
-from ui.widgets import StatusIndicator
-
-
-def _list_serial_ports():
-    try:
-        import serial.tools.list_ports
-        ports = serial.tools.list_ports.comports()
-        return [p.device for p in ports]
-    except Exception:
-        return []
-
 
 class PowerSupplyView(QWidget):
-    """Onglet Alimentation RS305P. Connexion série gérée localement."""
-
-    RS305P_BAUD = 9600
+    """Onglet Alimentation RS305P. Utilise la connexion du bridge si disponible."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._conn: Any = None
+        self._protocol: Any = None
+        self._build_ui()
+
+    def set_connection(self, conn: Optional[Any]) -> None:
+        """Utilise la connexion série fournie par le bridge (ou None si déconnecté)."""
         self._conn = None
         self._protocol = None
-        self._build_ui()
-        self._refresh_ports()
+        if conn is not None and getattr(conn, "is_open", lambda: False)():
+            try:
+                from core.rs305p_protocol import Rs305pProtocol
+                self._conn = conn
+                self._protocol = Rs305pProtocol(conn, slave_addr=1)
+                self._protocol.get_output()
+            except Exception:
+                self._conn = None
+                self._protocol = None
+        self._update_connection_state(self._protocol is not None)
+        if self._protocol is None:
+            self._u_display_label.setText("— V")
+            self._i_display_label.setText("— A")
+            self._output_label.setText("OFF")
 
     def load_config(self, config: dict) -> None:
-        """Optionnel : port par défaut depuis config.serial_power_supply.port."""
-        ps = config.get("serial_power_supply") or {}
-        port = (ps.get("port") or "").strip()
-        if port:
-            self._port_combo.setCurrentText(port)
-        self._refresh_ports()
-
-    def get_port(self) -> str:
-        """Retourne le port série actuellement sélectionné (pour mise à jour de config)."""
-        return self._port_combo.currentText().strip()
+        """Optionnel : pas de port à charger, la connexion vient du bridge."""
+        pass
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-
-        conn_gb = QGroupBox("Connexion série")
-        conn_layout = QHBoxLayout(conn_gb)
-        conn_layout.addWidget(QLabel("Port:"))
-        self._port_combo = QComboBox()
-        self._port_combo.setMinimumWidth(120)
-        self._port_combo.setEditable(True)
-        conn_layout.addWidget(self._port_combo)
-        conn_layout.addWidget(QLabel(f"Vitesse: {self.RS305P_BAUD}"))
-        self._connect_btn = QPushButton("Connexion")
-        self._connect_btn.clicked.connect(self._on_connect_clicked)
-        conn_layout.addWidget(self._connect_btn)
-        self._status_indicator = StatusIndicator(False, self)
-        conn_layout.addWidget(self._status_indicator)
-        self._status_label = QLabel("Déconnecté")
-        conn_layout.addWidget(self._status_label)
-        conn_layout.addStretch()
-        layout.addWidget(conn_gb)
 
         params_gb = QGroupBox("Paramètres de sortie")
         form = QFormLayout(params_gb)
@@ -138,74 +120,8 @@ class PowerSupplyView(QWidget):
 
         layout.addStretch()
 
-    def _refresh_ports(self):
-        ports = _list_serial_ports()
-        current = self._port_combo.currentText()
-        self._port_combo.clear()
-        if ports:
-            self._port_combo.addItems(ports)
-        if current and current in ports:
-            self._port_combo.setCurrentText(current)
-        elif self._port_combo.count() > 0:
-            self._port_combo.setCurrentIndex(0)
-
-    def _on_connect_clicked(self):
-        if self._conn and self._conn.is_open():
-            self._disconnect()
-        else:
-            self._connect()
-
-    def _connect(self):
-        port = self._port_combo.currentText().strip()
-        if not port:
-            QMessageBox.warning(self, "Alimentation", "Choisissez un port série.")
-            return
-        try:
-            from core.serial_connection import SerialConnection
-            from core.rs305p_protocol import Rs305pProtocol
-
-            self._conn = SerialConnection(
-                port=port,
-                baudrate=self.RS305P_BAUD,
-                timeout=1.0,
-                write_timeout=1.0,
-            )
-            self._conn.open()
-            self._protocol = Rs305pProtocol(self._conn, slave_addr=1)
-            self._protocol.get_output()
-            self._update_connection_state(True)
-            self._refresh_display_values()
-        except Exception as e:
-            if self._conn:
-                try:
-                    self._conn.close()
-                except Exception:
-                    pass
-                self._conn = None
-            self._protocol = None
-            QMessageBox.warning(
-                self, "Alimentation",
-                f"Impossible de se connecter : {e}",
-            )
-
-    def _disconnect(self):
-        if self._conn:
-            try:
-                self._conn.close()
-            except Exception:
-                pass
-            self._conn = None
-        self._protocol = None
-        self._update_connection_state(False)
-        self._u_display_label.setText("— V")
-        self._i_display_label.setText("— A")
-        self._output_label.setText("OFF")
-
     def _update_connection_state(self, connected: bool):
-        self._status_indicator.set_connected(connected)
-        self._status_label.setText("Connecté" if connected else "Déconnecté")
-        self._connect_btn.setText("Déconnexion" if connected else "Connexion")
-        self._port_combo.setEnabled(not connected)
+        """Active ou désactive les contrôles selon la connexion bridge."""
         for w in (
             self._apply_btn,
             self._off_btn,
@@ -271,10 +187,11 @@ class PowerSupplyView(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Alimentation", f"Erreur lecture : {e}")
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._refresh_ports()
-
-    def closeEvent(self, event):
-        self._disconnect()
-        super().closeEvent(event)
+    def _disconnect(self):
+        """Réinitialise l'état sans fermer la connexion (gérée par le bridge)."""
+        self._conn = None
+        self._protocol = None
+        self._update_connection_state(False)
+        self._u_display_label.setText("— V")
+        self._i_display_label.setText("— A")
+        self._output_label.setText("OFF")

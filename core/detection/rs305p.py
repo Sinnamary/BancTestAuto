@@ -1,14 +1,23 @@
 """
 Détecteur alimentation RS305P (Modbus RTU, 9600 baud, lecture registre).
 """
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import serial
+from serial import SerialException
 
 from ..app_logger import get_logger
 from .result import SerialDetectionResult
 
 logger = get_logger(__name__)
+
+
+def _is_port_open_error(exc: BaseException) -> bool:
+    """True si l'exception indique une erreur grave d'ouverture de port."""
+    if isinstance(exc, (SerialException, OSError)):
+        return True
+    msg = str(exc).lower()
+    return "could not open" in msg or "timeout" in msg or "sémaphore" in msg or "accès refusé" in msg or "permission" in msg
 
 RS305P_BAUD = 9600
 TIMEOUT = 0.5
@@ -45,17 +54,21 @@ def _log(log_lines: List[str], msg: str) -> None:
         logger.debug("détection: %s", msg)
 
 
-def detect_rs305p(ports: List[str], log_lines: Optional[List[str]] = None) -> Optional[SerialDetectionResult]:
+def detect_rs305p(
+    ports: List[str],
+    log_lines: Optional[List[str]] = None,
+    unusable_ports: Optional[Set[str]] = None,
+) -> Optional[SerialDetectionResult]:
     """
     Cherche une alimentation RS305P sur la liste de ports (Modbus 9600, lecture registre).
-    Retourne SerialDetectionResult si trouvé, None sinon.
+    Les ports en erreur grave sont ajoutés à unusable_ports.
     """
     if log_lines is None:
         log_lines = []
     logger.debug("detect_rs305p: début — %d port(s) à tester: %s (baud=%s)", len(ports), ports, RS305P_BAUD)
     for i, port in enumerate(ports):
         logger.debug("detect_rs305p: test port %d/%d — %s", i + 1, len(ports), port)
-        if _try_rs305p_on_port(port, log_lines):
+        if _try_rs305p_on_port(port, log_lines, unusable_ports=unusable_ports):
             logger.info("Alimentation RS305P détectée sur %s", port)
             _log(log_lines, f"# Alimentation trouvée sur {port}.")
             logger.debug("detect_rs305p: trouvé sur %s", port)
@@ -65,10 +78,15 @@ def detect_rs305p(ports: List[str], log_lines: Optional[List[str]] = None) -> Op
     return None
 
 
-def _try_rs305p_on_port(port: str, log_lines: List[str]) -> bool:
+def _try_rs305p_on_port(
+    port: str,
+    log_lines: List[str],
+    unusable_ports: Optional[Set[str]] = None,
+) -> bool:
     """Ouvre le port en 9600, envoie lecture registre U_DISPLAY, vérifie réponse Modbus valide."""
     logger.debug("_try_rs305p_on_port: %s ouverture @ %s bauds (Modbus FC03 reg=0x%04X)", port, RS305P_BAUD, REG_U_DISPLAY)
     _log(log_lines, f"{port} [RS305P] Ouverture {RS305P_BAUD} bauds...")
+    ser = None
     try:
         ser = serial.Serial(
             port=port,
@@ -108,9 +126,14 @@ def _try_rs305p_on_port(port: str, log_lines: List[str]) -> bool:
         return True
     except Exception as e:
         _log(log_lines, f"{port} [RS305P] Erreur: {e}")
-        logger.debug("_try_rs305p_on_port: %s exception — %s", port, e, exc_info=True)
+        if unusable_ports is not None and _is_port_open_error(e):
+            unusable_ports.add(port)
+            logger.debug("_try_rs305p_on_port: %s erreur grave d'ouverture — port exclu des phases suivantes", port)
+        else:
+            logger.debug("_try_rs305p_on_port: %s exception — %s", port, e, exc_info=True)
         try:
-            ser.close()
+            if ser is not None:
+                ser.close()
         except Exception:
             pass
         return False

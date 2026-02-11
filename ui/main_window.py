@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import (
     QFrame,
     QMessageBox,
     QFileDialog,
-    QDialog,
     QApplication,
 )
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
@@ -29,7 +28,6 @@ from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, Filt
 from ui.dialogs import (
     DeviceDetectionDialog,
     DeviceDetectionDialog4,
-    SerialConfigDialog,
     ViewConfigDialog,
     ViewLogDialog,
     HelpDialog,
@@ -106,7 +104,7 @@ class MainWindow(QMainWindow):
         self._build_central()
         self._connect_connection_bar()
         self._setup_shortcuts()
-        # Pas d'ouverture de ports au démarrage : utiliser "Charger config" ou "Détecter" pour connecter
+        # Pas d'ouverture de ports au démarrage : utiliser "Connecter tout" ou "Détecter" pour connecter
         self._init_views_without_connections()
         self._update_connection_status()
 
@@ -200,8 +198,6 @@ class MainWindow(QMainWindow):
         pass  # optionnel
 
     def _connect_connection_bar(self):
-        self._connection_bar.get_load_config_button().clicked.connect(self._on_load_config_clicked)
-        self._connection_bar.get_params_button().clicked.connect(self._on_params)
         self._connection_bar.get_detect_button().clicked.connect(self._on_detect_clicked)
         if hasattr(self._connection_bar, "get_connect_all_button"):
             self._connection_bar.get_connect_all_button().clicked.connect(self._on_connect_all)
@@ -271,10 +267,11 @@ class MainWindow(QMainWindow):
             logging_view.set_data_logger(data_logger)
         if hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "load_config"
-        ) and self._config:
-            self._power_supply_view.load_config(self._config)
+        if hasattr(self, "_power_supply_view") and self._power_supply_view:
+            if hasattr(self._power_supply_view, "load_config") and self._config:
+                self._power_supply_view.load_config(self._config)
+            if hasattr(self._power_supply_view, "set_connection"):
+                self._power_supply_view.set_connection(bridge.get_power_supply_conn())
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
@@ -292,10 +289,11 @@ class MainWindow(QMainWindow):
         logging_view = self._tabs.widget(2) if self._tabs.count() > 2 else None
         if logging_view and hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "load_config"
-        ) and self._config:
-            self._power_supply_view.load_config(self._config)
+        if hasattr(self, "_power_supply_view") and self._power_supply_view:
+            if hasattr(self._power_supply_view, "load_config") and self._config:
+                self._power_supply_view.load_config(self._config)
+            if hasattr(self._power_supply_view, "set_connection"):
+                self._power_supply_view.set_connection(None)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
@@ -306,7 +304,7 @@ class MainWindow(QMainWindow):
             self._oscilloscope_view.load_config(self._config)
 
     def _reconnect_serial(self):
-        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Charger config / Détecter / Paramètres OK)."""
+        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Connecter tout / Détecter)."""
         self._setup_core()
         self._inject_views()
         self._update_connection_status()
@@ -334,11 +332,13 @@ class MainWindow(QMainWindow):
                 "",
                 state.oscilloscope_label or "—",
             )
+        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(self._power_supply_view, "set_connection"):
+            self._power_supply_view.set_connection(self._connection_bridge.get_power_supply_conn())
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
             self._serial_terminal_view.refresh_equipment_list()
 
     def _on_connect_all(self):
-        """Connexion globale : même action que Charger config."""
+        """Connexion globale : relit config.json et ouvre les connexions (multimètre, générateur, alimentation, oscilloscope)."""
         self._on_load_config_clicked()
 
     def _on_disconnect_all(self):
@@ -349,7 +349,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Tous les équipements déconnectés.")
 
     def _on_load_config_clicked(self):
-        """Bouton Charger config : récupère config.json et tente de se connecter aux équipements."""
+        """Relit config.json et tente de se connecter à tous les équipements (appelé par Connecter tout)."""
         if not load_config:
             QMessageBox.warning(self, "Config", "Chargement de la config non disponible.")
             return
@@ -358,7 +358,7 @@ class MainWindow(QMainWindow):
             if not config_path.exists():
                 QMessageBox.warning(
                     self,
-                    "Charger config",
+                    "Connecter tout",
                     f"Fichier introuvable : {config_path}\n\n"
                     "Vérifiez que config.json existe (ex. config/config.json).",
                 )
@@ -381,10 +381,10 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(msg)
             logger.info("Config rechargée depuis %s", config_path)
         except Exception as e:
-            logger.exception("Charger config")
+            logger.exception("Connecter tout")
             QMessageBox.warning(
                 self,
-                "Charger config",
+                "Connecter tout",
                 f"Impossible de charger la config : {e}",
             )
 
@@ -474,20 +474,6 @@ class MainWindow(QMainWindow):
         if self._filter_test_view and get_filter_test_config:
             self._filter_test_view.load_config(self._config)
 
-    def _on_params(self):
-        """Ouvre la configuration série : affiche les valeurs lues depuis config.json.
-        OK = applique les champs du formulaire en mémoire et reconnecte.
-        Fichier → Sauvegarder config pour écrire dans config.json."""
-        config_from_file = load_config() if load_config else self._config
-        dlg = SerialConfigDialog(config=config_from_file, parent=self)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._config = dlg.get_updated_config()
-            self._reconnect_serial()
-            if self.statusBar():
-                self.statusBar().showMessage(
-                    "Configuration série appliquée. Fichier → Sauvegarder config pour écrire config.json."
-                )
-
     def _on_open_bode_csv(self):
         """Ouvre le visualiseur Bode CSV (module indépendant) avec le fichier sélectionné."""
         default_dir = Path("datas/csv") if Path("datas/csv").exists() else Path(".")
@@ -524,15 +510,7 @@ class MainWindow(QMainWindow):
                 usb_cfg["vendor_id"] = int(vid)
                 usb_cfg["product_id"] = int(pid)
                 self._config["usb_oscilloscope"] = usb_cfg
-        # Alimentation RS305P : port série courant
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "get_port"
-        ):
-            ps_port = (self._power_supply_view.get_port() or "").strip()
-            if ps_port:
-                ps = dict(self._config.get("serial_power_supply") or {})
-                ps["port"] = ps_port
-                self._config["serial_power_supply"] = ps
+        # Alimentation : port géré par config/détection, pas par l'onglet
 
     def _on_save_config(self):
         if save_config and self._config:

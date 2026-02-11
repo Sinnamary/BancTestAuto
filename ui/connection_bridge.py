@@ -48,6 +48,15 @@ try:
 except ImportError:
     Dos1102UsbConnection = None
 
+try:
+    from core.app_logger import get_logger
+except ImportError:
+    def get_logger(_name):
+        import logging
+        return logging.getLogger(_name)
+
+logger = get_logger(__name__)
+
 
 class ConnectionBridgeState:
     """État exposé par le bridge pour la barre de statut (4 équipements)."""
@@ -145,8 +154,11 @@ class MainWindowConnectionBridge:
         sp = (get_serial_power_supply_config(config) or {}) if get_serial_power_supply_config else {}
         if sp and SerialConnection:
             self._power_supply_conn = SerialConnection(**sp)
+            logger.debug("Bridge: alimentation configurée sur %s @ %s bauds", sp.get("port", "?"), sp.get("baudrate"))
         else:
             self._power_supply_conn = None
+            if not sp:
+                logger.debug("Bridge: pas de config serial_power_supply — alimentation non connectée")
 
         # Oscilloscope USB (DOS1102) — optionnel
         usb_cfg = (get_usb_oscilloscope_config(config) or {}) if get_usb_oscilloscope_config else {}
@@ -208,13 +220,15 @@ class MainWindowConnectionBridge:
         try:
             if self._power_supply_conn:
                 self._power_supply_conn.open()
-        except Exception:
-            pass
+                logger.debug("Bridge: alimentation ouverte")
+        except Exception as e:
+            logger.warning("Bridge: échec ouverture alimentation — %s", e)
         try:
             if self._oscilloscope_conn:
                 self._oscilloscope_conn.open()
-        except Exception:
-            pass
+                logger.debug("Bridge: oscilloscope USB ouvert")
+        except Exception as e:
+            logger.warning("Bridge: échec ouverture oscilloscope USB — %s", e)
 
     def _verify_connections(self) -> None:
         """Vérifie que les appareils répondent (IDN? / FY6900)."""
