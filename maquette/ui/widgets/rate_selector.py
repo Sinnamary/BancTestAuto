@@ -1,8 +1,7 @@
 """
-Sélecteur de vitesse (Rapide / Moyenne / Lente) pour la maquette.
-Aligné sur `ui.widgets.rate_selector.RateSelector`.
+Sélecteur de vitesse de mesure : Rapide (F), Moyenne (M), Lente (L).
+Émet rate_changed("F" | "M" | "L").
 """
-
 from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QRadioButton, QButtonGroup
 from PyQt6.QtCore import pyqtSignal
 
@@ -42,4 +41,3 @@ class RateSelector(QGroupBox):
             if rb.isChecked():
                 return r
         return "F"
-

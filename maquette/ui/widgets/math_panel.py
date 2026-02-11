@@ -1,8 +1,7 @@
 """
-Panneau fonctions math (Rel, dB, dBm, Moyenne) pour la maquette.
-Copie de `ui.widgets.math_panel.MathPanel` pour garder la même ergonomie.
+Panneau fonctions math : Aucun, Rel, dB, dBm, Moyenne + champs (offset, réf. Ω, stats).
+Émet math_changed(key), rel_offset_changed(value), db_ref_changed(value), reset_stats_clicked().
 """
-
 from PyQt6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
@@ -15,32 +14,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 
-
-DB_REF_OHMS = (
-    50,
-    75,
-    93,
-    110,
-    124,
-    125,
-    135,
-    150,
-    250,
-    300,
-    500,
-    600,
-    800,
-    900,
-    1000,
-    1200,
-    8000,
-)
+DB_REF_OHMS = (50, 75, 93, 110, 124, 125, 135, 150, 250, 300, 500, 600, 800, 900, 1000, 1200, 8000)
 
 
 class MathPanel(QGroupBox):
     """Fonctions math (Rel, dB, dBm, Moyenne) + offset, réf. Ω, stats."""
 
-    math_changed = pyqtSignal(str)  # "none", "rel", "db", "dbm", "avg"
+    math_changed = pyqtSignal(str)           # "none", "rel", "db", "dbm", "avg"
     rel_offset_changed = pyqtSignal(float)
     db_ref_changed = pyqtSignal(float)
     reset_stats_clicked = pyqtSignal()
@@ -53,13 +33,7 @@ class MathPanel(QGroupBox):
     def _build_ui(self):
         layout = QVBoxLayout(self)
         self._group = QButtonGroup(self)
-        for label, key in (
-            ("Aucun", "none"),
-            ("Rel", "rel"),
-            ("dB", "db"),
-            ("dBm", "dbm"),
-            ("Moyenne", "avg"),
-        ):
+        for label, key in (("Aucun", "none"), ("Rel", "rel"), ("dB", "db"), ("dBm", "dbm"), ("Moyenne", "avg")):
             rb = QRadioButton(label)
             rb.clicked.connect(lambda checked, k=key: self.math_changed.emit(k))
             self._group.addButton(rb)
@@ -118,7 +92,6 @@ class MathPanel(QGroupBox):
     def set_stats(self, min_v=None, max_v=None, avg_v=None, n_v=None) -> None:
         def _f(x):
             return f"{x:.4g}" if x is not None else "—"
-
         n_str = n_v if n_v is not None else "—"
         self._stats_label.setText(
             f"Min: {_f(min_v)}  Max: {_f(max_v)}  Moy: {_f(avg_v)}  N: {n_str}"
@@ -127,4 +100,3 @@ class MathPanel(QGroupBox):
     def set_stats_placeholder(self) -> None:
         """Affiche les tirets quand pas de stats."""
         self._stats_label.setText("Min: —  Max: —  Moy: —  N: —")
-

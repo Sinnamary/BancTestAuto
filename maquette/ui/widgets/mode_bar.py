@@ -1,27 +1,14 @@
 """
-Barre de boutons de mode de mesure (maquette).
-Copie simplifiée de `ui.widgets.mode_bar.ModeBar` pour garder la même apparence
-que l’onglet Multimètre réel, sans aucune dépendance au core.
+Barre de boutons de mode de mesure (V⎓, V~, Ω, etc.).
+Émet mode_changed(index) pour que la vue ou le core applique le mode.
 """
-
 from PyQt6.QtWidgets import QGroupBox, QHBoxLayout, QPushButton, QButtonGroup
 from PyQt6.QtCore import pyqtSignal
 
 
-# Labels par défaut (ordre identique au projet principal)
+# Labels par défaut (ordre = MODE_IDS dans core.measurement)
 DEFAULT_MODE_LABELS = [
-    "V⎓",
-    "V~",
-    "A⎓",
-    "A~",
-    "Ω",
-    "Ω 4W",
-    "Hz",
-    "s",
-    "F",
-    "°C",
-    "⊿",
-    "⚡",
+    "V⎓", "V~", "A⎓", "A~", "Ω", "Ω 4W", "Hz", "s", "F", "°C", "⊿", "⚡",
 ]
 
 
@@ -41,8 +28,7 @@ class ModeBar(QGroupBox):
         layout = QHBoxLayout(self)
         layout.setSpacing(4)
         style = (
-            "QPushButton { font-size: 11px; padding: 2px 6px; "
-            "min-width: 32px; max-height: 22px; }"
+            "QPushButton { font-size: 11px; padding: 2px 6px; min-width: 32px; max-height: 22px; }"
         )
         for i, label in enumerate(self._labels):
             btn = QPushButton(label)
@@ -70,4 +56,3 @@ class ModeBar(QGroupBox):
             if btn.isChecked():
                 return i
         return 0
-

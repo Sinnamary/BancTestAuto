@@ -1,8 +1,8 @@
 """
-Sélecteur de plage (Auto / Manuel + liste déroulante) pour la maquette.
-Copie de `ui.widgets.range_selector.RangeSelector`, sans dépendances métier.
+Sélecteur de plage : Auto / Manuel + liste déroulante des plages.
+Alimenté par la vue avec set_ranges([(label, value), ...]).
+Émet auto_toggled(checked) et range_changed(index).
 """
-
 from typing import List, Tuple, Any
 
 from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QRadioButton, QComboBox
@@ -12,7 +12,7 @@ from PyQt6.QtCore import pyqtSignal
 class RangeSelector(QGroupBox):
     """Auto / Manuel + QComboBox des plages. Données fournies par set_ranges()."""
 
-    auto_toggled = pyqtSignal(bool)  # True = Auto sélectionné
+    auto_toggled = pyqtSignal(bool)   # True = Auto sélectionné
     range_changed = pyqtSignal(int)  # index de la plage sélectionnée (mode Manuel)
 
     def __init__(self, parent=None):
@@ -80,4 +80,3 @@ class RangeSelector(QGroupBox):
         if 0 <= index < len(self._range_data):
             return self._range_data[index][1]
         return None
-

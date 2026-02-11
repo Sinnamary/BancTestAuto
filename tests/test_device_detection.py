@@ -1,26 +1,23 @@
 """
 Tests de core.device_detection : list_serial_ports, update_config_ports, detect_devices (mocké).
+Après refactor, detect_devices délègue à core.detection ; les mocks ciblent les bons modules.
 """
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from core.device_detection import list_serial_ports, update_config_ports, detect_devices
+from core.detection.result import SerialDetectionResult
 
 
 class TestListSerialPorts:
     def test_returns_list_of_device_names(self):
-        with patch("serial.tools.list_ports.comports") as mock_comports:
-            mock_comports.return_value = [
-                MagicMock(device="COM3"),
-                MagicMock(device="COM4"),
-            ]
+        with patch("core.detection.list_serial_ports", return_value=["COM3", "COM4"]):
             ports = list_serial_ports()
             assert ports == ["COM3", "COM4"]
 
     def test_empty_when_no_ports(self):
-        with patch("serial.tools.list_ports.comports") as mock_comports:
-            mock_comports.return_value = []
+        with patch("core.detection.list_serial_ports", return_value=[]):
             assert list_serial_ports() == []
 
 
@@ -52,7 +49,7 @@ class TestUpdateConfigPorts:
 
 class TestDetectDevices:
     def test_returns_tuple_none_none_when_no_ports(self):
-        with patch("core.device_detection.list_serial_ports", return_value=[]):
+        with patch("core.detection.runner.list_serial_ports", return_value=[]):
             m, m_baud, g, g_baud, log_lines = detect_devices()
             assert m is None
             assert m_baud is None
@@ -61,11 +58,11 @@ class TestDetectDevices:
             assert isinstance(log_lines, list)
 
     def test_returns_ports_when_mocks_identify(self):
-        with patch("core.device_detection.list_serial_ports", return_value=["COM3", "COM4"]):
-            with patch("core.device_detection._try_owon_on_port") as try_owon:
-                with patch("core.device_detection._try_fy6900_on_port") as try_fy:
-                    try_owon.side_effect = lambda p, log_lines: (p == "COM3", 115200 if p == "COM3" else None)
-                    try_fy.side_effect = lambda p, log_lines: p == "COM4"
+        with patch("core.detection.runner.list_serial_ports", return_value=["COM3", "COM4"]):
+            with patch("core.detection.runner.detect_owon") as mock_owon:
+                with patch("core.detection.runner.detect_fy6900") as mock_fy:
+                    mock_owon.return_value = SerialDetectionResult(port="COM3", baudrate=115200)
+                    mock_fy.return_value = SerialDetectionResult(port="COM4", baudrate=115200)
                     m, m_baud, g, g_baud, log_lines = detect_devices()
                     assert m == "COM3"
                     assert m_baud == 115200

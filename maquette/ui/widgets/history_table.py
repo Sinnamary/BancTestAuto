@@ -1,8 +1,7 @@
 """
-Tableau d'historique pour la maquette Multimètre.
-Aligné sur `ui.widgets.history_table.HistoryTable`.
+Widget tableau des N dernières mesures + boutons Effacer et Exporter CSV.
+Réutilisable par meter_view ; les données restent chez le parent (alimentation via set_rows).
 """
-
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -18,7 +17,7 @@ from PyQt6.QtCore import pyqtSignal
 class HistoryTable(QWidget):
     """
     Tableau historique (#, Valeur, Unité) + Effacer / Exporter CSV.
-    La maquette alimente ce widget avec set_rows().
+    Le parent alimente avec set_rows() et réagit aux signaux clear_requested / export_requested.
     """
 
     clear_requested = pyqtSignal()
@@ -63,4 +62,3 @@ class HistoryTable(QWidget):
     def clear(self) -> None:
         """Vide le tableau (n'émet pas clear_requested)."""
         self._table.setRowCount(0)
-

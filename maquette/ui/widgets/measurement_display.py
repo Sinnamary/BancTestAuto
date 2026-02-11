@@ -1,8 +1,7 @@
 """
-Widget d'affichage principal type LCD pour la maquette Multimètre.
-Aligné visuellement sur `ui.widgets.measurement_display.MeasurementDisplay`.
+Widget d'affichage principal type LCD : valeur + unité, option affichage secondaire (Hz).
+Réutilisable par meter_view et logging_view.
 """
-
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QGroupBox, QLabel, QCheckBox
 from PyQt6.QtCore import pyqtSignal
 
@@ -53,4 +52,3 @@ class MeasurementDisplay(QWidget):
         self._secondary_check.blockSignals(True)
         self._secondary_check.setChecked(checked)
         self._secondary_check.blockSignals(False)
-

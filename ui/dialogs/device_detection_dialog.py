@@ -1,6 +1,10 @@
 """
 Dialogue « Détecter les équipements » — utilise core.device_detection.
 Lance la détection dans un thread, affiche le résultat et le log série détaillé, permet de mettre à jour config.json.
+
+REMOVE_AFTER_PHASE5: Dialogue actuel 2 équipements. Remplacer par un dialogue 4 équipements
+utilisant core.detection.run_detection et BenchDetectionResult, puis supprimer ce fichier.
+Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
 """
 from PyQt6.QtWidgets import (
     QDialog,

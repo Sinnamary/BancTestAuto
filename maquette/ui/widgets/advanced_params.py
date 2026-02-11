@@ -1,8 +1,8 @@
 """
-Panneau paramètres avancés (RTD, continuité, buzzer) pour la maquette.
-Copie de `ui.widgets.advanced_params.AdvancedParamsPanel`.
+Panneau paramètres avancés : température RTD, continuité (seuil Ω), buzzer.
+Émet rtd_type_changed, rtd_unit_changed, rtd_show_changed,
+continuity_threshold_changed, buzzer_toggled.
 """
-
 from PyQt6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
@@ -18,9 +18,9 @@ from PyQt6.QtCore import pyqtSignal
 class AdvancedParamsPanel(QGroupBox):
     """Température RTD, continuité (seuil), buzzer."""
 
-    rtd_type_changed = pyqtSignal(str)  # KITS90, PT100
-    rtd_unit_changed = pyqtSignal(str)  # C, F, K
-    rtd_show_changed = pyqtSignal(str)  # TEMP, MEAS, ALL
+    rtd_type_changed = pyqtSignal(str)      # KITS90, PT100
+    rtd_unit_changed = pyqtSignal(str)       # C, F, K
+    rtd_show_changed = pyqtSignal(str)       # TEMP, MEAS, ALL
     continuity_threshold_changed = pyqtSignal(float)
     buzzer_toggled = pyqtSignal(bool)
 
@@ -64,4 +64,3 @@ class AdvancedParamsPanel(QGroupBox):
         elif text and "K" in text.upper():
             u = "K"
         self.rtd_unit_changed.emit(u)
-

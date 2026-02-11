@@ -93,6 +93,16 @@ Les widgets et vues restent les mêmes ; seules les connexions (signaux/slots, i
 
 ---
 
+## Synchroniser la maquette sur l’UI réelle
+
+L’UI de la maquette est une **copie** de `ui/` du programme principal, avec des **stubs** `maquette/config/` et `maquette/core/` (pas de lecture config, pas de ports série). Cela confirme que l’UI du programme principal est **indépendante de la logique métier**.
+
+- **Copier l’UI programme → maquette :** `python tools/sync_ui_to_maquette.py` (depuis la racine du projet). À lancer après toute modification de l’UI dans le programme principal.
+- **Reporter les changements maquette → programme :** à la main (fichiers modifiés dans `maquette/ui/` recopiés vers `ui/`).
+- **Plan détaillé :** [docs/PLAN_MAQUETTE_UI.md](../docs/PLAN_MAQUETTE_UI.md).
+
+---
+
 ## Références
 
 - [Conception interface PyQt6](../docs/INTERFACE_PYQT6.md) — détail des widgets et des zones.

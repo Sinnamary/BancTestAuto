@@ -1,6 +1,5 @@
 """
-Dialogue de sauvegarde de la configuration JSON — maquette.
-À intégrer avec le chemin par défaut config/config.json.
+Dialogue de sauvegarde de la configuration JSON.
 """
 from PyQt6.QtWidgets import (
     QDialog,
