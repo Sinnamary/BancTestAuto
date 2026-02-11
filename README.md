@@ -37,7 +37,10 @@ BancTestAuto/
 ├── clean.py             # Nettoyage __pycache__, logs (python clean.py [--all])
 ├── bump_version.py      # Incrément de version (patch|minor|major) dans core/version.py
 ├── build_exe.py         # Construction de l'exécutable (PyInstaller, à lancer depuis le venv)
+├── run_coverage.py      # Tests avec couverture (config, core, ui.bode_csv_viewer) — rapport terminal + htmlcov
+├── run_metrics.py       # Métriques de code (radon : MI, CC, SLOC) — rapport terminal + tools/code_metrics_report/
 ├── serve_htmlcov.py     # Serveur local + ouverture du rapport de couverture (htmlcov) dans le navigateur
+├── serve_metrics.py     # Serveur local + ouverture du rapport métriques (tools/code_metrics_report/) dans le navigateur
 ├── BancTestAuto.spec    # Spécification PyInstaller (utilisée par build_exe.py)
 ├── maquette/            # Interface seule (PyQt6) — valider la maquette puis intégrer dans ui/
 ├── core/                # app_logger, app_paths, bode_calc, bode_utils, data_logger, device_detection,
@@ -67,19 +70,17 @@ Détail de l’arborescence : [Guide de développement § 3.2–3.3](docs/DEVELO
 
 ## Tests (pytest)
 
-Les tests couvrent les **classes et la logique métier** (`config/`, `core/`) ; l’interface GUI (`ui/`) n’est pas testée.
+Les tests couvrent les **classes et la logique métier** (`config/`, `core/`, `ui.bode_csv_viewer`).
 
 ```bash
 pip install -r requirements.txt   # inclut pytest et pytest-cov
 pytest                             # lancer les tests
-pytest --cov=config --cov=core --cov-report=term-missing --cov-report=html   # avec couverture de code
+python run_coverage.py             # tests + couverture (rapport terminal + htmlcov/)
 ```
 
-Rapport HTML : `htmlcov/index.html`. Pour le visualiser dans le navigateur avec un serveur local :
+Rapport de couverture HTML : `python serve_htmlcov.py` (ouvre `htmlcov/` sur le port 8765).
 
-```bash
-python serve_htmlcov.py
-```
+Métriques de code (complexité, maintenabilité) : `python run_metrics.py` puis `python serve_metrics.py` (rapport dans `tools/code_metrics_report/`). Voir [Couverture et métriques](docs/COUVERTURE_ET_METRIQUES.md).
 
 ---
 
@@ -246,6 +247,8 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 | [Banc de test filtre](docs/BANC_TEST_FILTRE.md) | Caractérisation Bode, balayage, qualification filtre |
 | [Conception interface PyQt6](docs/INTERFACE_PYQT6.md) | Maquette et widgets par vue — à valider avant la programmation |
 | [Audit documentation / code](docs/DOC_AUDIT.md) | Synthèse doc ↔ code, structure cible vs actuelle, redondances |
+| [Couverture et métriques](docs/COUVERTURE_ET_METRIQUES.md) | Couverture de code (pytest-cov), métriques Radon (MI, CC), refactorings, règles de décomposition |
+| [Build exécutable](docs/BUILD_EXE.md) | Création de l’exécutable Windows (PyInstaller) |
 | [Commandes OWON (multimètre)](docs/COMMANDES_OWON.md) | Tableau des commandes SCPI implémentées pour le multimètre OWON XDM |
 | [Commandes FY6900 (générateur)](docs/COMMANDES_FY6900.md) | Tableau des commandes série implémentées pour le générateur FeelTech FY6900 |
 | [Commandes RS305P (alimentation)](docs/COMMANDES_RS305P.md) | Protocole Modbus RTU et registres pour l'alimentation Rockseed RS305P |

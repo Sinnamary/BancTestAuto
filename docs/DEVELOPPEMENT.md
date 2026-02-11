@@ -2,6 +2,8 @@
 
 **Dernière mise à jour :** 11 février 2026
 
+**Règles de travail UI :** les évolutions d’interface (barre de connexion, pastilles, dialogues, onglets) se font dans la **maquette** (`maquette/ui/`) ; après validation, reporter les changements vers `ui/`. Ne pas modifier directement les fichiers sous `ui/` pour ces évolutions. Voir [maquette/README.md](../maquette/README.md) et `python tools/sync_ui_to_maquette.py`.
+
 Le développement s’effectue en **petits fichiers**, avec des **classes distinctes pour chaque appareil de mesure** (multimètre OWON, générateur FY6900). Ces classes sont **appelées pour piloter le banc de test** (ex. caractérisation filtre) : le module banc n’orchestre que les appels aux classes d’appareils, sans dupliquer leur logique.
 
 ---
@@ -184,10 +186,10 @@ BancTestAuto/
 │   ├── COMMANDES_HANMATEK_DOS1102.md  # Commandes SCPI oscilloscope DOS1102
 │   ├── TABLEAU_COMMANDES_OSC_INTERFACE.md  # Chronologie commandes (réf. externe osc_interface.py)
 │   ├── DEVELOPPEMENT.md     # Ce fichier
-│   ├── DOC_AUDIT.md         # Audit doc/code, plan réduction écarts
+│   ├── DOC_AUDIT.md         # Audit doc/code, structure cible vs actuelle
 │   ├── FIX_VENV.md          # Dépannage venv
 │   ├── INTERFACE_PYQT6.md   # Conception interface
-│   ├── PLAN_IMPLEMENTATION.md
+│   ├── COUVERTURE_ET_METRIQUES.md  # Couverture, métriques Radon, refactorings
 │   ├── FY6900_communication_protocol.pdf
 │   ├── Modbus.pdf
 │   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
@@ -283,15 +285,19 @@ BancTestAuto/
 │
 ├── docs/
 │   ├── AIDE.md                    # Manuel utilisateur (aide F1)
-│   ├── BANC_TEST_FILTRE.md
+│   ├── BANC_TEST_FILTRE.md        # Banc filtre, Bode, balayage
+│   ├── BUILD_EXE.md               # Construction exécutable PyInstaller
 │   ├── CAHIER_DES_CHARGES.md
+│   ├── CAHIER_DES_CHARGES_VISUALISATION_BODE.md  # Spec viewer Bode (gain + phase)
+│   ├── COUVERTURE_ET_METRIQUES.md # Couverture de code, métriques Radon, refactorings
 │   ├── DEVELOPPEMENT.md           # Ce fichier
-│   ├── DOC_AUDIT.md               # Audit doc/code, plan réduction écarts
+│   ├── DOC_AUDIT.md               # Audit doc/code, structure cible vs actuelle
 │   ├── FIX_VENV.md                # Dépannage venv (erreur launcher)
-│   ├── INTERFACE_PYQT6.md
-│   ├── PLAN_IMPLEMENTATION.md     # Phases d'implémentation
+│   ├── INTERFACE_PYQT6.md         # Conception interface, widgets
+│   ├── COMMANDES_*.md, TABLEAU_*.md  # Commandes par équipement
 │   ├── FY6900_communication_protocol.pdf
-│   └── XDM1000_Digital_Multimeter_Programming_Manual.pdf
+│   ├── Modbus.pdf, XDM1000_*.pdf
+│   └── (autres PDF techniques)
 │
 ├── .gitignore
 ├── .venv/                         # (ignoré)

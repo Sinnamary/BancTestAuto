@@ -1,6 +1,6 @@
 # Audit documentation / code — Banc de test automatique
 
-**Date :** 7 février 2026 (mise à jour écarts)  
+**Date :** 11 février 2026  
 **Objectif :** Synthèse de la vérification documentation ↔ code et des redondances.
 
 ---
@@ -25,7 +25,7 @@ Ces écarts ne sont pas des erreurs : la doc décrit parfois une **structure cib
 |----------|-------------|------------------|
 | **CAHIER_DES_CHARGES § 2.2** | Arborescence avec `filter_config_panel.py` et `filter_results_table.py` dans `ui/views/` | Ces panneaux sont **intégrés dans** `filter_test_view.py` (pas de fichiers séparés). |
 | **CAHIER_DES_CHARGES & DEVELOPPEMENT** | Widgets cible : `measurement_display.py`, `mode_button.py`, `mode_bar.py`, `range_selector.py`, `rate_selector.py`, `math_panel.py`, `history_table.py`, `secondary_display.py`, `advanced_params.py` dans `ui/widgets/` | **Tous extraits sauf** `mode_button` et `secondary_display` (optionnels / intégrés dans MeasurementDisplay). `ui/widgets/` : connection_status, measurement_display, history_table, mode_bar, range_selector, rate_selector, math_panel, advanced_params. |
-| **DEVELOPPEMENT § 3.1** | Liste des fichiers dans `docs/` | Inclus dans § 3.1 et § 3.2 (Niveau 1) : `AIDE.md`, `FIX_VENV.md`, `PLAN_IMPLEMENTATION.md`, `DOC_AUDIT.md`. |
+| **DEVELOPPEMENT § 3.1** | Liste des fichiers dans `docs/` | Arborescence à jour : `AIDE.md`, `BANC_TEST_FILTRE.md`, `BUILD_EXE.md`, `CAHIER_DES_CHARGES*.md`, `COUVERTURE_ET_METRIQUES.md`, `DEVELOPPEMENT.md`, `DOC_AUDIT.md`, `FIX_VENV.md`, `INTERFACE_PYQT6.md`, `COMMANDES_*.md`, etc. |
 | **DEVELOPPEMENT § 3.1** | Arborescence racine (fichiers à la racine) | Inclus : `main.py`, `clean.py` (aligné README). |
 | **README** | Structure § dialogs / widgets / resources | ✅ Aligné 100 % : dialogs (serial_config, save_config, device_detection, view_config, help_dialog), widgets (liste complète), resources (thèmes ; icônes optionnelles). |
 | **DEVELOPPEMENT § 1.3** | Version Python | Corrigé : **Python 3.10+** explicite en § 1.3 (aligné README). |
@@ -72,18 +72,20 @@ Ce n’est **pas** une redondance à supprimer : la maquette sert au prototypage
 |---------|------|
 | **AIDE.md** | Manuel utilisateur (aide intégrée F1). |
 | **BANC_TEST_FILTRE.md** | Spécifications banc filtre, Bode, balayage. |
+| **BUILD_EXE.md** | Construction de l’exécutable (PyInstaller). |
 | **CAHIER_DES_CHARGES.md** | Spécifications complètes, architecture, config. |
-| **DEVELOPPEMENT.md** | Environnement, Git, arborescence, rôles des modules. |
+| **CAHIER_DES_CHARGES_VISUALISATION_BODE.md** | Spec visualisation Bode (gain, phase, viewer CSV). |
+| **COUVERTURE_ET_METRIQUES.md** | Couverture de code (pytest-cov), métriques Radon (MI, CC), refactorings, règles de décomposition. |
+| **DEVELOPPEMENT.md** | Environnement, Git, arborescence, rôles des modules, règles UI maquette. |
 | **DOC_AUDIT.md** | Ce document — audit doc/code et redondances. |
 | **FIX_VENV.md** | Dépannage venv (erreur launcher). |
 | **INTERFACE_PYQT6.md** | Conception interface, maquette, widgets. |
-| **PLAN_IMPLEMENTATION.md** | Phases d’implémentation et jalons. |
 | **COMMANDES_OWON.md** | Commandes SCPI implémentées pour le multimètre OWON (tableau). |
 | **COMMANDES_FY6900.md** | Commandes série implémentées pour le générateur FeelTech FY6900 (tableau). |
 | **COMMANDES_RS305P.md** | Protocole Modbus RTU implémenté pour l'alimentation Rockseed RS305P. |
-| **Modbus.pdf** | Documentation Modbus alimentation RS305P. |
-| **FY6900_communication_protocol.pdf** | Protocole FeelTech. |
-| **XDM1000_Digital_Multimeter_Programming_Manual.pdf** | SCPI multimètre OWON. |
+| **COMMANDES_HANMATEK_DOS1102.md** | Commandes oscilloscope DOS1102. |
+| **TABLEAU_COMMANDES_OSC_INTERFACE.md** | Tableau commandes oscilloscope / interface. |
+| **Modbus.pdf**, **FY6900_communication_protocol.pdf**, **XDM1000_*.pdf** | Documentation technique matériel. |
 
 ---
 
@@ -95,7 +97,7 @@ Pour rapprocher la structure actuelle de la **structure cible** (CDC, DEVELOPPEM
 
 | Action | Fichier(s) | Détail | Statut |
 |--------|------------|--------|--------|
-| Compléter la liste des fichiers dans `docs/` | DEVELOPPEMENT.md § 3.1 et § 3.2 | Arborescence complétée : `AIDE.md`, `FIX_VENV.md`, `PLAN_IMPLEMENTATION.md`, `DOC_AUDIT.md`. | ✅ Fait |
+| Compléter la liste des fichiers dans `docs/` | DEVELOPPEMENT.md § 3.1 | Arborescence à jour : AIDE, BANC_TEST_FILTRE, BUILD_EXE, CAHIER_DES_CHARGES*, COUVERTURE_ET_METRIQUES, DEVELOPPEMENT, DOC_AUDIT, FIX_VENV, INTERFACE_PYQT6, COMMANDES_*, etc. | ✅ Fait |
 | Aligner la version Python | DEVELOPPEMENT.md § 1.3 | Expliciter « Python 3.10+ » (cohérent avec le README). | ✅ Fait |
 | Mentionner `theme_loader.py` dans la structure actuelle | DEVELOPPEMENT.md § 3.1 | `ui/theme_loader.py` déjà présent dans le bloc `ui/`. | ✅ Déjà en place |
 
@@ -139,7 +141,7 @@ L’objectif était d’extraire des blocs de `meter_view.py` en widgets dédié
 
 | Action | Détail |
 |--------|--------|
-| Créer **owon_ranges.py** | Extraire les plages par mode (tension DC/AC, courant, résistance, etc.) depuis `measurement.py` ou `scpi_commands.py` vers `core/owon_ranges.py`. Utilisé par `measurement` et par `range_selector` (widget existant). Voir PLAN_IMPLEMENTATION Phase 5. |
+| Créer **owon_ranges.py** | Extraire les plages par mode (tension DC/AC, courant, résistance, etc.) depuis `measurement.py` ou `scpi_commands.py` vers `core/owon_ranges.py`. Utilisé par `measurement` et par `range_selector` (widget existant). |
 | Créer **resources/icons/** | Ajouter des icônes pour connexion, modes, export, etc. (Phase 5 du plan). |
 
 **Effort :** variable. **Bénéfice :** maintenance des plages centralisée ; interface plus homogène avec icônes.
