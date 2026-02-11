@@ -52,20 +52,10 @@ def apply_view_range(
     if log_mode_x:
         x_lo = math.log10(max(float(x_min), 1e-307))
         x_hi = math.log10(min(float(x_max), 1e308))
-        vb.setRange(
-            xRange=(x_lo, x_hi),
-            padding=0,
-            update=True,
-            disableAutoRange=True,
-        )
     else:
-        vb.setRange(
-            xRange=(float(x_min), float(x_max)),
-            padding=0,
-            update=True,
-            disableAutoRange=True,
-        )
+        x_lo, x_hi = float(x_min), float(x_max)
     vb.setRange(
+        xRange=(x_lo, x_hi),
         yRange=(float(y_min), float(y_max)),
         padding=0,
         update=True,

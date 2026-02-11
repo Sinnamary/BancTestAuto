@@ -14,7 +14,7 @@ def build_buttons_layout(parent, on_adjust, on_export_png, on_export_csv) -> QHB
     parent._export_btn.clicked.connect(on_export_png)
     layout.addWidget(parent._export_btn)
     parent._export_csv_btn = QPushButton("Exporter les points CSV")
-    parent._export_csv_btn.setToolTip("Enregistre f_Hz, Us_V, Us_Ue, Gain_dB")
+    parent._export_csv_btn.setToolTip("Enregistre f_Hz, Us_V, Us_Ue, Gain_dB (et optionnellement Ue_V, Phase_deg)")
     parent._export_csv_btn.clicked.connect(on_export_csv)
     layout.addWidget(parent._export_csv_btn)
     parent._close_btn = QPushButton("Fermer")

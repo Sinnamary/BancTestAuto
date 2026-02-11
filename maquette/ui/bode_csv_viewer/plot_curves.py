@@ -27,6 +27,11 @@ class BodeCurveDrawer:
             self._raw_curve = plot_item.plot(pen=self.PEN_RAW)
         self._raw_curve.setVisible(False)
 
+    def set_curve_visible(self, visible: bool) -> None:
+        """Affiche ou masque la courbe principale et la courbe brute."""
+        self._curve.setVisible(visible)
+        self._raw_curve.setVisible(visible and self._raw_curve.isVisible())
+
     def set_curve_color(self, color: Union[str, QColor]) -> None:
         """Change la couleur de la courbe principale (nom, hex ou QColor)."""
         if isinstance(color, QColor):

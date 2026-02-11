@@ -2,6 +2,7 @@
 Widget graphique Bode pour le viewer CSV. Compose grille, courbes, marqueurs.
 Zoom (molette, zoom zone), pan, réglage des échelles. Délègue à plot_* pour la logique.
 """
+import math
 from typing import Optional, Tuple, Union
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGraphicsView
@@ -38,6 +39,8 @@ class BodeCsvPlotWidget(QWidget):
         vb = self._plot_widget.getViewBox()
         vb.setMouseMode(vb.PanMode)
         vb.disableAutoRange()
+        # Plage X par défaut raisonnable (évite 10^-100..10^150 en mode log au premier affichage)
+        apply_view_range(vb, 1.0, 1e6, -40.0, 5.0, log_mode_x=True)
         try:
             vb.setAntialiasing(True)
         except Exception:
@@ -59,6 +62,28 @@ class BodeCsvPlotWidget(QWidget):
         self._show_raw = False
         self._smooth_savgol = False
         self._background_dark = True
+        self._show_gain = True
+        self._show_phase = True
+        self._plot_item = plot_item
+        self._main_vb = plot_item.getViewBox()
+        plot_item.showAxis("right")
+        self._right_vb = pg.ViewBox(enableMouse=False)  # Souris ignorée → zoom sur zone et pan sur le ViewBox principal
+        plot_item.scene().addItem(self._right_vb)
+        self._right_vb.setZValue(10)  # Dessiner au premier plan (courbe phase visible)
+        plot_item.getAxis("right").linkToView(self._right_vb)
+        self._right_vb.setXLink(self._main_vb)
+        self._phase_curve = pg.PlotDataItem(pen=pg.mkPen("#40c0c0", width=2), antialias=True)
+        self._right_vb.addItem(self._phase_curve)
+        self._right_vb.setVisible(False)
+        plot_item.getAxis("right").setVisible(False)
+        plot_item.getAxis("right").setLabel("Phase", units="°")
+
+        def _update_right_vb_geometry():
+            self._right_vb.setGeometry(self._main_vb.sceneBoundingRect())
+            self._right_vb.linkedViewChanged(self._main_vb, self._right_vb.XAxis)
+
+        self._main_vb.sigResized.connect(_update_right_vb_geometry)
+        self._main_vb.sigRangeChanged.connect(_update_right_vb_geometry)  # Gain et phase même X (zoom/pan/limites)
         apply_axis_fonts(plot_item)
         self._apply_background_style()
 
@@ -89,6 +114,8 @@ class BodeCsvPlotWidget(QWidget):
         self._refresh()
         if self._dataset and not self._dataset.is_empty():
             self.auto_range()
+        self._right_vb.setGeometry(self._main_vb.sceneBoundingRect())
+        self._right_vb.linkedViewChanged(self._main_vb, self._right_vb.XAxis)
 
     def set_y_linear(self, y_linear: bool) -> None:
         self._y_linear = y_linear
@@ -118,6 +145,20 @@ class BodeCsvPlotWidget(QWidget):
     def set_curve_color(self, color: Union[str, QColor]) -> None:
         self._curves.set_curve_color(color)
 
+    def set_show_gain(self, visible: bool) -> None:
+        self._show_gain = visible
+        self._curves.set_curve_visible(visible)
+        self._refresh()
+
+    def set_show_phase(self, visible: bool) -> None:
+        self._show_phase = visible
+        has_phase = self._dataset and self._dataset.has_phase()
+        self._right_vb.setVisible(visible and has_phase)
+        self._plot_item.getAxis("right").setVisible(visible and has_phase)
+        if has_phase:
+            self._phase_curve.setVisible(visible)
+        self._refresh()
+
     def set_smoothing(
         self, window: int, show_raw: bool = False, use_savgol: bool = False
     ) -> None:
@@ -146,10 +187,14 @@ class BodeCsvPlotWidget(QWidget):
     def _refresh(self) -> None:
         if not self._dataset or self._dataset.is_empty():
             self._curves.clear()
+            self._phase_curve.setData([], [])
+            self._right_vb.setVisible(False)
+            self._plot_item.getAxis("right").setVisible(False)
             self._cutoff_viz.set_level(None)
             self._cutoff_viz.set_cutoff_frequencies([])
             self._peaks_overlay.update(None, self._y_linear)
             return
+        self._curves.set_curve_visible(self._show_gain)
         self._curves.set_data(
             self._dataset,
             y_linear=self._y_linear,
@@ -157,6 +202,40 @@ class BodeCsvPlotWidget(QWidget):
             show_raw=self._show_raw,
             smooth_savgol_flag=self._smooth_savgol,
         )
+        has_phase = self._dataset.has_phase()
+        if has_phase:
+            freqs = self._dataset.freqs_hz()
+            phases = self._dataset.phases_deg()
+            ys_phase = [(p if p is not None else 0.0) for p in phases]
+            self._phase_curve.setData(freqs, ys_phase)
+            self._phase_curve.setVisible(self._show_phase)
+            self._right_vb.setVisible(self._show_phase)
+            self._plot_item.getAxis("right").setVisible(self._show_phase)
+            self._right_vb.setGeometry(self._main_vb.sceneBoundingRect())
+            self._right_vb.linkedViewChanged(self._main_vb, self._right_vb.XAxis)
+            # Réglage de l'échelle Y phase uniquement ; X reste synchronisé avec le ViewBox principal
+            x_range = self._main_vb.viewRange()[0]
+            y_phase_vals = [y for y in ys_phase if math.isfinite(y)]
+            if y_phase_vals:
+                y_lo, y_hi = min(y_phase_vals), max(y_phase_vals)
+                dy = (y_hi - y_lo) * 0.05 or 1.0
+                self._right_vb.setRange(
+                    xRange=x_range,
+                    yRange=(y_lo - dy, y_hi + dy),
+                    padding=0.02,
+                    disableAutoRange=True,
+                )
+            else:
+                self._right_vb.setRange(
+                    xRange=x_range,
+                    yRange=(-90, 0),
+                    padding=0.02,
+                    disableAutoRange=True,
+                )
+        else:
+            self._phase_curve.setData([], [])
+            self._right_vb.setVisible(False)
+            self._plot_item.getAxis("right").setVisible(False)
         self._cutoff_viz.set_level(None)
         self._cutoff_viz.set_cutoff_frequencies([])
         self._peaks_overlay.update(self._dataset, self._y_linear)
@@ -184,6 +263,9 @@ class BodeCsvPlotWidget(QWidget):
         vb = self._plot_widget.getViewBox()
         log_mode_x = vb.state.get("logMode", [False, False])[0]
         apply_view_range(vb, x_min, x_max, y_min, y_max, log_mode_x=log_mode_x)
+        # Resynchroniser le ViewBox phase (axe droit) avec le zoom X et la géométrie
+        self._right_vb.setGeometry(self._main_vb.sceneBoundingRect())
+        self._right_vb.linkedViewChanged(self._main_vb, self._right_vb.XAxis)
         self._cutoff_viz.update_label_position()
 
     def set_rect_zoom_mode(self, enabled: bool) -> None:

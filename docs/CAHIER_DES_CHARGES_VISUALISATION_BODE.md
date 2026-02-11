@@ -1,7 +1,7 @@
 # Cahier des charges — Visualisation Bode (Banc filtre)
 
-**Version :** 1.3  
-**Date :** 8 février 2026  
+**Version :** 1.4  
+**Date :** 11 février 2026  
 **Référence :** Banc de test automatique — Banc filtre
 
 **Documents associés :**
@@ -43,6 +43,19 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 | **Quadrillage** | Grille de référence pour faciliter la lecture des valeurs | P0 |
 | **Fond et couleur courbe** | Choix fond noir/blanc et couleur de la courbe via menus déroulants. **Fond noir par défaut.** | P1 |
 | **Réglage des axes** | Possibilité de zoomer, dézoomer, recentrer sur une plage | P0 |
+
+### 2.2bis Affichage gain + phase (diagramme Bode complet)
+
+Lorsque le CSV contient la colonne optionnelle **`Phase_deg`** (acquisition oscilloscope), le viewer affiche un **graphique à deux ordonnées** :
+
+| Exigence | Description | Priorité |
+|----------|-------------|----------|
+| **Axe X partagé** | Fréquence (Hz), échelle **logarithmique** ; identique pour le gain et la phase | P0 |
+| **Axe Y gauche** | Gain (dB) ou gain linéaire (Us/Ue) — courbe de gain | P0 |
+| **Axe Y droit** | Phase en degrés (°) — courbe de phase | P0 |
+| **Deux courbes** | Courbe gain (couleur configurable, ex. jaune) et courbe phase (ex. cyan) sur le **même** graphique, même plage de fréquences | P0 |
+| **Visibilité** | Cases à cocher « Gain » et « Phase » dans le panneau Affichage pour n’afficher que le gain, que la phase, ou les deux (visibles uniquement si le CSV contient `Phase_deg`) | P1 ✓ |
+| **Synchronisation** | Zoom, pan et plage manuelle (F min/max) s’appliquent à l’axe X commun ; les deux courbes commencent et finissent aux mêmes fréquences | P0 |
 
 ### 2.3 Quadrillage (grille)
 
@@ -109,6 +122,8 @@ Définir les spécifications complètes de la visualisation des courbes de Bode 
 
 ### 3.1 Format CSV Banc filtre
 
+**Format minimal (acquisition multimètre ou historique) :**
+
 ```
 f_Hz;Us_V;Us_Ue;Gain_dB
 10.0;1.020893;1.020893;0.1796045196085701
@@ -116,14 +131,24 @@ f_Hz;Us_V;Us_Ue;Gain_dB
 ...
 ```
 
+**Format étendu (acquisition oscilloscope) :** colonnes optionnelles **`Ue_V`** et **`Phase_deg`** ajoutées lorsque l’acquisition est faite via l’oscilloscope (Ch1=Ue, Ch2=Us, phase Ch2 vs Ch1) :
+
+```
+f_Hz;Us_V;Us_Ue;Gain_dB;Ue_V;Phase_deg
+10.0;1.02;1.02;0.18;1.0;-2.1
+100.0;0.71;0.71;-3.0;1.0;-45.0
+...
+```
+
 - **Séparateur** : `;` (point-virgule)
 - **Encodage** : UTF-8
 - **En-tête** : obligatoire
 - **Valeurs** : notation anglo-saxonne (`.` pour la virgule décimale)
+- **Colonnes optionnelles** : le viewer détecte les colonnes par en-tête (insensible à la casse) ; si `Ue_V` ou `Phase_deg` sont présents, ils sont chargés pour usage (ex. courbe de Bode phase en Phase 5).
 
 ### 3.2 Structure de point Bode (interne)
 
-Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes champs :
+Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les champs obligatoires et optionnels :
 
 ```python
 # BodeCsvPoint / équivalent BodePoint
@@ -131,6 +156,8 @@ Le viewer CSV utilise un type équivalent (ex. `BodeCsvPoint`) avec les mêmes c
   us_v: float         # Tension de sortie en V
   gain_linear: float  # Us/Ue
   gain_db: float      # Gain en dB
+  ue_v: Optional[float] = None    # Optionnel : tension d'entrée (acquisition oscilloscope)
+  phase_deg: Optional[float] = None  # Optionnel : phase en degrés (acquisition oscilloscope)
 ```
 
 ### 3.3 Configuration JSON (fenêtre graphique Bode)
@@ -176,21 +203,22 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 
 ### 4.2 Fenêtre graphique Bode
 
+- **Sans phase** (CSV minimal) : un seul axe Y (gain). Courbe gain vs fréquence (log).
+- **Avec phase** (CSV contenant `Phase_deg`) : **deux axes Y** — gain à gauche (dB), phase à droite (°) ; **deux courbes** sur le même graphique (même axe X = fréquence log) ; cases à cocher « Gain » et « Phase » dans le panneau Affichage.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Graphique Bode — bancfiltre_2026-02-08_16-06-36.csv                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  [Ordonnée]  ○ Gain linéaire (Us/Ue)  ● Gain en dB                      │
-│  [Affichage]  Fond [Noir▼]  Couleur [Jaune▼]  ☑ Quadrillage  ☑ Mineur  ☑ Lissage  Fenêtre [5▼] Algo [Moyenne glissante▼]  ☑ Courbe brute+lissée  ☑ Pics/creux  │
+│  [Affichage]  Fond [Noir▼]  Couleur [Jaune▼]  ☑ Quadrillage  ☑ Mineur  ☑ Lissage  …  ☑ Gain  ☑ Phase  ☑ Pics/creux  │
 │  [Recherche gain cible]  Gain (dB) [-3]  [Rechercher]  → f = … (résultat) │
 │  [Échelles / Zoom]  F min  F max  Gain min  Gain max  [Appliquer les limites]  ☐ Zoom sur zone (glisser) │
 ├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│   0 dB ─────────────────────────────────────────────────────────────    │
-│         ╲                                                               │
-│  -3 dB  - - - - (ligne gain cible, cyan, si « Rechercher » activé)       │
-│           ╲____     fc = … (marqueurs verticaux aux intersections)       │
-│  -20 dB         ╲_____                                                  │
+│  Gain (dB)     │                                                    Phase (°) │
+│   0 dB ────────╲────────────────────────────────────────────── 0°     │
+│  -3 dB  - - - - ╲____  fc = …                                    -45°  │
+│  -20 dB         ╲_____                                            -90°  │
 │         |----|----|----|----|----|----|----|----|----|----|              │
 │        10   100  1k  10k  100k  (f en Hz, échelle log)                  │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -219,6 +247,7 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 | **Performances** | Gestion fluide de courbes jusqu’à ~10 000 points |
 | **Thème / options par défaut** | À l'ouverture, les options du graphique Bode sont lues depuis la section **`bode_viewer`** de la config JSON (§ 3.3). Valeurs par défaut : fond noir, courbe jaune. |
 | **Axe X logarithmique** | En mode log, la ViewBox pyqtgraph attend la plage en **log10(Hz)** (exposants), pas en Hz. L’implémentation convertit les bornes F min / F max (Hz) en log10 avant d’appliquer la plage, et interprète la plage renvoyée par la vue en Hz pour les champs F min / F max, afin que « Appliquer les limites » et « Ajuster vue » affichent une échelle de fréquences correcte (0,1 ; 1 ; 10 ; 100 ; … Hz). |
+| **Graphique gain + phase** | Lorsque le CSV contient `Phase_deg`, un second ViewBox (axe Y droit) affiche la courbe phase (°) ; il partage l’axe X avec le ViewBox gain (même plage log10(Hz)) et utilise le **même principe de viewport** : axe X en **log10(Hz)** (mode log activé sur le ViewBox phase), pas en Hz linéaire, afin que les deux courbes soient alignées en fréquence. La plage X du ViewBox phase est recopiée depuis le ViewBox gain (coordonnées log10(Hz)). Cases à cocher Gain / Phase pour afficher l’un, l’autre ou les deux. |
 | **Config fenêtre Bode** | Les options d'affichage sont stockées dans `config.json` sous la clé **`bode_viewer`**. À la fermeture du graphique (Fermer ou croix), les options courantes sont écrites dans la config en mémoire ; l'enregistrement dans le fichier se fait via **Fichier → Sauvegarder config** (voir § 3.3). |
 
 ## 6. Plan de mise en œuvre
@@ -239,7 +268,7 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 
 | Terme | Définition |
 |-------|------------|
-| **Courbe de Bode** | Graphique gain (dB) vs fréquence (Hz), axe X en échelle log |
+| **Courbe de Bode** | Graphique gain (dB) vs fréquence (Hz), axe X en échelle log ; éventuellement **Bode complet** : gain (axe gauche) et phase en ° (axe droit) sur le même graphique, même axe X. |
 | **Fréquence de coupure** | Fréquence à laquelle le gain chute de 3 dB par rapport au gain en bande passante ; repérée par l’intersection de la courbe avec la ligne horizontale à -3 dB |
 | **Lissage** | Réduction du bruit de mesure par algorithme (moyenne glissante, spline, Savitzky-Golay) |
 | **Quadrillage** | Grille de lignes de référence pour faciliter la lecture des valeurs |
@@ -252,7 +281,7 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 
 ## 8. Analyse de conformité et pistes d’amélioration (étude de la courbe)
 
-*Révision : 8 février 2026 (v1.3 — conformité 100 %, config JSON bode_viewer documentée)*
+*Révision : 11 février 2026 (v1.4 — visualisation gain + phase, deux axes Y, même X)*
 
 ### 8.1 Conformité fonctionnelle
 
@@ -261,6 +290,7 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 | Menu **Fichier → Ouvrir CSV Banc filtre...** (libellé avec « ... ») | ✓ |
 | Lecture CSV, colonnes flexibles, dossier par défaut `datas/csv/` | ✓ |
 | Axe X log, axe Y dB ou linéaire, courbe principale, quadrillage, libellés | ✓ |
+| **Graphique gain + phase** : si CSV contient `Phase_deg`, axe gauche = gain, axe droit = phase (°), même axe X (fréquence log), cases ☑ Gain / ☑ Phase | ✓ |
 | Fond noir/blanc, couleur courbe, courbe brute + lissée | ✓ |
 | Options du graphique Bode chargées/sauvegardées via `config.json` (section **bode_viewer**) et menu Fichier → Sauvegarder config | ✓ |
 | Lissage moyenne glissante (fenêtre 3–11), option activer/désactiver | ✓ |
@@ -278,6 +308,7 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 | **Coordonnées au survol** | P1 | ✓ Implémenté (f, G au survol du graphique) |
 | **Panneau d’infos** | P1 | ✓ Implémenté (fc, G_max, N points) |
 | **Recherche gain cible** | P2 | ✓ Implémenté (gain saisi, bouton Rechercher, fréquences d’intersection) |
+| **Courbe de Bode phase** | P1 | ✓ Implémenté (axe droit Phase ° si CSV avec Phase_deg ; courbe phase alignée en fréquence avec le gain) |
 | **Détection pics/creux** | P1 (spec Phase 6) | ✓ Implémenté (case « Pics/creux », marqueurs jaune/bleu) |
 | **Lissage Savitzky-Golay** | P2 | ✓ Implémenté (option Algo, nécessite scipy) |
 | **Quadrillage mineur** | P1 (spec) | ✓ Implémenté (case « Quadrillage mineur ») |

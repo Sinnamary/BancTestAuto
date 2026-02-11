@@ -18,8 +18,8 @@
 | 1 | Réorganisation des onglets | Fait | 11 fév. 2026 |
 | 2 | Source de mesure : oscilloscope dans le core | Fait | 11 fév. 2026 |
 | 3 | UI Banc filtre et orchestration | Fait | 11 fév. 2026 |
-| 4 | Format CSV et visualisation Bode | À faire | — |
-| 5 | Courbe de Bode phase (optionnel) | À faire | — |
+| 4 | Format CSV et visualisation Bode | Fait | 11 fév. 2026 |
+| 5 | Courbe de Bode phase (optionnel) | Fait | 11 fév. 2026 |
 | 6 | Nettoyage et documentation | À faire | — |
 
 *Mettre à jour la colonne « Statut » (À faire / En cours / Fait) et « Date » au fil de l’avancement.*
@@ -87,24 +87,26 @@ Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentat
 **Objectif :** CSV compatible ancien format + colonnes optionnelles (Ue, phase) ; visualisation Bode à jour.
 
 **Tâches :**
-- [ ] Conserver colonnes existantes : `f_Hz` ; `Us_V` ; `Us_Ue` ; `Gain_dB`
-- [ ] Ajouter colonnes optionnelles : `Ue_V`, `Phase_deg` (lorsque l’acquisition est faite via oscilloscope)
-- [ ] Viewer Bode (Fichier → Ouvrir CSV Banc filtre) : détection des colonnes par en-tête ; si `Phase_deg` présent, le charger pour usage ultérieur (Phase 5)
-- [ ] Mettre à jour le cahier des charges [CAHIER_DES_CHARGES_VISUALISATION_BODE.md](CAHIER_DES_CHARGES_VISUALISATION_BODE.md) : structure des données (§ 3) avec colonnes optionnelles, mention acquisition possible via oscilloscope
+- [x] Conserver colonnes existantes : `f_Hz` ; `Us_V` ; `Us_Ue` ; `Gain_dB`
+- [x] Ajouter colonnes optionnelles : `Ue_V`, `Phase_deg` (lorsque l’acquisition est faite via oscilloscope)
+- [x] Viewer Bode (Fichier → Ouvrir CSV Banc filtre) : détection des colonnes par en-tête ; si `Phase_deg` présent, le charger pour usage ultérieur (Phase 5)
+- [x] Mettre à jour le cahier des charges [CAHIER_DES_CHARGES_VISUALISATION_BODE.md](CAHIER_DES_CHARGES_VISUALISATION_BODE.md) : structure des données (§ 3) avec colonnes optionnelles, mention acquisition possible via oscilloscope
 
-**Statut :** À faire
+**Statut :** Fait (11 fév. 2026). BodeCsvPoint.ue_v/phase_deg, loader détecte Ue_V/Phase_deg, export Banc filtre et viewer avec colonnes optionnelles, CDC § 3 mis à jour.
 
 ---
 
 ## Phase 5 — Courbe de Bode phase (optionnel, P2)
 
-**Objectif :** Afficher la phase en plus du gain (diagramme de Bode phase).
+**Objectif :** Afficher la phase en plus du gain (diagramme de Bode phase) : même graphique, gain à gauche, phase (angles) à droite, cases à cocher pour n’afficher que le gain, que la phase, ou les deux.
 
 **Tâches :**
-- [ ] Étendre le cahier des charges Bode : exigence optionnelle « Courbe phase (deg) vs fréquence » (axe X log), quadrillage, option de recherche de phase cible (ex. -45°)
-- [ ] Dans le viewer Bode : onglet ou second graphique « Phase » utilisant la colonne `Phase_deg` si présente dans le CSV
+- [x] Fichier CSV d’exemple dans `datas/csv/` avec toutes les colonnes dont `Ue_V` et `Phase_deg` (ex. `bancfiltre_exemple_avec_phase.csv`)
+- [x] Dans le viewer Bode : gain et phase sur le même graphique ; échelle des angles (phase en °) sur l’axe droit
+- [x] Cases à cocher « Gain » et « Phase » pour n’afficher que le gain, que la phase, ou les deux (visibles uniquement si le CSV contient `Phase_deg`)
+- [ ] Étendre le cahier des charges Bode : exigence optionnelle « Courbe phase (deg) vs fréquence » (axe X log), quadrillage, option de recherche de phase cible (ex. -45°) — optionnel
 
-**Statut :** À faire
+**Statut :** Fait (11 fév. 2026). CSV exemple créé ; plot_widget avec axe droit (Phase °), courbe phase en cyan ; checkboxes Gain/Phase dans le panneau Affichage.
 
 ---
 
@@ -128,3 +130,5 @@ Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentat
 | 11 février 2026 | Création du plan (Phases 1 à 6). Phase 1 (réorganisation des onglets) réalisée : ordre Multimètre, Générateur, Oscilloscope, Banc filtre, Calcul filtre, Enregistrement, Alimentation, Terminal série ; maquette + ui + INTERFACE_PYQT6.md + AIDE.md mis à jour. |
 | 11 février 2026 | Phase 2 (source de mesure oscilloscope dans le core) réalisée : `core/bode_measure_source.py` (BodeMeasureSource, MultimeterBodeAdapter, OscilloscopeBodeSource), BodePoint.phase_deg, FilterTest(measure_source), config filter_test.measure_source / oscillo_channel_ue|us, bridge + maquette utilisent MultimeterBodeAdapter. |
 | 11 février 2026 | Phase 3 (UI Banc filtre et orchestration) réalisée : SwitchableBodeMeasureSource, bridge construit la source switchable et _make_oscilloscope_bode_source ; FilterTestView avec combo « Source de mesure » (Multimètre &lt; 2 kHz / Oscilloscope Ch1=Ue Ch2=Us), set_measure_source_kind avant balayage, message si oscillo non connecté ; persistance measure_source dans _update_config_from_views + Sauvegarder config. |
+| 11 février 2026 | Phase 4 (Format CSV et visualisation Bode) réalisée : BodeCsvPoint.ue_v/phase_deg optionnels, BodeCsvColumnMap et loader détectent Ue_V/Phase_deg, export CSV Banc filtre et « Exporter les points CSV » du viewer incluent Ue_V et Phase_deg si présents, dataset.has_phase()/phases_deg() pour Phase 5, CDC Visualisation Bode § 3 mis à jour. |
+| 11 février 2026 | Phase 5 (Courbe Bode phase) réalisée : fichier exemple `datas/csv/bancfiltre_exemple_avec_phase.csv` (toutes colonnes + phase) ; graphique gain + phase sur le même plot avec axe gauche (Gain dB) et axe droit (Phase °) ; cases à cocher « Gain » et « Phase » pour afficher l’un, l’autre ou les deux (visibles si CSV contient Phase_deg). |

@@ -291,6 +291,7 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
 - **Boutons** : [Démarrer balayage] [Arrêter] [Exporter CSV] [Exporter graphique]
 - **Tableau** : f | Us | Us/Ue | Gain (dB)
 - **Graphique** : courbe de Bode (semi-log) temps réel — gain en dB vs fréquence
+- **Visualisation CSV** : **Fichier → Ouvrir CSV Banc filtre** ouvre le viewer Bode (voir [Cahier des charges Visualisation Bode](CAHIER_DES_CHARGES_VISUALISATION_BODE.md)). Si le CSV contient la colonne **Phase_deg** (acquisition oscilloscope), le graphique affiche **gain (axe gauche) et phase en ° (axe droit)** sur le même tracé, avec la même échelle de fréquence (axe X log).
 - **Barre de progression** : avancement du balayage
 
 ### 9.2 Intégration
@@ -355,11 +356,11 @@ Les fonctionnalités suivantes permettraient d’obtenir une **meilleure approch
 
 ### 12.3 Évolutions nécessitant des mesures supplémentaires (phase, etc.)
 
-| Fonctionnalité | Description | Limite actuelle |
-|----------------|-------------|------------------|
-| **Phase (déphasage φ)** | Courbe de Bode phase : φ(f) en degrés ou radians. Nécessite mesure de phase (décalage temporel ou analyseur). | Le multimètre RMS seul ne donne pas la phase ; il faudrait un oscillo 2 voies ou un analyseur. |
+| Fonctionnalité | Description | Limite actuelle / état |
+|----------------|-------------|------------------------|
+| **Phase (déphasage φ)** | Courbe de Bode phase : φ(f) en degrés ou radians. Nécessite mesure de phase (décalage temporel ou analyseur). | Le multimètre RMS seul ne donne pas la phase ; oscillo 2 voies ou analyseur requis pour l’acquisition. |
 | **Délai de groupe** | −dφ/dω pour analyser la linéarité de phase. | Dépend de la mesure de phase. |
-| **Courbe de Bode complète** | Gain + phase sur un même écran (format Bode classique). | Phase non disponible avec OWON seul. |
+| **Courbe de Bode complète** | Gain + phase sur un même écran (format Bode classique). | **Visualisation** : implémentée dans le viewer CSV (Fichier → Ouvrir CSV Banc filtre) : si le CSV contient `Phase_deg`, le graphique affiche gain (axe gauche) et phase ° (axe droit) sur le même tracé, même axe X. **Acquisition** : phase disponible uniquement via oscilloscope (ou analyseur), pas avec OWON seul. |
 
 ### 12.4 Priorisation suggérée
 

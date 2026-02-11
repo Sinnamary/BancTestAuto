@@ -287,11 +287,19 @@ class FilterTestView(QWidget):
         path, _ = QFileDialog.getSaveFileName(self, "Exporter CSV", default_name, "CSV (*.csv)")
         if not path:
             return
+        has_phase = any(getattr(p, "phase_deg", None) is not None for p in self._results)
         with open(path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f, delimiter=";")
-            w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
-            for p in self._results:
-                w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db])
+            if has_phase:
+                w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB", "Ue_V", "Phase_deg"])
+                for p in self._results:
+                    ue_v = (p.us_v / p.gain_linear) if getattr(p, "gain_linear", 0) and p.gain_linear > 0 else ""
+                    phase_deg = getattr(p, "phase_deg", None)
+                    w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db, ue_v, phase_deg if phase_deg is not None else ""])
+            else:
+                w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
+                for p in self._results:
+                    w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db])
         QMessageBox.information(self, "Export", f"CSV enregistré : {path}")
 
     def _on_view_graph(self):
@@ -303,10 +311,14 @@ class FilterTestView(QWidget):
             )
             return
         # Données déjà collectées : on les injecte directement dans le graphique (pas de dialogue d'ouverture de fichier)
-        csv_points = [
-            BodeCsvPoint(f_hz=p.f_hz, us_v=p.us_v, gain_linear=p.gain_linear, gain_db=p.gain_db)
-            for p in self._results
-        ]
+        csv_points = []
+        for p in self._results:
+            ue_v = (p.us_v / p.gain_linear) if p.gain_linear and p.gain_linear > 0 else None
+            phase_deg = getattr(p, "phase_deg", None)
+            csv_points.append(BodeCsvPoint(
+                f_hz=p.f_hz, us_v=p.us_v, gain_linear=p.gain_linear, gain_db=p.gain_db,
+                ue_v=ue_v, phase_deg=phase_deg,
+            ))
         dataset = BodeCsvDataset(csv_points)
         config = self._config if self._config is not None else {}
         dlg = BodeCsvViewerDialog(self, csv_path="", dataset=dataset, config=config)

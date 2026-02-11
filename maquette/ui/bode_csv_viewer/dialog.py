@@ -90,6 +90,12 @@ class BodeCsvViewerDialog(QDialog):
         self._y_linear.toggled.connect(self._on_y_changed)
         self._y_db.toggled.connect(self._on_y_changed)
         self._plot.set_dataset(self._dataset)
+        has_phase = self._dataset.has_phase()
+        self._show_gain_cb.setVisible(has_phase)
+        self._show_phase_cb.setVisible(has_phase)
+        if has_phase:
+            self._plot.set_show_gain(self._show_gain_cb.isChecked())
+            self._plot.set_show_phase(self._show_phase_cb.isChecked())
         self._apply_options()
         self._sync_scale_spins_from_view()
         self._update_info_panel()
@@ -193,6 +199,9 @@ class BodeCsvViewerDialog(QDialog):
         self._plot.set_y_linear(self._options.y_linear)
         self._plot.set_peaks_visible(self._peaks_cb.isChecked())
         self._plot.set_minor_grid_visible(self._grid_minor_cb.isChecked())
+        if self._dataset.has_phase():
+            self._plot.set_show_gain(self._show_gain_cb.isChecked())
+            self._plot.set_show_phase(self._show_phase_cb.isChecked())
         self._update_info_panel()
 
     def _update_info_panel(self) -> None:
@@ -303,9 +312,16 @@ class BodeCsvViewerDialog(QDialog):
             import csv
             with open(path, "w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f, delimiter=";")
-                w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
-                for p in self._dataset.points:
-                    w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db])
+                if self._dataset.has_phase():
+                    w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB", "Ue_V", "Phase_deg"])
+                    for p in self._dataset.points:
+                        ue_v = getattr(p, "ue_v", None)
+                        phase_deg = getattr(p, "phase_deg", None)
+                        w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db, ue_v if ue_v is not None else "", phase_deg if phase_deg is not None else ""])
+                else:
+                    w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
+                    for p in self._dataset.points:
+                        w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db])
             QMessageBox.information(self, "Export", f"Points enregistrés : {path}")
         except Exception as e:
             QMessageBox.warning(self, "Export", f"Échec : {e}")
