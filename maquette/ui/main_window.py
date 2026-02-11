@@ -5,9 +5,9 @@ Connectée au config et au core (connexions série, FilterTest).
 UI_CHANGES_VIA_MAQUETTE: Les évolutions d'interface (barre 4 équipements, connexion globale,
 menus, onglets) se font dans la maquette ; valider puis reporter vers ui/. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
 
-OBSOLETE_AFTER_MIGRATION: La logique connexion 2 équipements (_multimeter_conn, _generator_conn,
-_reconnect_serial, _update_connection_status, _on_detect_clicked, _on_detection_result_5) sera
-remplacée par ConnectionController, BenchConnectionState et la barre 4 équipements (Phase 3).
+OBSOLETE_AFTER_MIGRATION: La logique connexion 2 équipements (bridge, _reconnect_serial,
+_update_connection_status) sera remplacée par ConnectionController, BenchConnectionState (Phase 3).
+Le bouton Détecter ouvre désormais le dialogue 4 équipements (DeviceDetectionDialog4).
 """
 from pathlib import Path
 
@@ -19,7 +19,6 @@ from PyQt6.QtWidgets import (
     QFrame,
     QMessageBox,
     QFileDialog,
-    QDialog,
     QApplication,
 )
 from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
@@ -29,7 +28,6 @@ from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, Filt
 from ui.dialogs import (
     DeviceDetectionDialog,
     DeviceDetectionDialog4,
-    SerialConfigDialog,
     ViewConfigDialog,
     ViewLogDialog,
     HelpDialog,
@@ -37,7 +35,6 @@ from ui.dialogs import (
 )
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
-from ui.workers import DetectionWorker
 from ui.connection_bridge import MainWindowConnectionBridge
 
 # Import core et config (optionnel si non disponibles)
@@ -103,11 +100,13 @@ class MainWindow(QMainWindow):
 
         if load_config:
             self._config = load_config()
+        log_dir = (self._config or {}).get("logging", {}).get("output_dir", "./logs")
+        self._serial_exchange_logger = SerialExchangeLogger(log_dir=log_dir) if SerialExchangeLogger else None
         self._build_menu()
         self._build_central()
         self._connect_connection_bar()
         self._setup_shortcuts()
-        # Pas d'ouverture de ports au démarrage : utiliser "Charger config" ou "Détecter" pour connecter
+        # Pas d'ouverture de ports au démarrage : utiliser "Connecter tout" ou "Détecter" pour connecter
         self._init_views_without_connections()
         self._update_connection_status()
 
@@ -173,7 +172,6 @@ class MainWindow(QMainWindow):
         self._connection_bar = ConnectionStatusBar(self)
         layout.addWidget(self._connection_bar)
 
-        # Ligne de séparation entre connexions et onglets
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
@@ -202,8 +200,6 @@ class MainWindow(QMainWindow):
         pass  # optionnel
 
     def _connect_connection_bar(self):
-        self._connection_bar.get_load_config_button().clicked.connect(self._on_load_config_clicked)
-        self._connection_bar.get_params_button().clicked.connect(self._on_params)
         self._connection_bar.get_detect_button().clicked.connect(self._on_detect_clicked)
         if hasattr(self._connection_bar, "get_connect_all_button"):
             self._connection_bar.get_connect_all_button().clicked.connect(self._on_connect_all)
@@ -273,18 +269,22 @@ class MainWindow(QMainWindow):
             logging_view.set_data_logger(data_logger)
         if hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "load_config"
-        ) and self._config:
-            self._power_supply_view.load_config(self._config)
+        if hasattr(self, "_power_supply_view") and self._power_supply_view:
+            if hasattr(self._power_supply_view, "load_config") and self._config:
+                self._power_supply_view.load_config(self._config)
+            if hasattr(self._power_supply_view, "set_connection"):
+                self._power_supply_view.set_connection(bridge.get_power_supply_conn())
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
             self._serial_terminal_view.set_connection_provider(
                 lambda: self._connection_bridge.get_connected_equipment_for_terminal()
             )
-        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
-            self._oscilloscope_view.load_config(self._config)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view:
+            if hasattr(self._oscilloscope_view, "load_config") and self._config:
+                self._oscilloscope_view.load_config(self._config)
+            if hasattr(self._oscilloscope_view, "set_connection"):
+                self._oscilloscope_view.set_connection(bridge.get_oscilloscope_conn())
 
     def _init_views_without_connections(self):
         """Initialise les vues sans créer ni ouvrir de connexion série (aucun port ouvert au démarrage)."""
@@ -294,27 +294,34 @@ class MainWindow(QMainWindow):
         logging_view = self._tabs.widget(2) if self._tabs.count() > 2 else None
         if logging_view and hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "load_config"
-        ) and self._config:
-            self._power_supply_view.load_config(self._config)
+        if hasattr(self, "_power_supply_view") and self._power_supply_view:
+            if hasattr(self._power_supply_view, "load_config") and self._config:
+                self._power_supply_view.load_config(self._config)
+            if hasattr(self._power_supply_view, "set_connection"):
+                self._power_supply_view.set_connection(None)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
-        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
-            self._serial_terminal_view.set_connection_provider(
-                lambda: self._connection_bridge.get_connected_equipment_for_terminal()
-            )
-        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
-            self._oscilloscope_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view:
+            if hasattr(self._serial_terminal_view, "set_connection_provider"):
+                self._serial_terminal_view.set_connection_provider(
+                    lambda: self._connection_bridge.get_connected_equipment_for_terminal()
+                )
+            if hasattr(self._serial_terminal_view, "set_serial_exchange_logger") and getattr(self, "_serial_exchange_logger", None):
+                self._serial_terminal_view.set_serial_exchange_logger(self._serial_exchange_logger)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view:
+            if hasattr(self._oscilloscope_view, "load_config") and self._config:
+                self._oscilloscope_view.load_config(self._config)
+            if hasattr(self._oscilloscope_view, "set_connection"):
+                self._oscilloscope_view.set_connection(None)
 
     def _reconnect_serial(self):
-        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Charger config / Détecter / Paramètres OK)."""
+        """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Connecter tout / Détecter)."""
         self._setup_core()
         self._inject_views()
         self._update_connection_status()
 
     def _update_connection_status(self):
-        """Met à jour les 4 pastilles selon l'état des connexions (bridge = multimètre + générateur ; alimentation et oscillo non gérés par le bridge pour l'instant)."""
+        """Met à jour les 4 pastilles (bridge = multimètre + générateur ; alimentation et oscillo non gérés par le bridge pour l'instant)."""
         state = self._connection_bridge.get_state()
         if state.multimeter_connected:
             self._connection_bar.set_multimeter_status(True, state.multimeter_name, state.multimeter_port)
@@ -325,14 +332,26 @@ class MainWindow(QMainWindow):
         else:
             self._connection_bar.set_generator_status(False)
         if hasattr(self._connection_bar, "set_power_supply_status"):
-            self._connection_bar.set_power_supply_status(False)
+            self._connection_bar.set_power_supply_status(
+                state.power_supply_connected,
+                "",
+                state.power_supply_port or "—",
+            )
         if hasattr(self._connection_bar, "set_oscilloscope_status"):
-            self._connection_bar.set_oscilloscope_status(False)
+            self._connection_bar.set_oscilloscope_status(
+                state.oscilloscope_connected,
+                "",
+                state.oscilloscope_label or "—",
+            )
+        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(self._power_supply_view, "set_connection"):
+            self._power_supply_view.set_connection(self._connection_bridge.get_power_supply_conn())
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "set_connection"):
+            self._oscilloscope_view.set_connection(self._connection_bridge.get_oscilloscope_conn())
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
             self._serial_terminal_view.refresh_equipment_list()
 
     def _on_connect_all(self):
-        """Connexion globale : même action que Charger config (reconnecte selon la config)."""
+        """Connexion globale : relit config.json et ouvre les connexions (multimètre, générateur, alimentation, oscilloscope)."""
         self._on_load_config_clicked()
 
     def _on_disconnect_all(self):
@@ -343,7 +362,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Tous les équipements déconnectés.")
 
     def _on_load_config_clicked(self):
-        """Bouton Charger config : récupère config.json et tente de se connecter aux équipements."""
+        """Relit config.json et tente de se connecter à tous les équipements (appelé par Connecter tout)."""
         if not load_config:
             QMessageBox.warning(self, "Config", "Chargement de la config non disponible.")
             return
@@ -352,7 +371,7 @@ class MainWindow(QMainWindow):
             if not config_path.exists():
                 QMessageBox.warning(
                     self,
-                    "Charger config",
+                    "Connecter tout",
                     f"Fichier introuvable : {config_path}\n\n"
                     "Vérifiez que config.json existe (ex. config/config.json).",
                 )
@@ -375,51 +394,36 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(msg)
             logger.info("Config rechargée depuis %s", config_path)
         except Exception as e:
-            logger.exception("Charger config")
+            logger.exception("Connecter tout")
             QMessageBox.warning(
                 self,
-                "Charger config",
+                "Connecter tout",
                 f"Impossible de charger la config : {e}",
             )
 
     def _on_detect_clicked(self):
-        """Bouton Détecter : lance la détection en thread avec barre de progression."""
-        logger.debug("Clic Détecter — lancement du worker")
-        if not detect_devices or not update_config_ports:
-            QMessageBox.warning(self, "Détection", "Module de détection non disponible.")
-            return
-        self._connection_bar.show_detection_progress()
-        self._detection_worker = DetectionWorker()
-        self._detection_worker.result.connect(self._on_detection_result_5)
-        self._detection_worker.finished.connect(self._on_detection_finished)
-        self._detection_worker.start()
+        """Bouton Détecter : ouvre le dialogue de détection (4 équipements). Les ports sont libérés avant."""
+        self._prepare_and_open_detection_dialog()
 
-    def _on_detection_result_5(self, multimeter_port, multimeter_baud, generator_port, generator_baud, _log_lines=None):
-        """Reçoit le signal du DetectionWorker (5 arguments ; log_lines non utilisé ici)."""
-        logger.info("Détection: multimètre=%s@%s, générateur=%s@%s", multimeter_port, multimeter_baud, generator_port, generator_baud)
-        self._config = update_config_ports(
-            self._config,
-            multimeter_port,
-            generator_port,
-            multimeter_baud=multimeter_baud,
-            generator_baud=generator_baud,
-        )
-        self._reconnect_serial()
-        if self.statusBar():
-            msg = []
-            if multimeter_port:
-                msg.append(f"Multimètre : {multimeter_port}")
-            else:
-                msg.append("Multimètre : non trouvé")
-            if generator_port:
-                msg.append(f"Générateur : {generator_port}")
-            else:
-                msg.append("Générateur : non trouvé")
-            self.statusBar().showMessage(" — ".join(msg))
-
-    def _on_detection_finished(self):
-        self._connection_bar.hide_detection_progress()
-        self._detection_worker = None
+    def _prepare_and_open_detection_dialog(self):
+        """Ferme les connexions pour libérer les ports, met à jour les pastilles, puis ouvre le dialogue de détection."""
+        self._connection_bridge.close()
+        self._update_connection_status()
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
+            self._serial_terminal_view.refresh_equipment_list()
+        if DeviceDetectionDialog4 is not None:
+            dlg = DeviceDetectionDialog4(
+                self,
+                config=self._config,
+                on_config_updated=self._on_detection_config_updated,
+            )
+        else:
+            dlg = DeviceDetectionDialog(
+                self,
+                config=self._config,
+                on_config_updated=self._on_detection_config_updated,
+            )
+        dlg.exec()
 
     def _update_theme_menu(self) -> None:
         """Coche l’action correspondant au thème actuel (config display.theme)."""
@@ -467,19 +471,8 @@ class MainWindow(QMainWindow):
         logger.info("Niveau de log défini à %s", level)
 
     def _on_detect_devices(self):
-        if DeviceDetectionDialog4 is not None:
-            dlg = DeviceDetectionDialog4(
-                self,
-                config=self._config,
-                on_config_updated=self._on_detection_config_updated,
-            )
-        else:
-            dlg = DeviceDetectionDialog(
-                self,
-                config=self._config,
-                on_config_updated=self._on_detection_config_updated,
-            )
-        dlg.exec()
+        """Menu Détecter les équipements : même flux que le bouton barre (dialogue 4 équipements, ports libérés)."""
+        self._prepare_and_open_detection_dialog()
 
     def _on_detection_config_updated(self, new_config: dict):
         """Après détection : applique la nouvelle config (ports) et reconnecte si les ports ont changé."""
@@ -493,20 +486,6 @@ class MainWindow(QMainWindow):
         self._update_connection_status()
         if self._filter_test_view and get_filter_test_config:
             self._filter_test_view.load_config(self._config)
-
-    def _on_params(self):
-        """Ouvre la configuration série : affiche les valeurs lues depuis config.json.
-        OK = applique les champs du formulaire en mémoire et reconnecte.
-        Fichier → Sauvegarder config pour écrire dans config.json."""
-        config_from_file = load_config() if load_config else self._config
-        dlg = SerialConfigDialog(config=config_from_file, parent=self)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._config = dlg.get_updated_config()
-            self._reconnect_serial()
-            if self.statusBar():
-                self.statusBar().showMessage(
-                    "Configuration série appliquée. Fichier → Sauvegarder config pour écrire config.json."
-                )
 
     def _on_open_bode_csv(self):
         """Ouvre le visualiseur Bode CSV (module indépendant) avec le fichier sélectionné."""
@@ -544,15 +523,7 @@ class MainWindow(QMainWindow):
                 usb_cfg["vendor_id"] = int(vid)
                 usb_cfg["product_id"] = int(pid)
                 self._config["usb_oscilloscope"] = usb_cfg
-        # Alimentation RS305P : port série courant
-        if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
-            self._power_supply_view, "get_port"
-        ):
-            ps_port = (self._power_supply_view.get_port() or "").strip()
-            if ps_port:
-                ps = dict(self._config.get("serial_power_supply") or {})
-                ps["port"] = ps_port
-                self._config["serial_power_supply"] = ps
+        # Alimentation : port géré par config/détection, pas par l'onglet
 
     def _on_save_config(self):
         if save_config and self._config:

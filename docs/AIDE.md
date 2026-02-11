@@ -26,7 +26,7 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 1. **Branchez** le multimètre et le générateur en USB (ports COM sous Windows, `/dev/ttyUSBx` sous Linux).
 2. Lancez l’application : `python main.py` (après activation du venv et `pip install -r requirements.txt`).
 3. Ouvrez le menu **Outils → Détecter les équipements** (ou cliquez sur **Détecter** dans la barre de connexion) pour identifier automatiquement les ports du multimètre et du générateur.
-4. **Aucun port n'est ouvert au démarrage** : cliquez sur **Charger config** ou **Détecter** pour connecter le multimètre et le générateur. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
+4. **Aucun port n'est ouvert au démarrage** : cliquez sur **Détecter** puis **Connecter tout** pour connecter le multimètre et le générateur. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
 
 **Prérequis :** Python 3.10+, PyQt6, pyserial. Voir `requirements.txt`.
 
@@ -36,12 +36,12 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 
 ### Barre de connexion
 
-En haut de la fenêtre, deux **pastilles** indiquent l’état de connexion :
+En haut de la fenêtre, **quatre pastilles** indiquent (Multimètre, Générateur, Alimentation, Oscilloscope) l’état de connexion :
 
 - **Vert** : équipement détecté et connecté (modèle et port affichés).
 - **Rouge** : non connecté ou non détecté.
 
-Un bouton **Paramètres** ouvre la configuration série (port, débit, timeouts) pour le multimètre et le générateur. Un bouton **Détecter** lance la détection automatique des équipements.
+**Boutons** : **Détecter** (en premier, mis en avant) lance la détection des 4 équipements ; **Connecter tout** relit la config et ouvre les connexions ; **Déconnecter tout** ferme toutes les connexions. Il n'y a plus de bouton Paramètres : les ports se modifient via `config.json` ou Fichier → Ouvrir config.
 
 ### Détection automatique
 
@@ -53,7 +53,7 @@ Un bouton **Paramètres** ouvre la configuration série (port, débit, timeouts)
 
 ### Configuration série
 
-Via **Paramètres** (barre de connexion) ou après détection, vous pouvez modifier :
+Les ports et débits sont dans **`config/config.json`**. Pour modifier :
 
 - **Port** : COM3, COM4, etc. (Windows) ou /dev/ttyUSB0, etc. (Linux).
 - **Débit** : 9600 pour l’OWON (ou 115200 selon modèle), 115200 pour le FY6900.
@@ -110,7 +110,7 @@ Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, fo
 
 ## Onglet Terminal série
 
-Connexion sur un **port série au choix** (indépendant du multimètre et du générateur) : envoi et réception de commandes. Cases à cocher **CR** et **LF** pour la fin de chaîne (FY6900 : cocher LF). Bouton **Effacer** pour vider la ligne à envoyer. Si « port déjà utilisé », déconnectez l'onglet Alimentation ou utilisez un autre port.
+L'onglet **n'a pas de connexion propre** : il utilise la connexion d'un équipement **déjà connecté** via la barre (Connecter tout). Choisissez l'équipement dans la liste déroulante (Multimètre, Générateur, Alimentation, Oscilloscope) : seuls les équipements connectés sont proposés. Envoi et réception se font sur la connexion de l'équipement sélectionné. Cases à cocher **CR** et **LF** pour la fin de chaîne. Tous les échanges TX/RX sont enregistrés dans le fichier **`serial_AAAA-MM-JJ_HH-MM-SS.log`** (dossier `logs/`), avec l'équipement indiqué une fois au changement de sélection.
 
 ---
 
@@ -142,13 +142,7 @@ Au démarrage d’un balayage, la configuration générateur (forme d’onde, am
 
 ## Onglet Alimentation
 
-Pilotage de l'**alimentation stabilisée Rockseed RS305P** (protocole Modbus RTU). Cet onglet est **autonome** : la connexion et la déconnexion série sont gérées directement dans l'onglet (aucun paramètre dans `config.json`).
-
-### Connexion série
-
-- **Port** : sélection dans la liste déroulante (ou saisie manuelle du port COM).
-- **Vitesse** : 9600 baud (fixe pour le RS305P).
-- **Bouton Connexion/Déconnexion** : ouvre ou ferme le port série. Une pastille verte/rouge indique l'état.
+Pilotage de l'**alimentation stabilisée Rockseed RS305P** (protocole Modbus RTU). L'onglet **utilise la connexion déjà établie** par la barre (bouton **Connecter tout**) : aucun bloc « Connexion série » dans l'onglet. Le port est défini dans `config.json` (section `serial_power_supply`) et est affecté par la détection.
 
 ### Paramètres et sortie
 
@@ -221,11 +215,11 @@ Tous les exports CSV et graphiques sont adaptés à une utilisation ultérieure 
 
 - Vérifiez que les câbles USB sont bien branchés et que les appareils sont sous tension.
 - Lancez **Outils → Détecter les équipements** (ou **Détecter**). Si aucun port n’est trouvé, vérifiez les pilotes (Windows : Gestionnaire de périphériques ; Linux : droits sur `/dev/ttyUSBx`).
-- Vérifiez dans **Paramètres** que le port et le débit correspondent au matériel (OWON souvent 9600, FY6900 115200).
+- Vérifiez dans `config.json` (ou **Fichier → Voir config JSON**) que les ports et débits correspondent au matériel (OWON souvent 115200, FY6900 115200, RS305P 9600).
 
 ### Erreur SCPI ou timeout
 
-- Augmentez le **timeout** dans la configuration série (Paramètres).
+- Augmentez le **timeout** dans les sections série de `config.json` si nécessaire.
 - Vérifiez qu’aucun autre logiciel n’utilise le même port COM.
 - En cas de mesure très lente, passez en vitesse **Rapide** ou réduisez l’intervalle de rafraîchissement dans la config.
 
@@ -236,8 +230,9 @@ Tous les exports CSV et graphiques sont adaptés à une utilisation ultérieure 
 
 ### Où sont les logs ?
 
-- Les logs application sont dans le dossier **`logs/`** (nom de fichier horodaté). Le chemin est configurable dans `config.json` (section `logging.output_dir`).
-- Le niveau de log (DEBUG, INFO, etc.) se règle dans **Configuration → Niveau de log**.
+- **`logs/app_AAAA-MM-JJ_HH-MM-SS.log`** : log général de l'application (démarrage, détection, connexions, erreurs). Créé au lancement.
+- **`logs/serial_AAAA-MM-JJ_HH-MM-SS.log`** : log **uniquement** des échanges de l'onglet **Terminal série** (TX/RX), avec l'équipement connecté indiqué une fois au changement de sélection. Créé au premier choix d'équipement ou premier envoi/réception dans le terminal.
+- Le chemin des logs est configurable dans `config.json` (section `logging.output_dir`). Le niveau (DEBUG, INFO, etc.) se règle dans **Configuration → Niveau de log**.
 
 ### Documentation complète
 

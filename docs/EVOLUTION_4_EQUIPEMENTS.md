@@ -113,9 +113,9 @@ Voir la section *Analyse des métriques et prérequis* ci-dessus pour le détail
 | Tâche | Statut |
 |-------|--------|
 | Barre : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** : `ui/widgets/connection_status.py` et maquette (4 pastilles + Connecter tout / Déconnecter tout). |
-| Boutons Connexion globale / Déconnexion globale (ou équivalent) | **Fait** : `ui/main_window.py` (`_on_connect_all` = Charger config, `_on_disconnect_all` = bridge.close + mise à jour pastilles), séparateur horizontal barre/onglets. |
+| Boutons Connexion globale / Déconnexion globale (ou équivalent) | **Fait** : `ui/main_window.py` (`_on_connect_all` relit config et connecte les 4 équipements, `_on_disconnect_all` = bridge.close + mise à jour pastilles). Barre : **Détecter** (en premier), **Connecter tout**, **Déconnecter tout**. Plus de bouton Charger config ni Paramètres. Séparateur horizontal barre/onglets. |
 | Brancher `CallbackConnectionController` dans MainWindow (`_reconnect_serial`, construction de `BenchConnectionState`) | À faire (pour l’instant bridge 2 équipements ; Alimentation et Oscilloscope affichés en « Non connecté »). |
-| Supprimer les connexions dédiées dans les onglets Alimentation et Oscilloscope ; tout passer par le contrôleur / barre | À faire |
+| Supprimer les connexions dédiées dans les onglets Alimentation et Oscilloscope ; tout passer par le contrôleur / barre | **Fait** : Alimentation et Oscilloscope utilisent la connexion du bridge (`set_connection(conn)`), plus de panneau Connexion dans ces onglets. |
 
 ---
 
@@ -163,7 +163,7 @@ Code qui **ne sera plus valide** après la migration (Phase 3–5) : à remplace
 | Fichier / classe | Élément obsolète |
 |------------------|------------------|
 | **`ui/main_window.py`** | Délègue déjà au `MainWindowConnectionBridge` (Phase 1bis). À terme : remplacer le bridge par `ConnectionController` + `BenchConnectionState` + barre 4 équipements (Phase 3). Détection tuple (`_on_detection_result_5`) à migrer vers `BenchDetectionResult`. |
-| **`ui/widgets/connection_status.py`** | Classe **ConnectionStatusBar** actuelle : 2 pastilles (multimètre, générateur). Remplacer par 4 pastilles + boutons connexion/déconnexion globale. |
+| **`ui/widgets/connection_status.py`** | **ConnectionStatusBar** : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) + Détecter, Connecter tout, Déconnecter tout. |
 
 ### Tag UI_CHANGES_VIA_MAQUETTE (ne pas modifier l’UI ici)
 
@@ -173,7 +173,7 @@ Fichiers pour lesquels **toute évolution d’interface** doit se faire **dans l
 |---------|--------|
 | **`ui/main_window.py`** | Évolutions d’interface (barre, menu, onglets) → faire dans la maquette, puis reporter. |
 | **`ui/widgets/connection_status.py`** | Nouvelle barre 4 équipements, boutons globaux → concevoir dans la maquette. |
-| **`ui/dialogs/serial_config_dialog.py`** | Évolution vers 4 équipements (onglets ou formulaire) → faire dans la maquette. |
+| **`ui/dialogs/serial_config_dialog.py`** | Plus utilisé par la barre (plus de bouton Paramètres) ; config via config.json. Optionnel pour évolution future. |
 
 **À mettre à jour au nettoyage (sans tag UI)** : `ui/dialogs/serial_form.py` (changer imports `core.device_detection` → `core.detection` au moment du nettoyage).
 

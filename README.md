@@ -152,8 +152,8 @@ Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
 
 ### Oscilloscope Hanmatek DOS1102
 
-- **Onglet dédié** : connexion USB (WinUSB/PyUSB) ou série selon modèle ; une seule connexion par onglet.
-- **Panneaux** : Connexion (USB ou COM), Canaux (couplage DC/AC/GND, échelle, position), Acquisition/Trigger, Mesures (par canal ou inter-canal pour Bode phase), Forme d'onde (récupération HEAD? + CH1?/CH2?, affichage courbe temps vs tension).
+- **Onglet dédié** : utilise la **connexion déjà établie** par la barre (Connecter tout) ; plus de panneau « Connexion (DOS1102) » dans l'onglet.
+- **Panneaux** : Canaux (couplage DC/AC/GND, échelle, position), Acquisition/Trigger, Mesures (par canal ou inter-canal pour Bode phase), Forme d'onde (récupération HEAD? + CH1?/CH2?, affichage courbe temps vs tension).
 - **Commandes** : identification (*IDN?), couplage (:CH1:COUP DC, etc.), récupération forme d'onde (:DATA:WAVE:SCREen:HEAD?, :DATA:WAVE:SCREEN:CH1?/CH2?), mesures (:MEAS:CH1?, :MEAS:CH2?, etc.). Voir [Commandes Hanmatek DOS1102](docs/COMMANDES_HANMATEK_DOS1102.md) et [Tableau commandes osc](docs/TABLEAU_COMMANDES_OSC_INTERFACE.md).
 
 ### Calcul filtre
@@ -162,11 +162,11 @@ Voir [Banc de test filtre](docs/BANC_TEST_FILTRE.md).
 
 ### Terminal série
 
-- **Onglet dédié** : connexion sur un port série au choix (indépendant du multimètre/générateur), envoi et réception de commandes. **Cases à cocher CR/LF** pour ajouter `\r` et/ou `\n` en fin de chaîne à l'envoi. Aucune vérification d'appareil ; utile pour tester des commandes (ex. FY6900) ou tout équipement série. Voir message d'aide si le port est déjà utilisé (ex. par l'onglet Alimentation).
+- **Onglet dédié** : **pas de connexion propre** ; choix d'un équipement déjà connecté (Multimètre, Générateur, Alimentation, Oscilloscope) dans une liste. Envoi/réception sur la connexion de l'équipement sélectionné. **Cases à cocher CR/LF** pour la fin de chaîne. Tous les échanges TX/RX sont enregistrés dans **`logs/serial_AAAA-MM-JJ_HH-MM-SS.log`**, avec l'équipement indiqué une fois au changement de sélection.
 
 ### Alimentation Rockseed RS305P
 
-- **Onglet dédié** (connexion et déconnexion gérées dans l'onglet, aucun paramètre dans `config.json`).
+- **Onglet dédié** : utilise la **connexion déjà établie** par la barre (Connecter tout) ; plus de bloc « Connexion série » dans l'onglet. Le port est dans `config.json` (section `serial_power_supply`).
 - **Préréglages** : boutons rapides 3,3 V, 5 V, 9 V, 12 V (0,5 A, sortie OFF).
 - **Contrôles** : tension et courant configurables, sortie ON/OFF, valeurs mesurées (tension et courant affichés).
 - Protocole Modbus RTU (9600 baud). Voir [Commandes RS305P](docs/COMMANDES_RS305P.md).
@@ -231,7 +231,7 @@ Structure complète et valeurs typiques : [Cahier des charges § 2.7](docs/CAHIE
 
 ## Interface et robustesse
 
-- **Interface** par zones : **barre de connexion** (une pastille par équipement : multimètre et générateur) — **aucun port ouvert au démarrage**, utiliser **Charger config** ou **Détecter** pour connecter ; menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), **Configuration → Thème** (clair / foncé), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut** ; le thème peut être changé et sauvegardé (voir [§ Thème d’affichage](#thème-daffichage-clair--foncé)). Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
+- **Interface** par zones : **barre de connexion** (quatre pastilles : Multimètre, Générateur, Alimentation, Oscilloscope) — **aucun port ouvert au démarrage** ; **Détecter** puis **Connecter tout** pour connecter ; menu **Outils → Détecter les équipements** (détection des ports par protocole, mise à jour du JSON), **Configuration → Thème** (clair / foncé), modes de mesure, affichage principal (type LCD), plage/vitesse, fonctions math, historique. Thème **sombre par défaut** ; le thème peut être changé et sauvegardé (voir [§ Thème d’affichage](#thème-daffichage-clair--foncé)). Détail dans le [cahier des charges § 4](docs/CAHIER_DES_CHARGES.md) et la [conception interface](docs/INTERFACE_PYQT6.md).
 - **Robustesse :** timeout série configurable, reconnexion après déconnexion physique, messages d’erreur SCPI, indicateur « en cours » pour les requêtes longues.
 
 ---

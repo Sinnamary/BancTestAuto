@@ -23,7 +23,7 @@
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  Fichier   Outils   Configuration   Aide                                            │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [Barre de connexion : pastille multimètre + label | pastille générateur + label | Paramètres] │
+│  [Barre : 4 pastilles (Multimètre | Générateur | Alimentation | Oscillo) | Détecter | Connecter tout | Déconnecter tout] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Calcul filtre ]  [ Alimentation ]  [ Terminal série ]  [ Oscilloscope ]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -60,18 +60,13 @@ Zone en haut, sous la menu bar, toujours visible.
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Deux indicateurs distincts :** une **pastille** (vert = connecté, rouge = déconnecté) par équipement, pour voir clairement le statut du multimètre et du générateur.
-- **Séparateur** « | » entre les deux blocs pour distinguer visuellement les deux appareils.
-- **Texte multimètre :** `QLabel` « Multimètre: XDM2041 — COM3 » (ou « Non connecté »).
-- **Texte générateur :** `QLabel` « Générateur: FY6900 — COM4 » (ou « Non connecté »).
-- **Bouton :** `QPushButton` « Paramètres » → ouvre le dialogue de configuration série (multimètre et/ou générateur) + accès à la sauvegarde JSON.
+- **Quatre pastilles** (vert = connecté, rouge = déconnecté) : Multimètre, Générateur, Alimentation, Oscilloscope. Chaque pastille + `QLabel` (port ou identifiant USB).
+- **Boutons** : **Détecter** (en premier, mis en avant), **Connecter tout** (relit config et ouvre les 4 connexions), **Déconnecter tout**. Plus de bouton Paramètres : les ports sont dans `config.json` (détection + Sauvegarder config).
 
 **Widgets PyQt6 :**
 - Conteneur : `QWidget` avec `QHBoxLayout`
-- **Pastille 1** (`QFrame` / `StatusIndicator`) + `QLabel` multimètre
-- Séparateur `QLabel` « | »
-- **Pastille 2** + `QLabel` générateur
-- `QPushButton` (« Paramètres »)
+- 4 × (Pastille `StatusIndicator` + `QLabel`) avec séparateurs « | »
+- `QPushButton` (« Détecter »), (« Connecter tout »), (« Déconnecter tout »)
 
 ---
 
@@ -344,7 +339,7 @@ Calcul de composants pour filtres (passe-bas, passe-haut, etc.) à partir des fr
 | Fichier UI | Widgets / contenu principaux |
 |------------|------------------------------|
 | `main_window.py` | `QMainWindow`, `QMenuBar`, `QTabWidget`, `QStatusBar`, barre de connexion |
-| `widgets/connection_status.py` | **Deux pastilles** (une par équipement) + labels multimètre/générateur + séparateur + bouton Paramètres |
+| `widgets/connection_status.py` | **Quatre pastilles** (Multimètre, Générateur, Alimentation, Oscilloscope) + boutons Détecter, Connecter tout, Déconnecter tout |
 | `widgets/measurement_display.py` | `QLabel` (valeur + unité), style LCD |
 | `widgets/mode_bar.py` | `QButtonGroup` + boutons de mode |
 | `widgets/range_selector.py` | Auto/Manuel + `QComboBox` plages |
@@ -375,7 +370,7 @@ Calcul de composants pour filtres (passe-bas, passe-haut, etc.) à partir des fr
 ## 13. Ordre de réalisation suggéré (interface seule)
 
 1. **Fenêtre vide** : `QMainWindow`, menu bar (Fichier, Outils, Configuration → Thème / Niveau de log, Aide), barre de statut, `QTabWidget` avec 8 onglets (Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentation, Terminal série, Oscilloscope).
-2. **Barre de connexion** : **deux pastilles** (multimètre + générateur) + labels + séparateur + bouton Paramètres (sans logique série).
+2. **Barre de connexion** : **quatre pastilles** + boutons Détecter, Connecter tout, Déconnecter tout (sans bouton Paramètres).
 3. **Onglet Multimètre** : zones une par une (modes → affichage → plage/vitesse → math → avancés → historique → boutons).
 4. **Dialogues** : configuration série, sauvegarde JSON, **Détecter les équipements** (squelette).
 5. **Onglet Générateur** : **choix Voie 1 / Voie 2** + formulaire complet (forme, fréquence, amplitude, offset, rapport cyclique, phase, sortie).

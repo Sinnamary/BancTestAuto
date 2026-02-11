@@ -20,7 +20,7 @@ Développer une application PyQt6 permettant de **commander individuellement cha
 - **Générateur de signaux** FeelTech FY6900 : pilotage via liaison série avec **toutes les commandes du protocole** (forme d’onde, fréquence, amplitude, offset, rapport cyclique, phase, sortie ON/OFF ; lecture de la réponse 0x0a entre chaque commande).
 - **Alimentation stabilisée** Rockseed RS305P : pilotage via Modbus RTU (onglet autonome, connexion gérée dans l'onglet, aucun paramètre dans `config.json`).
 
-Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au démarrage depuis le fichier **`config/config.json`**. **Aucun port série n’est ouvert à l’ouverture de l’application** : les connexions multimètre et générateur sont établies après « Charger config » ou « Détecter les équipements » (ou validation des paramètres). Un **onglet Terminal série** permet d’envoyer et recevoir des commandes sur un port au choix (indépendant). Chaque appareil peut ainsi être utilisé seul ou dans le cadre du banc de test filtre.
+Les paramètres par défaut (ports série, débits, plages, etc.) sont lus au démarrage depuis le fichier **`config/config.json`**. **Aucun port série n’est ouvert à l’ouverture de l’application** : les connexions (multimètre, générateur, alimentation, oscilloscope) sont établies après **Détecter** (pour affecter les ports) puis **Connecter tout** (relit la config et ouvre les 4 équipements). Un **onglet Terminal série** permet d’envoyer et recevoir des commandes sur un port au choix (indépendant). Chaque appareil peut ainsi être utilisé seul ou dans le cadre du banc de test filtre.
 
 ### 1.2 Pilotage individuel et configuration par défaut
 

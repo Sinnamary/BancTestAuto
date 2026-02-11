@@ -249,13 +249,13 @@ BancTestAuto/
 │   │   ├── rate_selector.py       # Vitesse mesure : Rapide / Moyen / Lent (boutons radio ou liste)
 │   │   ├── math_panel.py          # Panneau fonctions math : Rel, dB, dBm, Moyenne + champs
 │   │   ├── history_table.py       # Tableau des N dernières mesures + Export CSV
-│   │   ├── connection_status.py   # Deux pastilles (multimètre + générateur) + modèle + port + Paramètres
+│   │   ├── connection_status.py   # Quatre pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) + Détecter, Connecter tout, Déconnecter tout
 │   │   ├── secondary_display.py   # Affichage secondaire (ex. fréquence Hz)
 │   │   └── advanced_params.py     # Panneau repliable : température, continuité, buzzer
 │   │
 │   ├── dialogs/
 │   │   ├── __init__.py
-│   │   ├── serial_config_dialog.py # Dialogue port, débit, timeouts (multimètre ou générateur)
+│   │   ├── serial_config_dialog.py # (Optionnel) Dialogue port, débit — non utilisé par la barre ; config via config.json
 │   │   ├── save_config_dialog.py  # Sauvegarde configuration JSON (fichier, « Enregistrer sous »)
 │   │   ├── device_detection_dialog.py # Détecter les équipements (menu Outils), résultat + mise à jour config
 │   │   └── view_config_dialog.py  # Affichage config JSON en lecture seule (menu Fichier)
@@ -329,10 +329,10 @@ BancTestAuto/
 | **ui/widgets/rate_selector.py** | Rapide / Moyen / Lent. | meter_view |
 | **ui/widgets/math_panel.py** | Rel, dB, dBm, Moyenne + champs. | meter_view |
 | **ui/widgets/history_table.py** | Tableau mesures + Export CSV. | meter_view |
-| **ui/widgets/connection_status.py** | Deux pastilles (multimètre + générateur) + labels + port + bouton Paramètres. | main_window |
+| **ui/widgets/connection_status.py** | Quatre pastilles + boutons Détecter, Connecter tout, Déconnecter tout. | main_window |
 | **ui/widgets/secondary_display.py** | Affichage secondaire (Hz). | meter_view |
 | **ui/widgets/advanced_params.py** | Panneau repliable (temp, continuité, buzzer). | meter_view |
-| **ui/dialogs/serial_config_dialog.py** | Config port série (port, débit, timeouts). | main_window, meter_view |
+| **ui/dialogs/serial_config_dialog.py** | (Optionnel) Config port série — non utilisé par la barre ; config via config.json. | — |
 | **ui/dialogs/save_config_dialog.py** | Sauvegarde config JSON (chemin, « Enregistrer sous »). | main_window |
 | **ui/dialogs/device_detection_dialog.py** | Détecter les équipements : affichage résultat, Lancer détection, Mettre à jour config.json. Utilise core/device_detection. | main_window (menu Outils) |
 | **ui/dialogs/view_config_dialog.py** | Affichage config JSON en lecture seule (menu Fichier → Voir config JSON). | main_window |
@@ -368,7 +368,7 @@ Le développement se fait en **petits fichiers**, avec des **classes distinctes 
 
 #### 3.4.1 Répartition effective — classes partagées, pas de doublons
 
-- **StatusIndicator** : une seule classe dans `ui/widgets/status_indicator.py` ; utilisée par `connection_status`, `power_supply_view`, `oscilloscope/connection_panel`.
+- **StatusIndicator** : une seule classe dans `ui/widgets/status_indicator.py` ; utilisée par `connection_status`. (Oscilloscope et Alimentation n'ont plus de panneau Connexion dédié.)
 - **Workers (QThread)** : `ui/workers/detection_worker.py` (DetectionWorker), `ui/workers/sweep_worker.py` (SweepWorker) ; utilisés par `main_window`, `device_detection_dialog`, `filter_test_view`.
 - **Formulaire série** : `ui/dialogs/serial_form.py` (classe `SerialConfigForm`) ; utilisé par `serial_config_dialog` pour les onglets Multimètre et Générateur.
 - **Classes utilisées** : toutes les classes des modules `ui/`, `core/` et `config/` sont utilisées par l'application principale. Aucune classe morte.
