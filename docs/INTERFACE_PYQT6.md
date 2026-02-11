@@ -25,7 +25,7 @@
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  [Barre : 4 pastilles (Multimètre | Générateur | Alimentation | Oscillo) | Détecter | Connecter tout | Déconnecter tout] │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  [ Multimètre ]  [ Générateur ]  [ Enregistrement ]  [ Banc filtre ]  [ Calcul filtre ]  [ Alimentation ]  [ Terminal série ]  [ Oscilloscope ]  │
+│  [ Multimètre ]  [ Générateur ]  [ Oscilloscope ]  [ Banc filtre ]  [ Calcul filtre ]  [ Enregistrement ]  [ Alimentation ]  [ Terminal série ]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │  (Contenu de l’onglet sélectionné)                                               │
@@ -41,7 +41,7 @@
 |--------|---------------|------|
 | Menu bar | `QMenuBar` | Fichier (Ouvrir config, Ouvrir CSV Banc filtre, Sauvegarder config, Enregistrer sous, Voir config JSON, Lire le dernier log, Quitter), Outils (Détecter les équipements), Configuration (Thème Clair/Foncé, Niveau de log), Aide (Manuel F1, À propos, sous-menus doc OWON/FY6900/RS305P/DOS1102) |
 | Barre de connexion | `QWidget` + `QHBoxLayout` | Voir § 2.1 |
-| Onglets | `QTabWidget` | 8 onglets : Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentation, Terminal série, Oscilloscope |
+| Onglets | `QTabWidget` | 8 onglets : Multimètre, Générateur, Oscilloscope, Banc filtre, Calcul filtre, Enregistrement, Alimentation, Terminal série |
 | Barre de statut | `QStatusBar` | Message temporaire (ex. « Connecté COM3 », « Mesure… », « Erreur SCPI ») |
 
 **Menu Outils :** au moins une action **« Détecter les équipements »** : parcourt les ports COM, identifie le multimètre OWON (SCPI *IDN?) et le générateur FY6900 par protocole, affecte le bon port à chaque équipement et met à jour `config.json` (voir cahier des charges § 3.2). Implémentation côté logique : `core/device_detection.py`.
@@ -369,7 +369,7 @@ Calcul de composants pour filtres (passe-bas, passe-haut, etc.) à partir des fr
 
 ## 13. Ordre de réalisation suggéré (interface seule)
 
-1. **Fenêtre vide** : `QMainWindow`, menu bar (Fichier, Outils, Configuration → Thème / Niveau de log, Aide), barre de statut, `QTabWidget` avec 8 onglets (Multimètre, Générateur, Enregistrement, Banc filtre, Calcul filtre, Alimentation, Terminal série, Oscilloscope).
+1. **Fenêtre vide** : `QMainWindow`, menu bar (Fichier, Outils, Configuration → Thème / Niveau de log, Aide), barre de statut, `QTabWidget` avec 8 onglets (Multimètre, Générateur, Oscilloscope, Banc filtre, Calcul filtre, Enregistrement, Alimentation, Terminal série).
 2. **Barre de connexion** : **quatre pastilles** + boutons Détecter, Connecter tout, Déconnecter tout (sans bouton Paramètres).
 3. **Onglet Multimètre** : zones une par une (modes → affichage → plage/vitesse → math → avancés → historique → boutons).
 4. **Dialogues** : configuration série, sauvegarde JSON, **Détecter les équipements** (squelette).

@@ -1,4 +1,4 @@
-﻿# Aide — Banc de test automatique
+# Aide — Banc de test automatique
 
 Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur de signaux FeelTech FY6900** et une **alimentation Rockseed RS305P**, de configurer des mesures, d’enregistrer des données et de caractériser un filtre au format Bode.
 
@@ -26,7 +26,7 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 1. **Branchez** le multimètre et le générateur en USB (ports COM sous Windows, `/dev/ttyUSBx` sous Linux).
 2. Lancez l’application : `python main.py` (après activation du venv et `pip install -r requirements.txt`).
 3. Ouvrez le menu **Outils → Détecter les équipements** (ou cliquez sur **Détecter** dans la barre de connexion) pour identifier automatiquement les ports du multimètre et du générateur.
-4. **Aucun port n'est ouvert au démarrage** : cliquez sur **Détecter** puis **Connecter tout** pour connecter le multimètre et le générateur. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Enregistrement, Banc filtre, Alimentation, Terminal série).
+4. **Aucun port n'est ouvert au démarrage** : cliquez sur **Détecter** puis **Connecter tout** pour connecter le multimètre et le générateur. Une fois les pastilles **vertes**, vous pouvez utiliser chaque onglet (Multimètre, Générateur, Oscilloscope, Banc filtre, Calcul filtre, Enregistrement, Alimentation, Terminal série).
 
 **Prérequis :** Python 3.10+, PyQt6, pyserial. Voir `requirements.txt`.
 

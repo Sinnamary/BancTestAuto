@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QRadioButton,
     QButtonGroup,
+    QComboBox,
     QDialog,
     QFileDialog,
     QMessageBox,
@@ -46,6 +47,21 @@ class FilterTestView(QWidget):
 
         config_gb = QGroupBox("Balayage en fréquence")
         config_layout = QVBoxLayout(config_gb)
+
+        row0 = QHBoxLayout()
+        row0.addWidget(QLabel("Source de mesure :"))
+        self._source_combo = QComboBox()
+        self._source_combo.addItem("Multimètre (< 2 kHz)", "multimeter")
+        self._source_combo.setItemData(0, "Seule la sortie du filtre (Us) est mesurée. Ue = valeur réglée sur le générateur (non mesurée). Limité en fréquence.", Qt.ItemDataRole.ToolTipRole)
+        self._source_combo.addItem("Oscilloscope (Ch1=Ue, Ch2=Us)", "oscilloscope")
+        self._source_combo.setItemData(1, "Canal 1 = Ue (génération), canal 2 = Us (sortie filtre). Mesure de la phase. Bande passante adaptée.", Qt.ItemDataRole.ToolTipRole)
+        row0.addWidget(self._source_combo)
+        self._source_hint_label = QLabel()
+        self._update_source_hint_label()
+        row0.addWidget(self._source_hint_label)
+        row0.addStretch()
+        config_layout.addLayout(row0)
+        self._source_combo.currentIndexChanged.connect(self._update_source_hint_label)
 
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("Voie générateur FY6900 :"))
@@ -129,6 +145,16 @@ class FilterTestView(QWidget):
         self._export_csv_btn.clicked.connect(self._on_export_csv)
         self._view_graph_btn.clicked.connect(self._on_view_graph)
 
+    def _update_source_hint_label(self):
+        """Met à jour le libellé explicatif selon la source de mesure choisie."""
+        if not hasattr(self, "_source_hint_label"):
+            return
+        source = self._source_combo.currentData() if hasattr(self, "_source_combo") else "multimeter"
+        if source == "oscilloscope":
+            self._source_hint_label.setText("  → Ch1 = Ue (génération), Ch2 = Us (sortie filtre)")
+        else:
+            self._source_hint_label.setText("  → Ue = valeur générateur (non mesurée), Us = mesure multimètre")
+
     def set_filter_test(self, filter_test):
         """Injection du banc filtre (FilterTest) depuis la fenêtre principale."""
         self._filter_test = filter_test
@@ -145,9 +171,13 @@ class FilterTestView(QWidget):
         ch = int(ft.get("generator_channel", 1))
         self._channel_1.setChecked(ch == 1)
         self._channel_2.setChecked(ch == 2)
+        src = ft.get("measure_source", "multimeter")
+        idx = self._source_combo.findData(src)
+        if idx >= 0:
+            self._source_combo.setCurrentIndex(idx)
 
     def get_filter_test_config(self):
-        """Retourne un dict compatible avec FilterTestConfig (pour le core)."""
+        """Retourne un dict compatible avec FilterTestConfig (pour le core) + measure_source pour persistance."""
         return {
             "generator_channel": 2 if self._channel_2.isChecked() else 1,
             "f_min_hz": self._f_min.value(),
@@ -156,14 +186,39 @@ class FilterTestView(QWidget):
             "scale": "log",
             "settling_ms": self._settling_ms.value(),
             "ue_rms": self._ue_rms.value(),
+            "measure_source": self._source_combo.currentData() or "multimeter",
         }
 
     def _on_start(self):
         if not self._filter_test:
-            QMessageBox.warning(self, "Banc filtre", "Connexion multimètre/générateur requise.")
+            source_kind = self._source_combo.currentData() or "multimeter"
+            if source_kind == "oscilloscope":
+                msg = "Connexion générateur et oscilloscope requise."
+            else:
+                msg = "Connexion multimètre et générateur requise."
+            QMessageBox.warning(self, "Banc filtre", msg)
             return
+        source_kind = self._source_combo.currentData() or "multimeter"
+        if hasattr(self._filter_test, "set_measure_source_kind"):
+            ok = self._filter_test.set_measure_source_kind(source_kind)
+            if not ok and source_kind == "oscilloscope":
+                QMessageBox.warning(
+                    self,
+                    "Banc filtre",
+                    "Oscilloscope sélectionné mais non connecté ou indisponible. Connectez l'oscilloscope (Connecter tout) ou choisissez Multimètre.",
+                )
+                return
         from core.filter_test import FilterTestConfig
-        cfg = FilterTestConfig(**self.get_filter_test_config())
+        cfg_dict = self.get_filter_test_config()
+        cfg = FilterTestConfig(
+            generator_channel=cfg_dict["generator_channel"],
+            f_min_hz=cfg_dict["f_min_hz"],
+            f_max_hz=cfg_dict["f_max_hz"],
+            points_per_decade=cfg_dict["points_per_decade"],
+            scale=cfg_dict["scale"],
+            settling_ms=cfg_dict["settling_ms"],
+            ue_rms=cfg_dict["ue_rms"],
+        )
         self._filter_test.set_config(cfg)
         self._results_table.setRowCount(0)
         self._results = []

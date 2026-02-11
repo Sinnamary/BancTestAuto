@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from .fy6900_protocol import Fy6900Protocol
-from .measurement import Measurement
+from .bode_measure_source import BodeMeasureSource
 from .filter_sweep import sweep_frequencies
 from .bode_calc import gain_linear, gain_db
 from .app_logger import get_logger
@@ -23,6 +23,7 @@ class BodePoint:
     us_v: float
     gain_linear: float
     gain_db: float
+    phase_deg: Optional[float] = None  # Optionnel (oscilloscope uniquement)
 
 
 @dataclass
@@ -40,22 +41,37 @@ class FilterTestConfig:
 class FilterTest:
     """
     Banc de test filtre : applique la config connue, balaie les fréquences,
-    mesure Us, calcule gain linéaire et dB. Émet la progression via callback.
+    mesure Ue/Us (et optionnellement phase) via une source (multimètre ou oscilloscope),
+    calcule gain linéaire et dB. Émet la progression via callback.
     """
 
     def __init__(
         self,
         generator: Fy6900Protocol,
-        measurement: Measurement,
+        measure_source: BodeMeasureSource,
         config: FilterTestConfig,
     ):
         self._generator = generator
-        self._measurement = measurement
+        self._measure_source = measure_source
         self._config = config
         self._abort = False
 
     def set_config(self, config: FilterTestConfig) -> None:
         self._config = config
+
+    def get_measure_source(self) -> BodeMeasureSource:
+        """Retourne la source de mesure (permet de basculer multimètre/oscilloscope si SwitchableBodeMeasureSource)."""
+        return self._measure_source
+
+    def set_measure_source_kind(self, kind: str) -> bool:
+        """
+        Bascule la source sur 'multimeter' ou 'oscilloscope' si la source est un SwitchableBodeMeasureSource.
+        Retourne True si le changement a été appliqué (ou si la source n'est pas switchable).
+        """
+        from .bode_measure_source import SwitchableBodeMeasureSource
+        if isinstance(self._measure_source, SwitchableBodeMeasureSource):
+            return self._measure_source.set_source(kind)
+        return True
 
     def abort(self) -> None:
         self._abort = True
@@ -89,7 +105,7 @@ class FilterTest:
         n_points = max(2, round(self._config.points_per_decade * decades))
         logger.debug("banc filtre: démarrage balayage voie=%s, f_min=%.2f Hz, f_max=%.2f Hz, points/decade=%s → %d points, Ue_rms=%.3f V → Ue_pp=%.3f V",
                      ch, f_min, f_max, self._config.points_per_decade, n_points, ue, amplitude_pp)
-        self._measurement.set_voltage_ac()
+        self._measure_source.prepare_for_sweep()
         # Même ordre et mêmes classes que l'onglet Générateur : forme (WMW00), amplitude (V pp), offset, rapport cyclique, phase
         # Fréquence envoyée via set_frequency_hz (µHz, 14 chiffres) à chaque point.
         self._generator.set_waveform(0, channel=ch)  # 0 = sinusoïde (WMW00)
@@ -128,15 +144,12 @@ class FilterTest:
                 self._generator.set_frequency_hz(f_hz, channel=ch)
                 time.sleep(self._config.settling_ms / 1000.0)
 
-            raw = self._measurement.read_value()
-            us = self._measurement.parse_float(raw)
-            if us is None:
-                us = 0.0
-            g_lin = gain_linear(us, ue)
-            g_db = gain_db(us, ue)
-            logger.debug("banc filtre point %d/%d: f=%.4f Hz, Us=%r -> %.4f V, gain_lin=%.4f, gain_dB=%.2f",
-                         i + 1, total, f_hz, raw, us, g_lin, g_db)
-            point = BodePoint(f_hz=f_hz, us_v=us, gain_linear=g_lin, gain_db=g_db)
+            ue_meas, us, phase_deg = self._measure_source.read_ue_us_phase(ue)
+            g_lin = gain_linear(us, ue_meas)
+            g_db = gain_db(us, ue_meas)
+            logger.debug("banc filtre point %d/%d: f=%.4f Hz, Ue=%.4f V, Us=%.4f V, gain_lin=%.4f, gain_dB=%.2f, phase=%s",
+                         i + 1, total, f_hz, ue_meas, us, g_lin, g_db, phase_deg)
+            point = BodePoint(f_hz=f_hz, us_v=us, gain_linear=g_lin, gain_db=g_db, phase_deg=phase_deg)
             results.append(point)
             if on_point:
                 on_point(point, i, total)

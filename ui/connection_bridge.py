@@ -28,9 +28,13 @@ try:
     from core.fy6900_protocol import Fy6900Protocol
     from core.filter_test import FilterTest, FilterTestConfig
     from core.data_logger import DataLogger
+    from core.bode_measure_source import MultimeterBodeAdapter, OscilloscopeBodeSource, SwitchableBodeMeasureSource
+    from core.dos1102_protocol import Dos1102Protocol
 except ImportError:
     SerialConnection = ScpiProtocol = Measurement = Fy6900Protocol = None
     FilterTest = FilterTestConfig = DataLogger = None
+    MultimeterBodeAdapter = OscilloscopeBodeSource = SwitchableBodeMeasureSource = None
+    Dos1102Protocol = None
 
 try:
     from core.serial_exchange_logger import SerialExchangeLogger
@@ -170,19 +174,30 @@ class MainWindowConnectionBridge:
         self._scpi = ScpiProtocol(self._multimeter_conn)
         self._measurement = Measurement(self._scpi)
         self._fy6900 = Fy6900Protocol(self._generator_conn)
-        self._filter_test = FilterTest(
-            self._fy6900,
-            self._measurement,
-            FilterTestConfig(
-                generator_channel=ft_cfg.get("generator_channel", 1),
-                f_min_hz=ft_cfg.get("f_min_hz", 10),
-                f_max_hz=ft_cfg.get("f_max_hz", 100000),
-                points_per_decade=ft_cfg.get("points_per_decade", 10),
-                scale=ft_cfg.get("scale", "log"),
-                settling_ms=ft_cfg.get("settling_ms", 200),
-                ue_rms=ft_cfg.get("ue_rms", 1.0),
-            ),
-        )
+        # Source de mesure banc filtre : switchable multimètre / oscilloscope (Phase 3)
+        multimeter_adapter = MultimeterBodeAdapter(self._measurement) if MultimeterBodeAdapter else None
+        measure_source = None
+        if multimeter_adapter is not None and SwitchableBodeMeasureSource is not None:
+            measure_source = SwitchableBodeMeasureSource(multimeter_adapter, self._make_oscilloscope_bode_source)
+        elif multimeter_adapter is not None:
+            measure_source = multimeter_adapter
+        self._filter_test = None
+        if FilterTest and measure_source is not None:
+            self._filter_test = FilterTest(
+                self._fy6900,
+                measure_source,
+                FilterTestConfig(
+                    generator_channel=ft_cfg.get("generator_channel", 1),
+                    f_min_hz=ft_cfg.get("f_min_hz", 10),
+                    f_max_hz=ft_cfg.get("f_max_hz", 100000),
+                    points_per_decade=ft_cfg.get("points_per_decade", 10),
+                    scale=ft_cfg.get("scale", "log"),
+                    settling_ms=ft_cfg.get("settling_ms", 200),
+                    ue_rms=ft_cfg.get("ue_rms", 1.0),
+                ),
+            )
+        elif FilterTest and not measure_source:
+            logger.warning("Bridge: MultimeterBodeAdapter non disponible, banc filtre désactivé")
 
         if DataLogger:
             self._data_logger = DataLogger()
@@ -300,6 +315,17 @@ class MainWindowConnectionBridge:
         # On garde _serial_exchange_logger pour la session
 
     # Accesseurs pour les vues (MainWindow appelle après reconnect puis _inject_views)
+
+    def _make_oscilloscope_bode_source(self) -> Any:
+        """Crée la source Bode oscilloscope si l'oscillo est connecté (pour SwitchableBodeMeasureSource)."""
+        if not self._oscilloscope_conn or not getattr(self._oscilloscope_conn, "is_open", lambda: False)():
+            return None
+        if OscilloscopeBodeSource is None or Dos1102Protocol is None:
+            return None
+        ft_cfg = (get_filter_test_config(self._last_config) or {}) if get_filter_test_config and self._last_config else {}
+        ch_ue = int(ft_cfg.get("oscillo_channel_ue", 1))
+        ch_us = int(ft_cfg.get("oscillo_channel_us", 2))
+        return OscilloscopeBodeSource(Dos1102Protocol(self._oscilloscope_conn), channel_ue=ch_ue, channel_us=ch_us)
 
     def get_multimeter_conn(self) -> Any:
         return self._multimeter_conn

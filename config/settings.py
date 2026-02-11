@@ -89,6 +89,9 @@ DEFAULTS = {
         "scale": "log",
         "settling_ms": 200,
         "ue_rms": 1.0,
+        "measure_source": "multimeter",  # "multimeter" | "oscilloscope"
+        "oscillo_channel_ue": 1,
+        "oscillo_channel_us": 2,
     },
     "bode_viewer": {
         "plot_background_dark": True,
