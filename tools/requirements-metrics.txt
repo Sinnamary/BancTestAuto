@@ -1,0 +1,5 @@
+# Dépendances pour le rapport de métriques (run_metrics_report.py)
+# Installer avec : pip install -r tools/requirements-metrics.txt
+radon>=6.0
+# Optionnel : analyse de cohésion des classes
+# cohesion
