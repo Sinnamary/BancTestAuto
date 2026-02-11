@@ -1,6 +1,6 @@
 {
   "serial_multimeter": {
-    "port": "COM11",
+    "port": "COM17",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",
@@ -10,7 +10,7 @@
     "log_exchanges": false
   },
   "serial_generator": {
-    "port": "COM13",
+    "port": "COM16",
     "baudrate": 115200,
     "bytesize": 8,
     "parity": "N",

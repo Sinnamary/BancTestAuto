@@ -1,6 +1,9 @@
 """
 Dialogue de configuration série : port, débit, timeouts, log.
 Pour multimètre et/ou générateur ; charge et retourne les sections config.
+
+UI_CHANGES_VIA_MAQUETTE: Évolution vers 4 équipements (onglets ou formulaire Alimentation,
+Oscilloscope) → concevoir dans la maquette, puis reporter. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
 """
 from PyQt6.QtWidgets import (
     QDialog,

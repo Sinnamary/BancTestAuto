@@ -46,6 +46,13 @@ class SerialConnection:
     def is_open(self) -> bool:
         return self._serial is not None and self._serial.is_open
 
+    def in_waiting(self) -> int:
+        """Nombre d'octets en attente dans le tampon de réception (pour polling non bloquant)."""
+        with self._lock:
+            if not self._serial or not self._serial.is_open:
+                return 0
+            return self._serial.in_waiting
+
     def open(self) -> None:
         """Ouvre le port série. Lève SerialException en cas d'erreur."""
         with self._lock:

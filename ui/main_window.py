@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QTabWidget,
+    QFrame,
     QMessageBox,
     QFileDialog,
     QDialog,
@@ -25,10 +26,19 @@ from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
 
 from ui.widgets import ConnectionStatusBar
 from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, FilterCalculatorView, PowerSupplyView, SerialTerminalView, OscilloscopeView
-from ui.dialogs import DeviceDetectionDialog, SerialConfigDialog, ViewConfigDialog, ViewLogDialog, HelpDialog, AboutDialog
+from ui.dialogs import (
+    DeviceDetectionDialog,
+    DeviceDetectionDialog4,
+    SerialConfigDialog,
+    ViewConfigDialog,
+    ViewLogDialog,
+    HelpDialog,
+    AboutDialog,
+)
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
 from ui.workers import DetectionWorker
+from ui.connection_bridge import MainWindowConnectionBridge
 
 # Import core et config (optionnel si non disponibles)
 try:
@@ -88,14 +98,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Banc de test automatique")
         self._config = {}
-        self._multimeter_conn = None
-        self._generator_conn = None
-        self._scpi = None
-        self._measurement = None
-        self._fy6900 = None
-        self._filter_test = None
-        self._data_logger = None
-        self._serial_exchange_logger = None
+        self._connection_bridge = MainWindowConnectionBridge()
         self._detection_worker = None
 
         if load_config:
@@ -170,6 +173,13 @@ class MainWindow(QMainWindow):
         self._connection_bar = ConnectionStatusBar(self)
         layout.addWidget(self._connection_bar)
 
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setStyleSheet("background-color: #555; max-height: 1px; margin: 2px 8px;")
+        separator.setFixedHeight(1)
+        layout.addWidget(separator)
+
         self._tabs = QTabWidget()
         self._tabs.addTab(MeterView(), "Multimètre")
         self._tabs.addTab(GeneratorView(), "Générateur")
@@ -194,6 +204,10 @@ class MainWindow(QMainWindow):
         self._connection_bar.get_load_config_button().clicked.connect(self._on_load_config_clicked)
         self._connection_bar.get_params_button().clicked.connect(self._on_params)
         self._connection_bar.get_detect_button().clicked.connect(self._on_detect_clicked)
+        if hasattr(self._connection_bar, "get_connect_all_button"):
+            self._connection_bar.get_connect_all_button().clicked.connect(self._on_connect_all)
+        if hasattr(self._connection_bar, "get_disconnect_all_button"):
+            self._connection_bar.get_disconnect_all_button().clicked.connect(self._on_disconnect_all)
 
     def _setup_shortcuts(self):
         """Raccourcis clavier : F5 mesure, Ctrl+M mesure continue, Ctrl+R reset, Ctrl+E export CSV."""
@@ -233,71 +247,31 @@ class MainWindow(QMainWindow):
             meter.trigger_export_csv()
 
     def _setup_core(self):
-        """Crée les connexions série et le banc filtre à partir de la config."""
-        if not all([SerialConnection, ScpiProtocol, Measurement, Fy6900Protocol, FilterTest, FilterTestConfig]):
-            return
-        sm = get_serial_multimeter_config(self._config) if get_serial_multimeter_config else {}
-        sg = get_serial_generator_config(self._config) if get_serial_generator_config else {}
-        ft_cfg = get_filter_test_config(self._config) if get_filter_test_config else {}
-
-        if SerialExchangeLogger and self._serial_exchange_logger is None:
-            log_dir = self._config.get("logging", {}).get("output_dir", "./logs")
-            self._serial_exchange_logger = SerialExchangeLogger(log_dir=log_dir)
-        if self._serial_exchange_logger:
-            sm = dict(sm)
-            sg = dict(sg)
-            sm["log_exchanges"] = True
-            sg["log_exchanges"] = True
-            sm["log_callback"] = self._serial_exchange_logger.get_callback(
-                "multimeter", port=sm.get("port"), baudrate=sm.get("baudrate")
-            )
-            sg["log_callback"] = self._serial_exchange_logger.get_callback(
-                "generator", port=sg.get("port"), baudrate=sg.get("baudrate")
-            )
-
-        self._multimeter_conn = SerialConnection(**sm)
-        self._generator_conn = SerialConnection(**sg)
-        self._scpi = ScpiProtocol(self._multimeter_conn)
-        self._measurement = Measurement(self._scpi)
-        self._fy6900 = Fy6900Protocol(self._generator_conn)
-        self._filter_test = FilterTest(
-            self._fy6900,
-            self._measurement,
-            FilterTestConfig(
-                generator_channel=ft_cfg.get("generator_channel", 1),
-                f_min_hz=ft_cfg.get("f_min_hz", 10),
-                f_max_hz=ft_cfg.get("f_max_hz", 100000),
-                points_per_decade=ft_cfg.get("points_per_decade", 10),
-                scale=ft_cfg.get("scale", "log"),
-                settling_ms=ft_cfg.get("settling_ms", 200),
-                ue_rms=ft_cfg.get("ue_rms", 1.0),
-            ),
-        )
-        self._filter_test_view.set_filter_test(self._filter_test)
+        """Crée les connexions série et le banc filtre via le pont de connexion (bridge)."""
+        self._connection_bridge.reconnect(self._config)
+        if self._connection_bridge.get_filter_test():
+            self._filter_test_view.set_filter_test(self._connection_bridge.get_filter_test())
         self._filter_test_view.load_config(self._config)
-
-        if DataLogger:
-            self._data_logger = DataLogger()
-            self._data_logger.set_measurement(self._measurement)
-
-        # _inject_views() est appelée par l'appelant (__init__ ou _reconnect_serial) pour éviter de l'exécuter deux fois
 
     def _inject_views(self):
         """Passe les références core aux vues (multimètre, générateur, enregistrement, etc.)."""
+        bridge = self._connection_bridge
+        measurement = bridge.get_measurement()
+        fy6900 = bridge.get_fy6900()
+        data_logger = bridge.get_data_logger()
         meter = self._tabs.widget(0)
-        if hasattr(meter, "set_measurement") and self._measurement:
-            meter.set_measurement(self._measurement)
+        if hasattr(meter, "set_measurement") and measurement:
+            meter.set_measurement(measurement)
         if hasattr(meter, "load_config") and self._config:
             meter.load_config(self._config)
         gen = self._tabs.widget(1)
-        if hasattr(gen, "set_fy6900") and self._fy6900:
-            gen.set_fy6900(self._fy6900)
+        if hasattr(gen, "set_fy6900") and fy6900:
+            gen.set_fy6900(fy6900)
         logging_view = self._tabs.widget(2)
-        if hasattr(logging_view, "set_data_logger") and self._data_logger:
-            logging_view.set_data_logger(self._data_logger)
+        if hasattr(logging_view, "set_data_logger") and data_logger:
+            logging_view.set_data_logger(data_logger)
         if hasattr(logging_view, "load_config") and self._config:
             logging_view.load_config(self._config)
-        # Alimentation : appliquer le port par défaut depuis config.serial_power_supply si possible
         if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(
             self._power_supply_view, "load_config"
         ) and self._config:
@@ -326,73 +300,36 @@ class MainWindow(QMainWindow):
 
     def _reconnect_serial(self):
         """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Charger config / Détecter / Paramètres OK)."""
-        if self._multimeter_conn:
-            self._multimeter_conn.close()
-        if self._generator_conn:
-            self._generator_conn.close()
         self._setup_core()
         self._inject_views()
-        self._open_and_verify_connections()
         self._update_connection_status()
 
-    def _open_and_verify_connections(self):
-        """Ouvre les ports puis vérifie que les appareils répondent (IDN? / FY6900)."""
-        try:
-            if self._multimeter_conn:
-                self._multimeter_conn.open()
-        except Exception:
-            pass
-        try:
-            if self._generator_conn:
-                self._generator_conn.open()
-        except Exception:
-            pass
-        self._verify_connections()
-
-    def _verify_connections(self):
-        """
-        Vérifie que les appareils répondent vraiment (pas seulement que le port est ouvert).
-        Sous Windows, open() peut réussir même sans appareil branché.
-        """
-        if not self._multimeter_conn or not self._scpi:
-            return
-        # Multimètre : port ouvert ET réponse à *IDN? avec OWON/XDM
-        multimeter_ok = False
-        if self._multimeter_conn.is_open():
-            try:
-                r = self._scpi.idn()
-                multimeter_ok = r and ("OWON" in r.upper() or "XDM" in r.upper())
-            except Exception:
-                pass
-        if not multimeter_ok and self._multimeter_conn.is_open():
-            self._multimeter_conn.close()
-
-        if not self._generator_conn or not self._fy6900:
-            return
-        # Générateur : port ouvert ET pas d'erreur sur une commande (WMN0)
-        generator_ok = False
-        if self._generator_conn.is_open():
-            try:
-                self._fy6900.set_output(False)
-                generator_ok = True
-            except Exception:
-                pass
-        if not generator_ok and self._generator_conn.is_open():
-            self._generator_conn.close()
-
     def _update_connection_status(self):
-        """Met à jour les pastilles selon l'état vérifié des connexions."""
-        if self._multimeter_conn and self._multimeter_conn.is_open():
-            port = get_serial_multimeter_config(self._config).get("port", "?") if get_serial_multimeter_config else "?"
-            self._connection_bar.set_multimeter_status(True, "XDM", port)
+        """Met à jour les 4 pastilles (bridge = multimètre + générateur ; alimentation et oscillo non gérés par le bridge pour l'instant)."""
+        state = self._connection_bridge.get_state()
+        if state.multimeter_connected:
+            self._connection_bar.set_multimeter_status(True, state.multimeter_name, state.multimeter_port)
         else:
             self._connection_bar.set_multimeter_status(False)
-
-        if self._generator_conn and self._generator_conn.is_open():
-            port = get_serial_generator_config(self._config).get("port", "?") if get_serial_generator_config else "?"
-            self._connection_bar.set_generator_status(True, "FY6900", port)
+        if state.generator_connected:
+            self._connection_bar.set_generator_status(True, state.generator_name, state.generator_port)
         else:
             self._connection_bar.set_generator_status(False)
+        if hasattr(self._connection_bar, "set_power_supply_status"):
+            self._connection_bar.set_power_supply_status(False)
+        if hasattr(self._connection_bar, "set_oscilloscope_status"):
+            self._connection_bar.set_oscilloscope_status(False)
+
+    def _on_connect_all(self):
+        """Connexion globale : même action que Charger config."""
+        self._on_load_config_clicked()
+
+    def _on_disconnect_all(self):
+        """Déconnexion globale : ferme toutes les connexions et met à jour les pastilles."""
+        self._connection_bridge.close()
+        self._update_connection_status()
+        if self.statusBar():
+            self.statusBar().showMessage("Tous les équipements déconnectés.")
 
     def _on_load_config_clicked(self):
         """Bouton Charger config : récupère config.json et tente de se connecter aux équipements."""
@@ -519,11 +456,18 @@ class MainWindow(QMainWindow):
         logger.info("Niveau de log défini à %s", level)
 
     def _on_detect_devices(self):
-        dlg = DeviceDetectionDialog(
-            self,
-            config=self._config,
-            on_config_updated=self._on_detection_config_updated,
-        )
+        if DeviceDetectionDialog4 is not None:
+            dlg = DeviceDetectionDialog4(
+                self,
+                config=self._config,
+                on_config_updated=self._on_detection_config_updated,
+            )
+        else:
+            dlg = DeviceDetectionDialog(
+                self,
+                config=self._config,
+                on_config_updated=self._on_detection_config_updated,
+            )
         dlg.exec()
 
     def _on_detection_config_updated(self, new_config: dict):
@@ -663,7 +607,8 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def closeEvent(self, event):
-        """À la fermeture : déconnexion de l'alimentation, du terminal série et de l'oscilloscope."""
+        """À la fermeture : déconnexion du bridge (multimètre, générateur), alimentation, terminal série, oscilloscope."""
+        self._connection_bridge.close()
         if hasattr(self, "_power_supply_view") and self._power_supply_view is not None:
             if hasattr(self._power_supply_view, "_disconnect"):
                 self._power_supply_view._disconnect()

@@ -1,7 +1,12 @@
 """
-Vue onglet Terminal série : connexion sur un port série ou un périphérique USB
-(ex. oscilloscope DOS1102), envoi et réception de commandes avec CR/LF en fin de chaîne.
+Vue onglet Terminal série : utilise les connexions de la barre (équipements connectés)
+ou une connexion Série (COM) / USB dédiée. Envoi et réception avec CR/LF en fin de chaîne.
+
+Phase 4 : mode "Équipement (barre)" — sélecteur listant uniquement les équipements déjà
+connectés ; envoi/réception sur la connexion série de l'équipement choisi (pas de connexion propre).
 """
+from typing import Callable, List, Tuple, Any, Optional
+
 from PyQt6.QtCore import QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QTextCursor
 
@@ -69,7 +74,7 @@ class _UsbReadThread(QThread):
 
 
 class SerialTerminalView(QWidget):
-    """Onglet Terminal série : connexion Série (COM) ou USB, envoi avec option CR/LF, réception en temps réel."""
+    """Onglet Terminal série : équipement (barre), Série (COM) ou USB ; envoi avec option CR/LF, réception en temps réel."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -77,6 +82,9 @@ class SerialTerminalView(QWidget):
         self._usb_conn = None
         self._usb_thread = None
         self._preferred_usb = None  # (vid, pid) depuis config
+        self._connection_provider: Optional[Callable[[], List[Tuple[Any, str, Any]]]] = None  # () -> [(kind, display_name, conn)]
+        self._equipment_list: List[Tuple[Any, str, Any]] = []  # liste courante (kind, display_name, conn)
+        self._equipment_conn: Any = None  # connexion série de l'équipement sélectionné (mode barre)
         self._read_timer = QTimer(self)
         self._read_timer.timeout.connect(self._poll_serial)
         self._build_ui()
@@ -85,14 +93,24 @@ class SerialTerminalView(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
 
-        # --- Connexion (Série ou USB) ---
+        # --- Connexion : Équipement (barre) / Série (COM) / USB ---
         conn_gb = QGroupBox("Connexion")
         conn_layout = QHBoxLayout(conn_gb)
         conn_layout.addWidget(QLabel("Mode:"))
         self._mode_combo = QComboBox()
-        self._mode_combo.addItems(["Série (COM)", "USB (périphérique)"])
+        self._mode_combo.addItems(["Équipement (barre)", "Série (COM)", "USB (périphérique)"])
         self._mode_combo.currentIndexChanged.connect(self._on_connection_mode_changed)
         conn_layout.addWidget(self._mode_combo)
+
+        conn_layout.addWidget(QLabel("Équipement:"))
+        self._equipment_combo = QComboBox()
+        self._equipment_combo.setMinimumWidth(140)
+        self._equipment_combo.setPlaceholderText("Aucun équipement connecté")
+        self._equipment_combo.currentIndexChanged.connect(self._on_equipment_selection_changed)
+        conn_layout.addWidget(self._equipment_combo)
+        self._equipment_refresh_btn = QPushButton("Actualiser")
+        self._equipment_refresh_btn.clicked.connect(self._refresh_equipment_list)
+        conn_layout.addWidget(self._equipment_refresh_btn)
 
         conn_layout.addWidget(QLabel("Port:"))
         self._port_combo = QComboBox()
@@ -169,16 +187,73 @@ class SerialTerminalView(QWidget):
         layout.addWidget(recv_gb)
 
     def _on_connection_mode_changed(self):
-        is_serial = self._mode_combo.currentIndex() == 0
+        mode = self._mode_combo.currentIndex()
+        is_equipment = mode == 0
+        is_serial = mode == 1
+        is_usb = mode == 2
+        self._equipment_combo.setVisible(is_equipment)
+        self._equipment_refresh_btn.setVisible(is_equipment)
         self._port_combo.setVisible(is_serial)
         self._refresh_ports_btn.setVisible(is_serial)
         self._baud_combo.setVisible(is_serial)
-        self._usb_combo.setVisible(not is_serial)
-        self._usb_refresh_btn.setVisible(not is_serial)
-        if not is_serial and self._usb_combo.count() == 0:
+        self._usb_combo.setVisible(is_usb)
+        self._usb_refresh_btn.setVisible(is_usb)
+        self._connect_btn.setVisible(not is_equipment)
+        if is_equipment:
+            self._refresh_equipment_list()
+            self._update_equipment_status_label()
+        elif is_usb and self._usb_combo.count() == 0:
             self._refresh_usb()
-        elif not is_serial:
+        elif is_usb:
             self._apply_preferred_usb()
+        else:
+            self._status_label.setText("Déconnecté" if not self._is_connected() else self._status_label.text())
+
+    def set_connection_provider(self, provider: Optional[Callable[[], List[Tuple[Any, str, Any]]]]) -> None:
+        """Injecte le fournisseur de liste d'équipements connectés (kind, display_name, conn). Phase 4."""
+        self._connection_provider = provider
+        self._refresh_equipment_list()
+
+    def _refresh_equipment_list(self) -> None:
+        """Met à jour la liste des équipements connectés (mode Équipement barre)."""
+        self._equipment_list = []
+        if self._connection_provider:
+            try:
+                self._equipment_list = self._connection_provider()
+            except Exception as e:
+                logger.debug("Terminal: refresh equipment list failed: %s", e)
+        self._equipment_combo.clear()
+        for _kind, display_name, _conn in self._equipment_list:
+            self._equipment_combo.addItem(display_name)
+        if self._equipment_combo.count() > 0 and self._equipment_conn is None:
+            self._equipment_combo.setCurrentIndex(0)
+        elif self._equipment_combo.count() == 0:
+            self._equipment_conn = None
+        self._on_equipment_selection_changed()
+
+    def _on_equipment_selection_changed(self) -> None:
+        idx = self._equipment_combo.currentIndex()
+        if 0 <= idx < len(self._equipment_list):
+            _kind, _name, conn = self._equipment_list[idx]
+            self._equipment_conn = conn if (conn and getattr(conn, "is_open", lambda: False)()) else None
+        else:
+            self._equipment_conn = None
+        if self._mode_combo.currentIndex() == 0:
+            self._update_equipment_status_label()
+            self._send_btn.setEnabled(self._equipment_conn is not None)
+            if self._equipment_conn:
+                if not self._read_timer.isActive():
+                    self._read_timer.start(50)
+            else:
+                self._read_timer.stop()
+
+    def _update_equipment_status_label(self) -> None:
+        if self._equipment_conn:
+            idx = self._equipment_combo.currentIndex()
+            name = self._equipment_combo.currentText() if 0 <= idx < self._equipment_combo.count() else "Équipement"
+            self._status_label.setText(f"Équipement : {name}")
+        else:
+            self._status_label.setText("Aucun équipement sélectionné" if self._equipment_combo.count() == 0 else "Sélectionnez un équipement")
 
     def _refresh_ports(self):
         ports = _list_serial_ports()
@@ -230,6 +305,8 @@ class SerialTerminalView(QWidget):
             self._connect()
 
     def _is_connected(self):
+        if self._mode_combo.currentIndex() == 0:
+            return self._equipment_conn is not None and getattr(self._equipment_conn, "is_open", lambda: False)()
         if self._serial and self._serial.is_open:
             return True
         if self._usb_conn and self._usb_conn.is_open():
@@ -386,14 +463,19 @@ class SerialTerminalView(QWidget):
         self._usb_refresh_btn.setEnabled(not connected)
         self._send_btn.setEnabled(connected)
 
-    def _send_command(self):
+    def _get_current_connection(self):
+        """Retourne (connection, is_usb) pour envoi/réception, ou (None, False) si non connecté."""
+        if self._mode_combo.currentIndex() == 0 and self._equipment_conn and getattr(self._equipment_conn, "is_open", lambda: False)():
+            return self._equipment_conn, False
         if self._serial and self._serial.is_open:
-            conn = self._serial
-            is_usb = False
-        elif self._usb_conn and self._usb_conn.is_open():
-            conn = self._usb_conn
-            is_usb = True
-        else:
+            return self._serial, False
+        if self._usb_conn and self._usb_conn.is_open():
+            return self._usb_conn, True
+        return None, False
+
+    def _send_command(self):
+        conn, is_usb = self._get_current_connection()
+        if conn is None:
             logger.debug("Terminal: _send_command ignoré (non connecté)")
             return
         text = self._command_edit.text()
@@ -412,10 +494,28 @@ class SerialTerminalView(QWidget):
             if is_usb:
                 logger.debug("Terminal USB: write() OK")
         except Exception as e:
-            logger.debug("Terminal USB: write() erreur: %s", e, exc_info=True)
+            logger.debug("Terminal: write() erreur: %s", e, exc_info=True)
             QMessageBox.warning(self, "Terminal série", f"Erreur envoi : {e}")
 
     def _poll_serial(self):
+        # Mode Équipement (barre) : connexion série partagée (SerialConnection avec in_waiting/read)
+        if self._mode_combo.currentIndex() == 0 and self._equipment_conn:
+            try:
+                if not getattr(self._equipment_conn, "is_open", lambda: False)():
+                    return
+                n = getattr(self._equipment_conn, "in_waiting", lambda: 0)()
+                if n > 0:
+                    data = self._equipment_conn.read(min(n, 1024))
+                    if data:
+                        try:
+                            text = data.decode("utf-8", errors="replace")
+                        except Exception:
+                            text = data.hex(" ")
+                        self._append_received(text)
+            except Exception:
+                pass
+            return
+        # Mode Série (COM)
         if not self._serial or not self._serial.is_open:
             return
         try:
@@ -458,6 +558,8 @@ class SerialTerminalView(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._refresh_ports()
+        if self._mode_combo.currentIndex() == 0:
+            self._refresh_equipment_list()
 
     def disconnect_serial(self):
         """Déconnexion propre (appelée par la fenêtre principale à la fermeture)."""

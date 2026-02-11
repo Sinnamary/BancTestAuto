@@ -16,10 +16,53 @@ Voir aussi : [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md), [DEVELOPPEMENT.md](
 ## Objectif
 
 - **4 équipements** en haut de fenêtre : Multimètre, Générateur, Alimentation, Oscilloscope (pastilles + état).
-- **Connexion / déconnexion globale** depuis la barre (connecter/déconnecter les 4).
-- **Exception terminal série** : en mode terminal série, déconnecter les 4 équipements et ne garder que la connexion terminal.
+- **Connexion / déconnexion** depuis la barre : le menu (barre) en haut permet de connecter / déconnecter chaque équipement (ou tous en une fois). La connexion se lance uniquement depuis cette barre.
+- **Terminal série** : comme le reste des onglets (Multimètre, Générateur, Alimentation, Oscilloscope), l’onglet **Terminal série** n’a **pas de connexion propre** — il utilise les connexions gérées par la barre. L’utilisateur choisit dans le terminal l’équipement avec lequel dialoguer (sélecteur) ; seuls les équipements déjà connectés sont proposés. Le terminal envoie/reçoit sur la connexion série de l’équipement sélectionné. **Confirmé** : même modèle que les autres onglets (connexion uniquement depuis la barre, l’onglet ne fait qu’utiliser l’équipement connecté).
 
 Contrainte Phase 1 : modules et classes **réutilisables** (détection, état, contrôleur), **sans modifier l’UI** ; l’UI actuelle et la future s’appuient sur les mêmes classes.
+
+---
+
+## Analyse des métriques et prérequis (fichiers / classes)
+
+**Recommandation : oui, il faut mieux gérer les fichiers et les classes avant de continuer l’évolution (Phases 2–5).**  
+Les métriques (MI, complexité cyclomatique CC, LOC) montrent des points très sensibles ; modifier la MainWindow ou les vues concernées sans préparation augmente fortement le risque de régressions et de bugs.
+
+### Points critiques (métriques)
+
+| Fichier | MI (rang) | CC max | LOC | Problème |
+|---------|-----------|--------|-----|----------|
+| **ui/main_window.py** | 0,09 (C) | **217** | 676 | Classe monolithique : ~50 méthodes, toute la logique menu/config/connexion/onglets. Les Phases 2–4 toucheront directement ce fichier. |
+| **maquette/ui/main_window.py** | 0,0 (C) | **217** | 669 | Même structure (sync maquette ↔ ui). |
+| **ui/views/meter_view.py** | 18,29 (B) | **116** | 406 | Une des 4 vues « équipement » ; complexité élevée, à stabiliser avant d’y brancher le contrôleur. |
+| **ui/views/serial_terminal_view.py** | 17,4 (B) | **98** | 468 | Ciblée par la Phase 4 (règles terminal série). |
+| **tests/test_bode_csv_viewer.py** | 0,0 (C) | 40 | 971 | Fichier de test très long ; à découper pour garder des tests maintenables. |
+
+Autres fichiers à garder en tête (CC élevé, non bloquant pour 2–4) : `core/dos1102_usb_connection.py` (CC 59), `core/measurement.py` (CC 57), `ui/bode_csv_viewer/dialog.py` (CC 66), `ui/oscilloscope/connection_panel.py` (CC 45).
+
+### Ordre recommandé avant / pendant les phases
+
+1. **MainWindow (ui + maquette)**  
+   - **Objectif** : réduire la complexité et isoler la logique qui sera remplacée (Phase 3).  
+   - **Actions** : extraire la logique de connexion série actuelle (`_reconnect_serial`, `_open_and_verify_connections`, `_update_connection_status`, `_on_detect_clicked`, `_on_detection_result_5`) dans un module ou une classe dédiée (ex. `MainWindowConnectionBridge` ou équivalent) que MainWindow utilise. Ainsi, au moment du branchement du `ConnectionController`, on remplace ce pont au lieu de toucher des dizaines de méthodes.  
+   - Extraire si possible la construction des menus et la gestion config (charger / sauvegarder) dans des helpers ou sous-classes pour alléger la classe principale.  
+   - Faire les mêmes extractions dans la maquette, puis resynchroniser.
+
+2. **Vues meter_view et serial_terminal_view**  
+   - **Objectif** : faire baisser la complexité cyclomatique (découper en méthodes plus petites, extraire des sous-widgets ou présentateurs si pertinent) pour que les changements Phase 3 (barre 4 équipements) et Phase 4 (terminal série) soient plus sûrs.  
+   - Priorité : **serial_terminal_view** (Phase 4), puis **meter_view** (une des 4 pastilles).
+
+3. **connection_status.py**  
+   - Sera **remplacée** par la nouvelle barre 4 équipements ; pas de refactoring lourd, au plus petits ajustements si besoin.
+
+4. **tests/test_bode_csv_viewer.py**  
+   - Découper en plusieurs modules de tests (par thème : chargement, cutoff, affichage, etc.) pour retrouver un MI/CC acceptable et des tests plus lisibles.
+
+### Synthèse
+
+- **Faire d’abord** : extraction de la logique connexion + allègement de MainWindow (ui et maquette), puis refactoring ciblé de `serial_terminal_view` et `meter_view`.  
+- **Ensuite** : enchaîner sereinement les Phases 2 (détection 4 équipements), 3 (barre 4 + contrôleur), 4 (terminal série), 5 (nettoyage et doc).  
+- Les métriques (rapport dans `tools/code_metrics_report/`) peuvent être relancées après chaque refactoring pour suivre MI et CC.
 
 ---
 
@@ -41,34 +84,52 @@ Contrainte Phase 1 : modules et classes **réutilisables** (détection, état, c
 
 ---
 
-### Phase 2 — Détection 4 équipements + dialogue — **À FAIRE**
+### Phase 1bis (recommandé) — Refactoring MainWindow et vues — **EN COURS**
 
 | Tâche | Statut |
 |-------|--------|
-| Dialogue de détection pour les 4 équipements (Multimètre, Générateur, Alimentation, Oscilloscope) | À faire |
-| Utiliser `run_detection(bench_equipment_kinds(), log_lines)` et afficher `BenchDetectionResult` | À faire |
-| Mise à jour config pour les 4 (serial + USB oscillo si applicable) | À faire |
-| Remplacer l’ancien dialogue 2 équipements par le nouveau | À faire |
+| Extraire la logique connexion (MainWindow) dans un pont/classe dédiée (ui + maquette) | **Fait** : `ui/connection_bridge.py` et `maquette/ui/connection_bridge.py` ; les deux main_window utilisent le bridge. Sync effectuée. |
+| Alléger MainWindow : menus, config (helpers ou sous-modules) | À faire |
+| Réduire la complexité de `serial_terminal_view` et `meter_view` (ui + maquette) | À faire |
+| Découper `tests/test_bode_csv_viewer.py` en modules de tests | À faire |
+
+Voir la section *Analyse des métriques et prérequis* ci-dessus pour le détail.
 
 ---
 
-### Phase 3 — Connexion / déconnexion globale — **À FAIRE**
+### Phase 2 — Détection 4 équipements + dialogue — **FAIT**
 
 | Tâche | Statut |
 |-------|--------|
-| Barre : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) | À faire |
-| Boutons Connexion globale / Déconnexion globale (ou équivalent) | À faire |
-| Brancher `CallbackConnectionController` dans MainWindow (`_reconnect_serial`, construction de `BenchConnectionState`) | À faire |
+| Dialogue de détection pour les 4 équipements (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** : `DeviceDetectionDialog4` |
+| Utiliser `run_detection(bench_equipment_kinds(), log_lines)` et afficher `BenchDetectionResult` | **Fait** : `DetectionWorker4` + affichage par équipement et log |
+| Mise à jour config pour les 4 (serial + USB oscillo si applicable) | **Fait** : « Mettre à jour config (en mémoire) » → `update_config_from_detection` |
+| Remplacer l’ancien dialogue 2 équipements par le nouveau | **Fait** : menu ouvre `DeviceDetectionDialog4` si dispo ; ancien conservé pour Phase 5 |
+
+---
+
+### Phase 3 — Connexion / déconnexion globale — **EN COURS (maquette)**
+
+| Tâche | Statut |
+|-------|--------|
+| Barre : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** dans la maquette : `maquette/ui/widgets/connection_status.py` (4 pastilles + Connexion globale / Déconnexion globale). À reporter vers `ui/` après validation. |
+| Boutons Connexion globale / Déconnexion globale (ou équivalent) | **Fait** dans la maquette ; branchés dans `maquette/ui/main_window.py` (`_on_connect_all` = Charger config, `_on_disconnect_all` = bridge.close + mise à jour pastilles). |
+| Brancher `CallbackConnectionController` dans MainWindow (`_reconnect_serial`, construction de `BenchConnectionState`) | À faire (pour l’instant la maquette utilise le bridge 2 équipements ; Alimentation et Oscilloscope affichés en « Non connecté »). |
 | Supprimer les connexions dédiées dans les onglets Alimentation et Oscilloscope ; tout passer par le contrôleur / barre | À faire |
 
 ---
 
-### Phase 4 — Règles terminal série — **À FAIRE**
+### Phase 4 — Terminal série (comme les autres onglets) — **À FAIRE**
+
+**Principe** : l’onglet Terminal série se comporte comme les autres onglets (Multimètre, Générateur, etc.) : pas de connexion dédiée, il utilise les connexions gérées par la barre.
 
 | Tâche | Statut |
 |-------|--------|
-| Lors de l’ouverture du terminal série : déconnecter les 4 équipements, ne garder que la connexion terminal | À faire |
-| Règles de cohérence (éviter un port utilisé à la fois par un équipement et le terminal) | À faire |
+| Barre : connexion/déconnexion des 4 équipements (Phase 3). La connexion ne se fait que depuis la barre. | Voir Phase 3 |
+| Dans l’onglet terminal série : sélecteur « Équipement » (Multimètre, Générateur, Alimentation, Oscilloscope) | À faire |
+| N’afficher dans le sélecteur que les équipements **actuellement connectés** ; impossible de choisir un équipement non connecté | À faire |
+| Quand l’utilisateur choisit un équipement connecté, le terminal envoie/reçoit sur la connexion série de cet équipement (même modèle que les autres onglets) | À faire |
+| Règles de cohérence : un port série ne peut être utilisé que par un seul équipement (géré par le contrôleur) | À faire |
 
 ---
 
@@ -101,7 +162,7 @@ Code qui **ne sera plus valide** après la migration (Phase 3–5) : à remplace
 
 | Fichier / classe | Élément obsolète |
 |------------------|------------------|
-| **`ui/main_window.py`** | Connexion 2 équipements : `_multimeter_conn`, `_generator_conn`, `_scpi`, `_fy6900` ; `_reconnect_serial()`, `_update_connection_status()` (2 pastilles) ; `_on_detect_clicked()`, `_on_detection_result_5()` (détection tuple). Remplacer par `ConnectionController`, `BenchConnectionState`, barre 4 équipements. |
+| **`ui/main_window.py`** | Délègue déjà au `MainWindowConnectionBridge` (Phase 1bis). À terme : remplacer le bridge par `ConnectionController` + `BenchConnectionState` + barre 4 équipements (Phase 3). Détection tuple (`_on_detection_result_5`) à migrer vers `BenchDetectionResult`. |
 | **`ui/widgets/connection_status.py`** | Classe **ConnectionStatusBar** actuelle : 2 pastilles (multimètre, générateur). Remplacer par 4 pastilles + boutons connexion/déconnexion globale. |
 
 ### Tag UI_CHANGES_VIA_MAQUETTE (ne pas modifier l’UI ici)
