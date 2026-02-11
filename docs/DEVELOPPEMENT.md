@@ -1,6 +1,6 @@
 # Guide de développement — Banc de test automatique
 
-**Dernière mise à jour :** 8 février 2026
+**Dernière mise à jour :** 11 février 2026
 
 Le développement s’effectue en **petits fichiers**, avec des **classes distinctes pour chaque appareil de mesure** (multimètre OWON, générateur FY6900). Ces classes sont **appelées pour piloter le banc de test** (ex. caractérisation filtre) : le module banc n’orchestre que les appels aux classes d’appareils, sans dupliquer leur logique.
 
@@ -404,7 +404,49 @@ python main.py
 
 ---
 
-## 5. Gestion de la version
+## 5. Tests unitaires et couverture
+
+Les tests sont dans le dossier **`tests/`** et utilisent **pytest** et **pytest-cov**.
+
+### 5.1 Lancer les tests
+
+```bash
+# Depuis la racine du projet (avec venv activé)
+pytest tests -v
+```
+
+### 5.2 Couverture de code
+
+Le script **`run_coverage.py`** lance les tests avec une mesure de couverture sur les modules **config**, **core** et **ui.bode_csv_viewer** :
+
+```bash
+python run_coverage.py
+```
+
+- **Rapport terminal** : affiche les lignes non couvertes par fichier (`--cov-report=term-missing`).
+- **Rapport HTML** : généré dans **`htmlcov/`**. Ouvrir `htmlcov/index.html` dans un navigateur, ou lancer :
+  ```bash
+  python serve_htmlcov.py
+  ```
+
+### 5.3 Modules couverts
+
+| Module | Description |
+|--------|-------------|
+| **config** | Chargement / sauvegarde de la configuration |
+| **core** | Logique métier (chemins, logger, Bode, série, SCPI, FY6900, RS305P, DOS1102, détection, etc.) |
+| **ui.bode_csv_viewer** | Modèle, chargement CSV, cutoff, lissage, plage de vue, panneaux, dialog, zoom mode, phase overlay |
+
+Les tests du viewer Bode incluent notamment : modèle (`BodeCsvPoint`, `BodeCsvDataset`), chargement CSV, recherche de coupure, lissage, `ZoomModeController`, `PhaseOverlay`, `BodeCsvPlotWidget`, dialog et ouverture depuis le menu.
+
+### 5.4 Seuils et objectifs
+
+- La couverture globale est affichée en fin d’exécution de `run_coverage.py` (ex. ~73 % selon les modules).
+- Certains modules (ex. connexions matérielles, workers avec GUI) sont peu ou pas couverts volontairement ; les parties critiques (config, core, bode_csv_viewer) sont ciblées en priorité.
+
+---
+
+## 6. Gestion de la version
 
 La version et la date sont définies dans **un seul fichier** : `core/version.py`.
 
@@ -429,7 +471,7 @@ Convention : **MAJEUR.MINEUR.PATCH**. L’utilisateur voit la version via **Aide
 
 ---
 
-## 6. Références
+## 7. Références
 
 | Document | Rôle |
 |----------|------|

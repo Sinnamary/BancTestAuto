@@ -1,6 +1,6 @@
 # Cahier des charges — Visualisation Bode (Banc filtre)
 
-**Version :** 1.4  
+**Version :** 1.5  
 **Date :** 11 février 2026  
 **Référence :** Banc de test automatique — Banc filtre
 
@@ -317,3 +317,45 @@ Les options d'affichage de la fenêtre du graphique Bode sont persistées dans l
 ### 8.3 Note sur les algorithmes de lissage
 
 Le cahier des charges mentionne en option le **spline cubique** (UnivariateSpline). L'implémentation actuelle propose la **moyenne glissante** et le **Savitzky-Golay** ; le spline n'est pas proposé. Les deux algorithmes disponibles couvrent les besoins de lissage et de préservation des pics.
+
+---
+
+## 9. Notes d’implémentation — Affichage phase et zoom sur zone
+
+*Révision : 11 février 2026*
+
+Lorsque le graphique Bode affiche **gain et phase** (deux axes Y), l’implémentation utilise **deux ViewBox pyqtgraph** superposés : le ViewBox principal (gain, axe gauche) et un ViewBox secondaire pour la phase (axe droit). Leur ordre d’affichage et la réception des événements souris sont pilotés par la **valeur z** (ordre de plan dans la scène Qt) et par le **fond** du ViewBox principal. Les problèmes rencontrés et les solutions sont résumés ci‑dessous.
+
+### 9.1 Conventions Qt sur l’ordre de plan (z)
+
+- En Qt, un **z plus élevé** signifie que l’item est **au‑dessus** : il est dessiné après (donc par‑dessus) et reçoit les clics en premier.
+- Le ViewBox principal (gain) a par défaut un z négatif en pyqtgraph (ex. **-100**). Le **PlotItem** (conteneur du graphique) a typiquement un z proche de **0**.
+
+### 9.2 Problème 1 : Zoom sur zone inactif (les clics ne déclenchaient pas le rectangle de zoom)
+
+**Symptôme :** Avec la case « Zoom sur zone (glisser) » cochée, glisser sur le graphique ne dessinait pas le rectangle de zoom.
+
+**Cause :** Le ViewBox phase était initialement à **z = 10**, donc **au‑dessus** du ViewBox principal (z = -100). Les clics arrivaient au ViewBox phase (ou à son rectangle de fond, `QGraphicsRectItem`), pas au ViewBox principal. Le zoom rect est géré par le ViewBox principal ; il ne recevait jamais les événements souris.
+
+**Tentative rejetée :** Transférer les événements souris du viewport vers le ViewBox principal en créant un `QGraphicsSceneMouseEvent` et en appelant `QApplication.sendEvent(main_vb, ev)`. En **PyQt6**, `QGraphicsSceneMouseEvent` **ne peut pas être instancié** par l’application (« cannot be instantiated or sub-classed »), donc cette approche n’est pas utilisable.
+
+**Solution retenue :** En mode « Zoom sur zone » actif, le ViewBox phase est **placé derrière** le ViewBox principal en lui donnant un **z inférieur** à celui du main : `right_vb.setZValue(main_vb.zValue() - 10)`. Ainsi le ViewBox principal est au‑dessus et reçoit les Press/Move/Release ; le zoom rect fonctionne. Pour que la courbe de phase reste visible alors qu’elle est derrière, le **fond du ViewBox principal** est rendu **transparent** (`setBackgroundColor(None)`) tant que le zoom sur zone est actif.
+
+### 9.3 Problème 2 : Courbe de phase invisible au lancement
+
+**Symptôme :** À l’ouverture du graphique (sans cocher « Zoom sur zone »), la courbe de phase n’apparaissait pas ; elle n’apparaissait qu’après avoir coché puis éventuellement décoché « Zoom sur zone ».
+
+**Cause :** Au lancement, `set_rect_zoom_mode(False)` appelait `set_zoom_zone_active(False)`, qui fixait le z du ViewBox phase à **main_z + 10** (ex. -100 + 10 = **-90**). Le ViewBox phase (z = -90) était donc **en dessous** du PlotItem (z ≈ 0). Le PlotItem, dessiné après, recouvrait toute la zone avec le fond du graphique (noir ou blanc), ce qui **masquait** la courbe de phase.
+
+**Solution retenue :** Lorsque le zoom sur zone est **désactivé**, le ViewBox phase doit être **au‑dessus** du PlotItem pour rester visible. On lui attribue un **z fixe élevé** (ex. **10**), et non plus `main_z + 10`. Ainsi, au lancement comme en mode pan, la phase est toujours dessinée au‑dessus et reste visible.
+
+### 9.4 Récapitulatif des réglages z et du fond
+
+| État de la case « Zoom sur zone » | z du ViewBox phase | Fond du ViewBox principal | Résultat |
+|-----------------------------------|--------------------|---------------------------|----------|
+| **Désactivée** (pan par défaut)   | **10** (fixe)      | Noir ou blanc (opaque)    | Phase visible au‑dessus ; pan / zoom molette sur le graphique. |
+| **Activée**                       | **main_z − 10**    | **Transparent** (`None`)  | Phase derrière mais visible par transparence ; ViewBox principal reçoit la souris → zoom rect actif. |
+
+**Fichiers concernés :**  
+- `ui/bode_csv_viewer/viewbox_phase.py` : `set_zoom_zone_active(active)` (z du ViewBox phase).  
+- `ui/bode_csv_viewer/plot_widget.py` : `set_rect_zoom_mode(enabled)` (appel à `set_zoom_zone_active`, puis `setBackgroundColor(None)` ou `_apply_background_style()` sur le ViewBox principal).

@@ -684,6 +684,98 @@ class TestBodePeaksOverlay:
         overlay.update(ds, y_linear=True)
 
 
+# --- ZoomModeController (zoom_mode.py) ---
+from ui.bode_csv_viewer.zoom_mode import ZoomModeController
+
+
+class TestZoomModeController:
+    """ZoomModeController : RectMode / PanMode sur le ViewBox principal."""
+
+    @pytest.fixture
+    def plot_item_and_vb(self):
+        from PyQt6.QtWidgets import QApplication
+        import pyqtgraph as pg
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication([])
+        pw = pg.PlotWidget()
+        pi = pw.getPlotItem()
+        vb = pi.getViewBox()
+        yield pi, vb
+        pw.close()
+
+    def test_init(self, plot_item_and_vb):
+        _, vb = plot_item_and_vb
+        ctrl = ZoomModeController(vb)
+        assert ctrl.is_rect_zoom_enabled() is False
+
+    def test_set_rect_zoom_enabled_true_then_false(self, plot_item_and_vb):
+        _, vb = plot_item_and_vb
+        ctrl = ZoomModeController(vb)
+        ctrl.set_rect_zoom_enabled(True)
+        assert ctrl.is_rect_zoom_enabled() is True
+        assert ctrl.get_current_mode() == vb.RectMode
+        ctrl.set_rect_zoom_enabled(False)
+        assert ctrl.is_rect_zoom_enabled() is False
+        assert ctrl.get_current_mode() == vb.PanMode
+
+    def test_get_current_mode(self, plot_item_and_vb):
+        _, vb = plot_item_and_vb
+        ctrl = ZoomModeController(vb)
+        vb.setMouseMode(vb.RectMode)
+        assert ctrl.get_current_mode() == vb.RectMode
+        vb.setMouseMode(vb.PanMode)
+        assert ctrl.get_current_mode() == vb.PanMode
+
+
+# --- PhaseOverlay (viewbox_phase.py) ---
+from ui.bode_csv_viewer.viewbox_phase import PhaseOverlay
+
+
+class TestPhaseOverlay:
+    """PhaseOverlay : ViewBox phase, set_visible, set_zoom_zone_active, set_phase_data, clear_phase_data."""
+
+    @pytest.fixture
+    def plot_item_and_vb(self):
+        from PyQt6.QtWidgets import QApplication
+        import pyqtgraph as pg
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication([])
+        pw = pg.PlotWidget()
+        pi = pw.getPlotItem()
+        vb = pi.getViewBox()
+        yield pi, vb
+        pw.close()
+
+    def test_set_visible(self, plot_item_and_vb):
+        pi, main_vb = plot_item_and_vb
+        overlay = PhaseOverlay(pi, main_vb)
+        overlay.set_visible(True)
+        overlay.set_visible(False)
+
+    def test_set_zoom_zone_active_true_then_false(self, plot_item_and_vb):
+        pi, main_vb = plot_item_and_vb
+        overlay = PhaseOverlay(pi, main_vb)
+        overlay.set_zoom_zone_active(True)
+        assert overlay.right_vb.zValue() == main_vb.zValue() - 10
+        overlay.set_zoom_zone_active(False)
+        assert overlay.right_vb.zValue() == PhaseOverlay.Z_PHASE_ON_TOP
+
+    def test_set_phase_data_and_clear(self, plot_item_and_vb):
+        pi, main_vb = plot_item_and_vb
+        overlay = PhaseOverlay(pi, main_vb)
+        overlay.set_phase_data([10.0, 100.0, 1000.0], [-5.0, -45.0, -85.0])
+        overlay.clear_phase_data()
+        assert overlay.phase_curve.xData is None or len(overlay.phase_curve.xData) == 0
+
+    def test_set_phase_data_empty_y_finite_fallback(self, plot_item_and_vb):
+        """Branche y_finite vide → y_range (-90, 0)."""
+        pi, main_vb = plot_item_and_vb
+        overlay = PhaseOverlay(pi, main_vb)
+        overlay.set_phase_data([], [])
+
+
 # --- open_viewer (__init__.py) ---
 from ui.bode_csv_viewer import open_viewer
 
