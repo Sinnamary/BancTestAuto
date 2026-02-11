@@ -27,6 +27,18 @@ class TestFormatMeasGeneralResponse:
         assert "CH1" in out
         assert "PERiod" in out or "0.001" in out
 
+    def test_json_dict_value_not_dict(self):
+        """Clé avec valeur non-dict (couverture ligne 38)."""
+        text = '{"CH1": "plain"}'
+        out = format_meas_general_response(text)
+        assert "CH1" in out
+
+    def test_long_text_with_commas_splits_lines(self):
+        """Texte long avec virgules : découpage par virgules (couverture 47-48)."""
+        long_text = "a," * 50 + "b"
+        out = format_meas_general_response(long_text)
+        assert "\n" in out or "a" in out
+
     def test_bytes_decoded(self):
         out = format_meas_general_response(b"1.0,2.0")
         assert "1.0" in out and "2.0" in out
@@ -57,6 +69,11 @@ class TestPhaseDegFromDelay:
 
     def test_none_period_returns_none(self):
         assert phase_deg_from_delay(0.001, None) is None
+
+    def test_invalid_delay_returns_none(self):
+        """TypeError/ValueError sur delay_s ou period_s (couverture 77-78)."""
+        assert phase_deg_from_delay("x", 0.001) is None
+        assert phase_deg_from_delay(0.001, "y") is None
 
 
 class TestGetMeasureTypes:

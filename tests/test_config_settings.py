@@ -11,13 +11,17 @@ from config.settings import (
     DEFAULTS,
     load_config,
     save_config,
+    get_config_file_path,
     get_serial_multimeter_config,
     get_serial_generator_config,
+    get_usb_oscilloscope_config,
+    get_serial_power_supply_config,
     get_filter_test_config,
     get_generator_config,
     get_logging_config,
+    get_bode_viewer_config,
 )
-from config.settings import _deep_merge
+from config.settings import _deep_merge, _resolve_config_path
 
 
 class TestDeepMerge:
@@ -113,3 +117,58 @@ class TestGetters:
         out = get_logging_config({})
         assert out["output_dir"] == "./logs"
         assert out["level"] == "INFO"
+
+    def test_get_usb_oscilloscope_config(self):
+        out = get_usb_oscilloscope_config({})
+        assert out["vendor_id"] == 0x5345
+        assert out["product_id"] == 0x1234
+        out["read_timeout_ms"] = 999
+        assert get_usb_oscilloscope_config({})["read_timeout_ms"] == 5000
+
+    def test_get_serial_power_supply_config(self):
+        out = get_serial_power_supply_config({})
+        assert out["port"] == "COM6"
+        assert out["baudrate"] == 9600
+
+    def test_get_bode_viewer_config(self):
+        out = get_bode_viewer_config({})
+        assert "bode_viewer" in DEFAULTS
+        # Section peut contenir options affichage / échelle
+        out_custom = get_bode_viewer_config({"bode_viewer": {"y_scale": "linear"}})
+        assert out_custom.get("y_scale") == "linear"
+
+
+class TestResolveConfigPath:
+    """_resolve_config_path et get_config_file_path."""
+
+    def test_resolve_explicit_path(self, tmp_path):
+        p = tmp_path / "my_config.json"
+        p.write_text("{}")
+        assert _resolve_config_path(str(p)) == p.resolve()
+        assert _resolve_config_path(p) == p.resolve()
+
+    def test_get_config_file_path_returns_resolved(self, tmp_path):
+        p = tmp_path / "custom.json"
+        assert get_config_file_path(p) == p.resolve()
+        assert get_config_file_path(str(p)) == p.resolve()
+
+    def test_resolve_fallback_cwd_config_when_default_missing(self, tmp_path, monkeypatch):
+        # DEFAULT_CONFIG_PATH n'existe pas ; cwd/config/config.json existe => repli
+        monkeypatch.setattr("config.settings.DEFAULT_CONFIG_PATH", tmp_path / "nonexistent.json")
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        fallback_file = config_dir / "config.json"
+        fallback_file.write_text("{}")
+        monkeypatch.chdir(tmp_path)
+        # _resolve_config_path(None) doit utiliser le repli cwd/config/config.json
+        resolved = _resolve_config_path(None)
+        assert resolved == (tmp_path / "config" / "config.json")
+
+    def test_resolve_returns_default_when_neither_default_nor_fallback_exist(self, tmp_path, monkeypatch):
+        # Ni DEFAULT ni cwd/config/config.json n'existent => retourne DEFAULT pour message d'erreur cohérent
+        default_path = tmp_path / "no_default.json"
+        monkeypatch.setattr("config.settings.DEFAULT_CONFIG_PATH", default_path)
+        monkeypatch.chdir(tmp_path)
+        # ne pas créer config/config.json
+        resolved = _resolve_config_path(None)
+        assert resolved == default_path

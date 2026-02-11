@@ -118,3 +118,117 @@ class TestScpiProtocol:
         conn.write.assert_called_once()
         arg = conn.write.call_args[0][0].decode("utf-8")
         assert "BEEP" in arg
+
+    def test_conf_voltage_dc_writes_conf(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.conf_voltage_dc()
+        conn.write.assert_called_once()
+        assert "VOLT" in conn.write.call_args[0][0].decode("utf-8") and "DC" in conn.write.call_args[0][0].decode("utf-8")
+
+    def test_conf_current_ac_writes_conf(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.conf_current_ac()
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "CURR" in arg and "AC" in arg
+
+    def test_conf_res_conf_fres_conf_freq_conf_per_conf_cap(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.conf_res()
+        assert conn.write.called
+        conn.write.reset_mock()
+        scpi.conf_fres()
+        scpi.conf_freq()
+        scpi.conf_per()
+        scpi.conf_cap()
+        assert conn.write.call_count == 4
+
+    def test_conf_temp_rtd_conf_diod_conf_cont(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.conf_temp_rtd()
+        scpi.conf_diod()
+        scpi.conf_cont()
+        assert conn.write.call_count == 3
+
+    def test_rate_m_rate_l(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.rate_m()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert "RATE" in arg and "M" in arg
+        scpi.rate_l()
+        arg = conn.write.call_args[0][0].decode("utf-8").strip()
+        assert "RATE" in arg and "L" in arg
+
+    def test_meas1_asks_meas1(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        conn.readline = MagicMock(return_value=b"42.0\n")
+        scpi = ScpiProtocol(conn)
+        out = scpi.meas1()
+        assert out == "42.0"
+
+    def test_func2_none_writes(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.func2_none()
+        conn.write.assert_called_once()
+
+    def test_calc_null_offs_calc_db_ref_calc_dbm_ref(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.calc_func_null()
+        scpi.calc_null_offs(0.5)
+        scpi.calc_func_db()
+        scpi.calc_db_ref(8.0)
+        scpi.calc_func_dbm()
+        scpi.calc_dbm_ref(50.0)
+        scpi.calc_func_average()
+        assert conn.write.call_count >= 6
+
+    def test_ask_calc_aver_all_ask_average_ask_maximum_ask_minimum(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        conn.readline = MagicMock(return_value=b"1.5\n")
+        scpi = ScpiProtocol(conn)
+        assert scpi.ask_calc_aver_all() == "1.5"
+        assert scpi.ask_average() == "1.5"
+        assert scpi.ask_maximum() == "1.5"
+        assert scpi.ask_minimum() == "1.5"
+
+    def test_temp_rtd_type_and_unit_and_show(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.temp_rtd_type_kits90()
+        scpi.temp_rtd_type_pt100()
+        scpi.temp_rtd_unit_c()
+        scpi.temp_rtd_unit_f()
+        scpi.temp_rtd_unit_k()
+        scpi.temp_rtd_show_temp()
+        scpi.temp_rtd_show_meas()
+        scpi.temp_rtd_show_all()
+        assert conn.write.call_count >= 8
+
+    def test_cont_thre_beep_on(self):
+        conn = MagicMock()
+        conn.write = MagicMock()
+        scpi = ScpiProtocol(conn)
+        scpi.cont_thre(10.0)
+        conn.write.assert_called_once()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "THRE" in arg or "10" in arg
+        scpi.beep_on()
+        arg = conn.write.call_args[0][0].decode("utf-8")
+        assert "BEEP" in arg

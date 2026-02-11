@@ -107,3 +107,22 @@ class TestDataLogger:
         assert len(received) >= 1
         assert received[0][2] == "2.5"
         assert received[0][3] == "V"
+
+    def test_on_point_exception_handled(self, tmp_path):
+        """Si on_point lève, l'exception est absorbée et le logger continue (couverture 111-112)."""
+        meas = MagicMock()
+        meas.read_value = MagicMock(return_value="1.0")
+        meas.parse_float = MagicMock(return_value=1.0)
+        meas.get_unit_for_current_mode = MagicMock(return_value="V")
+        logger = DataLogger()
+        logger.set_measurement(meas)
+
+        def on_point_raises(*args, **kwargs):
+            raise ValueError("test")
+
+        logger.set_on_point_callback(on_point_raises)
+        path_str = logger.start(output_dir=str(tmp_path), interval_s=0.3)
+        assert path_str is not None
+        time.sleep(0.5)
+        logger.stop()
+        assert logger.is_running() is False

@@ -2,6 +2,8 @@
 Tests de core.app_logger : get_logger, set_level, get_current_level_name, _level_from_config, init_app_logging.
 """
 import logging
+import os
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +13,7 @@ from core.app_logger import (
     get_logger,
     set_level,
     get_current_level_name,
+    get_latest_log_path,
     LEVELS,
     init_app_logging,
 )
@@ -78,3 +81,43 @@ class TestSetLevelAndGetCurrentLevelName:
             mock_fh.level = logging.INFO
             set_level("DEBUG")
             mock_fh.setLevel.assert_called_with(logging.DEBUG)
+
+    def test_get_current_level_name_fallback_when_level_not_in_levels(self):
+        """Si le handler a un niveau non présent dans LEVELS (ex. niveau personnalisé), retourne 'INFO'."""
+        with patch("core.app_logger._file_handler") as mock_fh:
+            mock_fh.level = 999  # niveau non dans LEVELS
+            assert get_current_level_name() == "INFO"
+
+
+class TestGetLatestLogPath:
+    """get_latest_log_path : répertoire absent, aucun log, un ou plusieurs logs."""
+
+    def test_returns_none_when_output_dir_does_not_exist(self):
+        config = {"logging": {"output_dir": "/nonexistent/path/12345"}}
+        assert get_latest_log_path(config) is None
+
+    def test_returns_none_when_no_app_logs(self, tmp_path):
+        config = {"logging": {"output_dir": str(tmp_path)}}
+        (tmp_path / "other.txt").write_text("x")
+        assert get_latest_log_path(config) is None
+
+    def test_returns_most_recent_app_log(self, tmp_path):
+        config = {"logging": {"output_dir": str(tmp_path)}}
+        old_log = tmp_path / "app_2020-01-01_00-00-00.log"
+        new_log = tmp_path / "app_2025-01-01_12-00-00.log"
+        old_log.write_text("old")
+        new_log.write_text("new")
+        # Forcer mtime : le plus récent doit être new_log
+        old_ts = time.time() - 3600
+        new_ts = time.time()
+        os.utime(old_log, (old_ts, old_ts))
+        os.utime(new_log, (new_ts, new_ts))
+        result = get_latest_log_path(config)
+        assert result is not None
+        assert result == new_log
+
+    def test_uses_logging_section_from_config(self, tmp_path):
+        config = {"logging": {"output_dir": str(tmp_path)}}
+        log_file = tmp_path / "app_2025-01-01_00-00-00.log"
+        log_file.write_text("log")
+        assert get_latest_log_path(config) == log_file

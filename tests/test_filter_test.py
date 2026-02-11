@@ -120,3 +120,44 @@ class TestFilterTest:
         ft.run_sweep(on_progress=on_progress)
         assert len(progress_calls) >= 2
         assert progress_calls[-1][0] == progress_calls[-1][1]  # (done, total) avec done == total à la fin
+
+    def test_run_sweep_calls_on_stabilization_started_and_ended(self):
+        """run_sweep(on_stabilization_started=..., on_stabilization_ended=...) appelle les callbacks (couverture 134, 137)."""
+        gen = MagicMock()
+        adapter = _make_meter_adapter()
+        cfg = FilterTestConfig(1, 10, 100, 2, "lin", 5, 1.0)
+        ft = FilterTest(gen, adapter, cfg)
+        started = []
+        ended = []
+
+        ft.run_sweep(
+            on_stabilization_started=lambda: started.append(1),
+            on_stabilization_ended=lambda: ended.append(1),
+        )
+        assert len(started) == 1
+        assert len(ended) == 1
+
+    def test_run_sweep_when_f_min_zero_uses_decades_one(self):
+        """Si f_min_hz <= 0 ou f_max_hz <= 0, decades = 1.0 (couverture 71-72)."""
+        gen = MagicMock()
+        adapter = _make_meter_adapter()
+        cfg = FilterTestConfig(1, 0, 100, 5, "lin", 5, 1.0)
+        ft = FilterTest(gen, adapter, cfg)
+        results = ft.run_sweep()
+        assert len(results) >= 1
+
+    def test_get_measure_source_returns_source(self):
+        gen = MagicMock()
+        adapter = _make_meter_adapter()
+        cfg = FilterTestConfig(1, 10, 100, 3, "log", 5, 1.0)
+        ft = FilterTest(gen, adapter, cfg)
+        assert ft.get_measure_source() is adapter
+
+    def test_set_measure_source_kind_when_not_switchable_returns_true(self):
+        """Si la source n'est pas SwitchableBodeMeasureSource, set_measure_source_kind retourne True (couverture 73)."""
+        gen = MagicMock()
+        adapter = _make_meter_adapter()
+        cfg = FilterTestConfig(1, 10, 100, 3, "log", 5, 1.0)
+        ft = FilterTest(gen, adapter, cfg)
+        assert ft.set_measure_source_kind("oscilloscope") is True
+        assert ft.set_measure_source_kind("multimeter") is True
