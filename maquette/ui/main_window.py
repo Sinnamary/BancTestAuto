@@ -279,6 +279,10 @@ class MainWindow(QMainWindow):
             self._power_supply_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
+            self._serial_terminal_view.set_connection_provider(
+                lambda: self._connection_bridge.get_connected_equipment_for_terminal()
+            )
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
             self._oscilloscope_view.load_config(self._config)
 
@@ -296,6 +300,10 @@ class MainWindow(QMainWindow):
             self._power_supply_view.load_config(self._config)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
+            self._serial_terminal_view.set_connection_provider(
+                lambda: self._connection_bridge.get_connected_equipment_for_terminal()
+            )
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
             self._oscilloscope_view.load_config(self._config)
 
@@ -320,6 +328,8 @@ class MainWindow(QMainWindow):
             self._connection_bar.set_power_supply_status(False)
         if hasattr(self._connection_bar, "set_oscilloscope_status"):
             self._connection_bar.set_oscilloscope_status(False)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
+            self._serial_terminal_view.refresh_equipment_list()
 
     def _on_connect_all(self):
         """Connexion globale : même action que Charger config (reconnecte selon la config)."""

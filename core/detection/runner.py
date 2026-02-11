@@ -1,14 +1,15 @@
 """
 Coordinateur de détection : exécute les détecteurs par type d'équipement,
-en excluant les ports déjà attribués. Retourne un BenchDetectionResult.
+en excluant les ports déjà attribués et les ports en erreur grave (timeout, accès refusé).
+Retourne un BenchDetectionResult.
 """
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import serial.tools.list_ports
 
 from ..app_logger import get_logger
 from ..equipment import EquipmentKind, bench_equipment_kinds
-from .result import BenchDetectionResult, SerialDetectionResult
+from .result import BenchDetectionResult, SerialDetectionResult, UsbDetectionResult
 from .owon import detect_owon
 from .fy6900 import detect_fy6900
 from .rs305p import detect_rs305p
@@ -37,29 +38,40 @@ def run_detection(
     if log_lines is None:
         log_lines = []
 
+    logger.debug("run_detection: début — kinds=%s", [k.value for k in kinds])
     ports = list_serial_ports()
     logger.info("Détection équipements — ports trouvés: %s", ports)
+    logger.debug("run_detection: %d port(s) série à scanner", len(ports))
     log_lines.append("# Détection démarrée")
     log_lines.append(f"# Ports à scanner: {ports}")
     log_lines.append(f"# Équipements demandés: {[k.value for k in kinds]}")
 
     results: dict = {}
     used_ports: List[str] = []
+    unusable_ports: Set[str] = set()  # ports en erreur grave (timeout, accès refusé) — exclus des phases suivantes
+    logger.debug("run_detection: used_ports initial = %s", used_ports)
 
     for kind in kinds:
-        available = [p for p in ports if p not in used_ports]
-        if not available:
+        available = [p for p in ports if p not in used_ports and p not in unusable_ports]
+        logger.debug("run_detection: phase %s — available=%s, used_ports=%s, unusable_ports=%s", kind.value, available, used_ports, unusable_ports)
+        if kind != EquipmentKind.OSCILLOSCOPE and not available:
             log_lines.append(f"# {kind.value}: aucun port restant.")
+            logger.debug("run_detection: phase %s ignorée (aucun port restant)", kind.value)
             continue
         log_lines.append("")
-        log_lines.append(f"# Phase — {kind.value} (ports: {available})")
+        if kind == EquipmentKind.OSCILLOSCOPE:
+            log_lines.append("# Phase — oscilloscope (USB PyUSB)")
+            logger.debug("run_detection: lancement détection oscilloscope USB")
+        else:
+            log_lines.append(f"# Phase — {kind.value} (ports: {available})")
+            logger.debug("run_detection: lancement détection %s sur %d port(s)", kind.value, len(available))
 
         if kind == EquipmentKind.MULTIMETER:
-            r = detect_owon(available, log_lines)
+            r = detect_owon(available, log_lines, unusable_ports=unusable_ports)
         elif kind == EquipmentKind.GENERATOR:
-            r = detect_fy6900(available, log_lines)
+            r = detect_fy6900(available, log_lines, unusable_ports=unusable_ports)
         elif kind == EquipmentKind.POWER_SUPPLY:
-            r = detect_rs305p(available, log_lines)
+            r = detect_rs305p(available, log_lines, unusable_ports=unusable_ports)
         elif kind == EquipmentKind.OSCILLOSCOPE:
             r = _detect_oscilloscope_usb(log_lines)
         else:
@@ -69,16 +81,50 @@ def run_detection(
             results[kind] = r
             if isinstance(r, SerialDetectionResult) and r.port:
                 used_ports.append(r.port)
+                logger.debug("run_detection: %s détecté — port=%s baud=%s, used_ports=%s", kind.value, r.port, r.baudrate, used_ports)
+            elif isinstance(r, UsbDetectionResult):
+                logger.debug("run_detection: %s détecté (USB) — VID=0x%04X PID=0x%04X", kind.value, r.vendor_id or 0, r.product_id or 0)
+        else:
+            logger.debug("run_detection: %s non détecté", kind.value)
 
     log_lines.append("")
     log_lines.append("# Détection terminée")
+    logger.debug("run_detection: fin — results=%s, used_ports=%s", list(results.keys()), used_ports)
     return BenchDetectionResult(results=results, log_lines=log_lines)
 
 
-def _detect_oscilloscope_usb(log_lines: List[str]) -> None:
+# Mots-clés pour identifier un oscilloscope USB (nom produit ou description)
+OSCILLOSCOPE_USB_KEYWORDS = ("oscilloscope", "oscillo", "dos1102", "hanmatek", "dso")
+
+
+def _detect_oscilloscope_usb(log_lines: List[str]) -> Optional[UsbDetectionResult]:
     """
-    Détection oscilloscope USB : pour l'instant pas d'auto-détection (liste USB
-    possible via dos1102_usb_connection.list_usb_devices()). Retourne None.
+    Détection oscilloscope USB via PyUSB : liste les périphériques USB et retient
+    le premier dont la description contient un mot-clé (oscilloscope, DOS1102, Hanmatek, etc.).
+    Retourne UsbDetectionResult(vendor_id, product_id) si trouvé, None sinon.
     """
-    log_lines.append("# Oscilloscope USB : non implémenté (config manuelle)")
+    logger.debug("_detect_oscilloscope_usb: début")
+    try:
+        from ..dos1102_usb_connection import list_usb_devices
+    except ImportError as e:
+        log_lines.append("# PyUSB non disponible (pip install pyusb)")
+        logger.debug("Oscilloscope USB: import list_usb_devices impossible — %s", e)
+        return None
+
+    devices = list_usb_devices()
+    log_lines.append(f"# Périphériques USB trouvés: {len(devices)}")
+    logger.debug("_detect_oscilloscope_usb: %d périphérique(s) USB, mots-clés=%s", len(devices), OSCILLOSCOPE_USB_KEYWORDS)
+    for vid, pid, desc in devices:
+        log_lines.append(f"#   {desc} (VID=0x{vid:04X}, PID=0x{pid:04X})")
+        desc_lower = desc.lower()
+        matched = [kw for kw in OSCILLOSCOPE_USB_KEYWORDS if kw in desc_lower]
+        logger.debug("_detect_oscilloscope_usb: périphérique %s — desc_lower=%r, mots-clés trouvés=%s", f"0x{vid:04X}:0x{pid:04X}", desc_lower, matched or "aucun")
+        if matched:
+            log_lines.append(f"# Oscilloscope identifié: {desc}")
+            logger.info("Oscilloscope USB détecté: %s (VID=0x%04X, PID=0x%04X)", desc, vid, pid)
+            logger.debug("_detect_oscilloscope_usb: retour UsbDetectionResult(0x%04X, 0x%04X)", vid, pid)
+            return UsbDetectionResult(vendor_id=vid, product_id=pid)
+
+    log_lines.append("# Aucun périphérique USB ne correspond (mots-clés: " + ", ".join(OSCILLOSCOPE_USB_KEYWORDS) + ")")
+    logger.debug("_detect_oscilloscope_usb: aucun oscilloscope trouvé")
     return None

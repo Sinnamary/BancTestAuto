@@ -108,28 +108,28 @@ Voir la section *Analyse des métriques et prérequis* ci-dessus pour le détail
 
 ---
 
-### Phase 3 — Connexion / déconnexion globale — **EN COURS (maquette)**
+### Phase 3 — Connexion / déconnexion globale — **FAIT (ui + maquette)**
 
 | Tâche | Statut |
 |-------|--------|
-| Barre : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** dans la maquette : `maquette/ui/widgets/connection_status.py` (4 pastilles + Connexion globale / Déconnexion globale). À reporter vers `ui/` après validation. |
-| Boutons Connexion globale / Déconnexion globale (ou équivalent) | **Fait** dans la maquette ; branchés dans `maquette/ui/main_window.py` (`_on_connect_all` = Charger config, `_on_disconnect_all` = bridge.close + mise à jour pastilles). |
-| Brancher `CallbackConnectionController` dans MainWindow (`_reconnect_serial`, construction de `BenchConnectionState`) | À faire (pour l’instant la maquette utilise le bridge 2 équipements ; Alimentation et Oscilloscope affichés en « Non connecté »). |
+| Barre : 4 pastilles (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** : `ui/widgets/connection_status.py` et maquette (4 pastilles + Connecter tout / Déconnecter tout). |
+| Boutons Connexion globale / Déconnexion globale (ou équivalent) | **Fait** : `ui/main_window.py` (`_on_connect_all` = Charger config, `_on_disconnect_all` = bridge.close + mise à jour pastilles), séparateur horizontal barre/onglets. |
+| Brancher `CallbackConnectionController` dans MainWindow (`_reconnect_serial`, construction de `BenchConnectionState`) | À faire (pour l’instant bridge 2 équipements ; Alimentation et Oscilloscope affichés en « Non connecté »). |
 | Supprimer les connexions dédiées dans les onglets Alimentation et Oscilloscope ; tout passer par le contrôleur / barre | À faire |
 
 ---
 
-### Phase 4 — Terminal série (comme les autres onglets) — **À FAIRE**
+### Phase 4 — Terminal série (comme les autres onglets) — **FAIT**
 
-**Principe** : l’onglet Terminal série se comporte comme les autres onglets (Multimètre, Générateur, etc.) : pas de connexion dédiée, il utilise les connexions gérées par la barre.
+**Principe** : l’onglet Terminal série se comporte comme les autres onglets : pas de connexion dédiée, il utilise les connexions gérées par la barre.
 
 | Tâche | Statut |
 |-------|--------|
 | Barre : connexion/déconnexion des 4 équipements (Phase 3). La connexion ne se fait que depuis la barre. | Voir Phase 3 |
-| Dans l’onglet terminal série : sélecteur « Équipement » (Multimètre, Générateur, Alimentation, Oscilloscope) | À faire |
-| N’afficher dans le sélecteur que les équipements **actuellement connectés** ; impossible de choisir un équipement non connecté | À faire |
-| Quand l’utilisateur choisit un équipement connecté, le terminal envoie/reçoit sur la connexion série de cet équipement (même modèle que les autres onglets) | À faire |
-| Règles de cohérence : un port série ne peut être utilisé que par un seul équipement (géré par le contrôleur) | À faire |
+| Dans l’onglet terminal série : sélecteur « Équipement » (Multimètre, Générateur, Alimentation, Oscilloscope) | **Fait** : mode « Équipement (barre) » avec combo Équipement + bouton Actualiser. |
+| N’afficher dans le sélecteur que les équipements **actuellement connectés** ; impossible de choisir un équipement non connecté | **Fait** : `get_connected_equipment_for_terminal()` (bridge) ; liste mise à jour après connexion/déconnexion. |
+| Quand l’utilisateur choisit un équipement connecté, le terminal envoie/reçoit sur la connexion série de cet équipement (même modèle que les autres onglets) | **Fait** : envoi/réception via la connexion partagée (SerialConnection avec `in_waiting` pour le polling). |
+| Règles de cohérence : un port série ne peut être utilisé que par un seul équipement (géré par le contrôleur) | Déjà garanti par le bridge (un port par équipement). |
 
 ---
 

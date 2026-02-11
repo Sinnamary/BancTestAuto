@@ -13,10 +13,13 @@ try:
     from config.settings import (
         get_serial_multimeter_config,
         get_serial_generator_config,
+        get_serial_power_supply_config,
+        get_usb_oscilloscope_config,
         get_filter_test_config,
     )
 except ImportError:
     get_serial_multimeter_config = get_serial_generator_config = get_filter_test_config = None
+    get_serial_power_supply_config = get_usb_oscilloscope_config = None
 
 try:
     from core.serial_connection import SerialConnection
@@ -40,9 +43,14 @@ except ImportError:
     EquipmentKind = None
     equipment_display_name = None
 
+try:
+    from core.dos1102_usb_connection import Dos1102UsbConnection
+except ImportError:
+    Dos1102UsbConnection = None
+
 
 class ConnectionBridgeState:
-    """État exposé par le bridge pour la barre de statut (2 équipements)."""
+    """État exposé par le bridge pour la barre de statut (4 équipements)."""
 
     __slots__ = (
         "multimeter_connected",
@@ -51,6 +59,10 @@ class ConnectionBridgeState:
         "generator_connected",
         "generator_port",
         "generator_name",
+        "power_supply_connected",
+        "power_supply_port",
+        "oscilloscope_connected",
+        "oscilloscope_label",
     )
 
     def __init__(
@@ -62,6 +74,10 @@ class ConnectionBridgeState:
         generator_connected: bool = False,
         generator_port: str = "?",
         generator_name: str = "FY6900",
+        power_supply_connected: bool = False,
+        power_supply_port: str = "?",
+        oscilloscope_connected: bool = False,
+        oscilloscope_label: str = "USB",
     ):
         self.multimeter_connected = multimeter_connected
         self.multimeter_port = multimeter_port
@@ -69,6 +85,10 @@ class ConnectionBridgeState:
         self.generator_connected = generator_connected
         self.generator_port = generator_port
         self.generator_name = generator_name
+        self.power_supply_connected = power_supply_connected
+        self.power_supply_port = power_supply_port
+        self.oscilloscope_connected = oscilloscope_connected
+        self.oscilloscope_label = oscilloscope_label
 
 
 class MainWindowConnectionBridge:
@@ -81,6 +101,8 @@ class MainWindowConnectionBridge:
     def __init__(self) -> None:
         self._multimeter_conn: Any = None
         self._generator_conn: Any = None
+        self._power_supply_conn: Any = None
+        self._oscilloscope_conn: Any = None
         self._scpi: Any = None
         self._measurement: Any = None
         self._fy6900: Any = None
@@ -118,6 +140,34 @@ class MainWindowConnectionBridge:
 
         self._multimeter_conn = SerialConnection(**sm)
         self._generator_conn = SerialConnection(**sg)
+
+        # Alimentation (RS305P) — optionnel
+        sp = (get_serial_power_supply_config(config) or {}) if get_serial_power_supply_config else {}
+        if sp and SerialConnection:
+            self._power_supply_conn = SerialConnection(**sp)
+        else:
+            self._power_supply_conn = None
+
+        # Oscilloscope USB (DOS1102) — optionnel
+        usb_cfg = (get_usb_oscilloscope_config(config) or {}) if get_usb_oscilloscope_config else {}
+        vid = usb_cfg.get("vendor_id")
+        pid = usb_cfg.get("product_id")
+        if (
+            Dos1102UsbConnection
+            and isinstance(vid, int)
+            and isinstance(pid, int)
+            and vid != 0
+            and pid != 0
+        ):
+            self._oscilloscope_conn = Dos1102UsbConnection(
+                vid,
+                pid,
+                read_timeout_ms=usb_cfg.get("read_timeout_ms", 5000),
+                write_timeout_ms=usb_cfg.get("write_timeout_ms", 2000),
+            )
+        else:
+            self._oscilloscope_conn = None
+
         self._scpi = ScpiProtocol(self._multimeter_conn)
         self._measurement = Measurement(self._scpi)
         self._fy6900 = Fy6900Protocol(self._generator_conn)
@@ -144,7 +194,7 @@ class MainWindowConnectionBridge:
         self._verify_connections()
 
     def _open_ports(self) -> None:
-        """Ouvre les ports série."""
+        """Ouvre les ports série et la connexion USB oscilloscope."""
         try:
             if self._multimeter_conn:
                 self._multimeter_conn.open()
@@ -153,6 +203,16 @@ class MainWindowConnectionBridge:
         try:
             if self._generator_conn:
                 self._generator_conn.open()
+        except Exception:
+            pass
+        try:
+            if self._power_supply_conn:
+                self._power_supply_conn.open()
+        except Exception:
+            pass
+        try:
+            if self._oscilloscope_conn:
+                self._oscilloscope_conn.open()
         except Exception:
             pass
 
@@ -183,9 +243,15 @@ class MainWindowConnectionBridge:
             self._generator_conn.close()
 
     def get_state(self) -> ConnectionBridgeState:
-        """Retourne l'état des connexions pour la barre de statut (utilise la config du dernier reconnect)."""
+        """Retourne l'état des 4 connexions pour la barre de statut."""
         sm = (get_serial_multimeter_config(self._last_config) or {}) if get_serial_multimeter_config else {}
         sg = (get_serial_generator_config(self._last_config) or {}) if get_serial_generator_config else {}
+        sp = (get_serial_power_supply_config(self._last_config) or {}) if get_serial_power_supply_config else {}
+        usb_cfg = (get_usb_oscilloscope_config(self._last_config) or {}) if get_usb_oscilloscope_config else {}
+        oscillo_open = bool(self._oscilloscope_conn and getattr(self._oscilloscope_conn, "is_open", lambda: False)())
+        oscillo_label = "USB"
+        if usb_cfg.get("vendor_id") is not None and usb_cfg.get("product_id") is not None:
+            oscillo_label = f"0x{usb_cfg['vendor_id']:04X}:0x{usb_cfg['product_id']:04X}"
         return ConnectionBridgeState(
             multimeter_connected=bool(self._multimeter_conn and self._multimeter_conn.is_open()),
             multimeter_port=sm.get("port", "?"),
@@ -193,10 +259,14 @@ class MainWindowConnectionBridge:
             generator_connected=bool(self._generator_conn and self._generator_conn.is_open()),
             generator_port=sg.get("port", "?"),
             generator_name="FY6900",
+            power_supply_connected=bool(self._power_supply_conn and self._power_supply_conn.is_open()),
+            power_supply_port=sp.get("port", "?"),
+            oscilloscope_connected=oscillo_open,
+            oscilloscope_label=oscillo_label,
         )
 
     def close(self) -> None:
-        """Ferme les connexions série (multimètre et générateur)."""
+        """Ferme les 4 connexions (multimètre, générateur, alimentation, oscilloscope)."""
         if self._multimeter_conn:
             try:
                 self._multimeter_conn.close()
@@ -209,6 +279,18 @@ class MainWindowConnectionBridge:
             except Exception:
                 pass
             self._generator_conn = None
+        if self._power_supply_conn:
+            try:
+                self._power_supply_conn.close()
+            except Exception:
+                pass
+            self._power_supply_conn = None
+        if self._oscilloscope_conn:
+            try:
+                self._oscilloscope_conn.close()
+            except Exception:
+                pass
+            self._oscilloscope_conn = None
         self._scpi = None
         self._measurement = None
         self._fy6900 = None
@@ -242,11 +324,16 @@ class MainWindowConnectionBridge:
     def get_serial_exchange_logger(self) -> Optional[Any]:
         return self._serial_exchange_logger
 
+    def get_power_supply_conn(self) -> Any:
+        return self._power_supply_conn
+
+    def get_oscilloscope_conn(self) -> Any:
+        return self._oscilloscope_conn
+
     def get_connected_equipment_for_terminal(self) -> list:
         """
         Retourne la liste des équipements connectés utilisables par le terminal série.
         Chaque élément : (kind, display_name, connection) avec connection ayant read/write/is_open.
-        Phase 4 : seul le multimètre et le générateur sont gérés par le bridge.
         """
         result = []
         if EquipmentKind is None or equipment_display_name is None:
@@ -255,4 +342,8 @@ class MainWindowConnectionBridge:
             result.append((EquipmentKind.MULTIMETER, equipment_display_name(EquipmentKind.MULTIMETER), self._multimeter_conn))
         if self._generator_conn and self._generator_conn.is_open():
             result.append((EquipmentKind.GENERATOR, equipment_display_name(EquipmentKind.GENERATOR), self._generator_conn))
+        if self._power_supply_conn and self._power_supply_conn.is_open():
+            result.append((EquipmentKind.POWER_SUPPLY, equipment_display_name(EquipmentKind.POWER_SUPPLY), self._power_supply_conn))
+        if self._oscilloscope_conn and getattr(self._oscilloscope_conn, "is_open", lambda: False)():
+            result.append((EquipmentKind.OSCILLOSCOPE, equipment_display_name(EquipmentKind.OSCILLOSCOPE), self._oscilloscope_conn))
         return result

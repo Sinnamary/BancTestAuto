@@ -34,6 +34,12 @@ try:
 except ImportError:
     SerialExchangeLogger = None
 
+try:
+    from core.equipment import EquipmentKind, equipment_display_name
+except ImportError:
+    EquipmentKind = None
+    equipment_display_name = None
+
 
 class ConnectionBridgeState:
     """État exposé par le bridge pour la barre de statut (2 équipements)."""
@@ -235,3 +241,14 @@ class MainWindowConnectionBridge:
 
     def get_serial_exchange_logger(self) -> Optional[Any]:
         return self._serial_exchange_logger
+
+    def get_connected_equipment_for_terminal(self) -> list:
+        """Liste des équipements connectés pour le terminal série : (kind, display_name, connection)."""
+        result = []
+        if EquipmentKind is None or equipment_display_name is None:
+            return result
+        if self._multimeter_conn and self._multimeter_conn.is_open():
+            result.append((EquipmentKind.MULTIMETER, equipment_display_name(EquipmentKind.MULTIMETER), self._multimeter_conn))
+        if self._generator_conn and self._generator_conn.is_open():
+            result.append((EquipmentKind.GENERATOR, equipment_display_name(EquipmentKind.GENERATOR), self._generator_conn))
+        return result

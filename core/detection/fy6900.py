@@ -30,16 +30,22 @@ def detect_fy6900(ports: List[str], log_lines: Optional[List[str]] = None) -> Op
     """
     if log_lines is None:
         log_lines = []
-    for port in ports:
+    logger.debug("detect_fy6900: début — %d port(s) à tester: %s (baud=%s)", len(ports), ports, FY6900_BAUD)
+    for i, port in enumerate(ports):
+        logger.debug("detect_fy6900: test port %d/%d — %s", i + 1, len(ports), port)
         if _try_fy6900_on_port(port, log_lines):
             logger.info("Générateur FY6900 détecté sur %s", port)
             _log(log_lines, f"# Générateur trouvé sur {port}.")
+            logger.debug("detect_fy6900: trouvé sur %s", port)
             return SerialDetectionResult(port=port, baudrate=FY6900_BAUD)
+        logger.debug("detect_fy6900: %s non FY6900, passage au port suivant", port)
+    logger.debug("detect_fy6900: fin — aucun générateur FY6900 trouvé")
     return None
 
 
 def _try_fy6900_on_port(port: str, log_lines: List[str]) -> bool:
     """Teste si le port répond au protocole FY6900 (WMW00) sans réponse SCPI."""
+    logger.debug("_try_fy6900_on_port: %s ouverture @ %s bauds", port, FY6900_BAUD)
     _log(log_lines, f"{port} [FY6900] Ouverture {FY6900_BAUD} bauds...")
     try:
         ser = serial.Serial(
@@ -62,15 +68,20 @@ def _try_fy6900_on_port(port: str, log_lines: List[str]) -> bool:
         ser.close()
         _log(log_lines, f"{port} [FY6900] Fermeture.")
         if not data:
+            logger.debug("_try_fy6900_on_port: %s réponse vide ou timeout", port)
             return False
         decoded = data.decode("utf-8", errors="replace")
+        logger.debug("_try_fy6900_on_port: %s données reçues (%d octets): %r", port, len(data), decoded[:50] if decoded else data.hex())
         if "OWON" in decoded.upper() or "XDM" in decoded.upper() or "*IDN" in decoded.upper():
             _log(log_lines, f"{port} [FY6900] Accepté: non (réponse SCPI)")
+            logger.debug("_try_fy6900_on_port: %s rejeté (réponse type SCPI)", port)
             return False
         _log(log_lines, f"{port} [FY6900] Accepté: oui")
+        logger.debug("_try_fy6900_on_port: %s accepté comme FY6900", port)
         return True
     except Exception as e:
         _log(log_lines, f"{port} [FY6900] Erreur: {e}")
+        logger.debug("_try_fy6900_on_port: %s exception — %s", port, e, exc_info=True)
         try:
             ser.close()
         except Exception:
