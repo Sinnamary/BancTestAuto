@@ -8,13 +8,10 @@ import re
 from . import dos1102_commands as CMD
 
 
-def format_meas_general_response(raw: str | bytes) -> str:
-    """
-    Formate la réponse brute de :MEAS? pour affichage lisible.
-    Corrige les problèmes d'encodage et tente un affichage structuré (JSON ou paires clé:valeur).
-    """
+def _raw_to_text(raw: str | bytes | None) -> str:
+    """Convertit la réponse brute (bytes/str) en chaîne Unicode nettoyée. Retourne "" si vide/invalide."""
     if raw is None or (isinstance(raw, str) and not raw.strip()):
-        return "—"
+        return ""
     if isinstance(raw, bytes):
         try:
             text = raw.decode("utf-8", errors="replace")
@@ -22,31 +19,59 @@ def format_meas_general_response(raw: str | bytes) -> str:
             text = raw.decode("latin-1", errors="replace")
     else:
         text = "".join(c if ord(c) < 0x110000 else "\uFFFD" for c in str(raw))
-    text = text.strip()
+    return text.strip()
+
+
+def _format_json_dict(data: dict) -> str:
+    """Formate un dict (ex. JSON CH1/CH2) en lignes lisibles. Réutilisable."""
+    lines = []
+    for key, val in data.items():
+        if isinstance(val, dict):
+            lines.append(f"{key}:")
+            for k2, v2 in val.items():
+                lines.append(f"  {k2}: {v2}")
+        else:
+            lines.append(f"{key}: {val}")
+    return "\n".join(lines) if lines else ""
+
+
+def _format_key_value_pairs(text: str) -> str | None:
+    """Extrait les paires "key": "value" et les formate. Retourne None si aucune."""
+    parts = re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', text)
+    if not parts:
+        return None
+    return "\n".join(f"{k}: {v}" for k, v in parts)
+
+
+def _format_long_comma_text(text: str) -> str | None:
+    """Découpe un texte long avec virgules en plusieurs lignes. Retourne None si pas applicable."""
+    if len(text) <= 80 or "," not in text:
+        return None
+    return "\n".join(s.strip() for s in text.split(",") if s.strip())
+
+
+def format_meas_general_response(raw: str | bytes) -> str:
+    """
+    Formate la réponse brute de :MEAS? pour affichage lisible.
+    Délègue à des formateurs réutilisables (_format_json_dict, _format_key_value_pairs, etc.).
+    """
+    text = _raw_to_text(raw)
     if not text:
         return "—"
-    # Essai parsing JSON (réponse possible du type {"CH1":{"PERiod":"?,OFF",...}} ou chaîne)
     try:
         data = json.loads(text)
         if isinstance(data, dict):
-            lines = []
-            for key, val in data.items():
-                if isinstance(val, dict):
-                    lines.append(f"{key}:")
-                    for k2, v2 in val.items():
-                        lines.append(f"  {k2}: {v2}")
-                else:
-                    lines.append(f"{key}: {val}")
-            return "\n".join(lines) if lines else text
+            out = _format_json_dict(data)
+            if out:
+                return out
     except (json.JSONDecodeError, TypeError):
         pass
-    # Essai extraction de paires "key": "value" ou "key": "value"
-    parts = re.findall(r'"([^"]+)"\s*:\s*"([^"]*)"', text)
-    if parts:
-        return "\n".join(f"{k}: {v}" for k, v in parts)
-    # Sinon découper par virgules pour aérer (garde les lignes courtes)
-    if len(text) > 80 and "," in text:
-        return "\n".join(s.strip() for s in text.split(",") if s.strip())
+    out = _format_key_value_pairs(text)
+    if out is not None:
+        return out
+    out = _format_long_comma_text(text)
+    if out is not None:
+        return out
     return text
 
 

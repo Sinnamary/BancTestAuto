@@ -4,7 +4,7 @@ Thread pour la détection des équipements (multimètre OWON, générateur FY690
 
 REMOVE_AFTER_PHASE5: Worker tuple (m_port, m_baud, g_port, g_baud, log). Remplacer par
 un worker basé sur core.detection.run_detection et BenchDetectionResult (4 équipements),
-puis supprimer ce fichier. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+puis supprimer ce fichier. Voir docs/DEVELOPPEMENT.md.
 """
 from PyQt6.QtCore import QThread, pyqtSignal
 

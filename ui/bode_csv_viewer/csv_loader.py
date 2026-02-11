@@ -3,9 +3,34 @@ Chargement CSV Banc filtre. Types et logique propres au viewer, sans lien avec c
 """
 import csv
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .model import BodeCsvPoint, BodeCsvDataset
+
+
+# (nom normalisé contient l'un de ces motifs, nom de colonne logique)
+_COLUMN_MATCHES: List[Tuple[List[str], str]] = [
+    (["fhz", "f_hz", "f"], "f_hz"),
+    (["usv", "us_v"], "us_v"),
+    (["uev", "ue_v"], "ue_v"),
+    (["usue", "us/ue", "gainlinear"], "gain_linear"),
+    (["phasedeg", "phase_deg", "phase"], "phase_deg"),
+]
+
+
+def _normalize_header_cell(cell: str) -> str:
+    """Normalise un en-tête pour la comparaison (minuscule, sans espaces ni underscores)."""
+    return cell.strip().lower().replace(" ", "").replace("_", "")
+
+
+def _column_name_for_key(normalized_key: str) -> Optional[str]:
+    """Retourne le nom de colonne logique si normalized_key correspond à un motif. Réutilisable."""
+    if "gaindb" in normalized_key or ("gain" in normalized_key and "db" in normalized_key):
+        return "gain_db"
+    for patterns, name in _COLUMN_MATCHES:
+        if any(p in normalized_key for p in patterns):
+            return name
+    return None
 
 
 class BodeCsvColumnMap:
@@ -13,27 +38,14 @@ class BodeCsvColumnMap:
     def __init__(self, header: List[str]):
         self._indices: Dict[str, int] = {}
         for i, col in enumerate(header):
-            key = col.strip().lower().replace(" ", "").replace("_", "")
-            if "fhz" in key or "f_hz" in key or key == "f":
-                self._indices["f_hz"] = i
-            elif "usv" in key or "us_v" in key:
-                self._indices["us_v"] = i
-            elif "uev" in key or "ue_v" in key:
-                self._indices["ue_v"] = i
-            elif "usue" in key or "us/ue" in key or "gainlinear" in key:
-                self._indices["gain_linear"] = i
-            elif "gaindb" in key or ("gain" in key and "db" in key):
-                self._indices["gain_db"] = i
-            elif "phasedeg" in key or "phase_deg" in key or "phase" in key:
-                self._indices["phase_deg"] = i
-        if "f_hz" not in self._indices:
-            self._indices["f_hz"] = 0
-        if "gain_db" not in self._indices:
-            self._indices["gain_db"] = 3
-        if "us_v" not in self._indices:
-            self._indices["us_v"] = 1
-        if "gain_linear" not in self._indices:
-            self._indices["gain_linear"] = 2
+            key = _normalize_header_cell(col)
+            name = _column_name_for_key(key)
+            if name is not None:
+                self._indices[name] = i
+        self._indices.setdefault("f_hz", 0)
+        self._indices.setdefault("gain_db", 3)
+        self._indices.setdefault("us_v", 1)
+        self._indices.setdefault("gain_linear", 2)
 
     def get(self, name: str, default: Optional[int] = None) -> Optional[int]:
         return self._indices.get(name, default)

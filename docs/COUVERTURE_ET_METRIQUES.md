@@ -70,6 +70,13 @@ Pour régénérer les rapports : `python run_coverage.py` puis `python run_metri
 - **MI &gt; 65** et **CC_max ≤ 10** par fonction : cible pour les nouveaux fichiers.
 - Réduire la taille des fonctions (idéalement &lt; 50 lignes) et le nombre de branches par fonction.
 
+### 2.4 Refactorings réalisés (réduction taille / complexité)
+
+- **core/detection/runner.py** : table de dispatch `_SERIAL_DETECTORS` + `_run_detector_for_kind()` au lieu d’une longue chaîne if/elif → **CC_max 22 → 18**, logique par type d’équipement centralisée.
+- **core/dos1102_measurements.py** : extraction de `_raw_to_text`, `_format_json_dict`, `_format_key_value_pairs`, `_format_long_comma_text` ; `format_meas_general_response` orchestre → **CC_max 21 → 8**, formateurs réutilisables.
+- **ui/bode_csv_viewer/csv_loader.py** : table `_COLUMN_MATCHES` + `_normalize_header_cell` / `_column_name_for_key` au lieu d’un long if/elif dans `BodeCsvColumnMap` → **CC_max 22 → 18**, **CC_tot 67 → 50**.
+- **ui/connection_bridge.py** : helpers réutilisables `_safe_open`, `_safe_close`, `_verify_serial_idn`, `_verify_generator_off` ; `_open_ports`, `_verify_connections`, `close` délèguent → **CC_tot 122 → 114**, **sloc 304 → 283**, moins de duplication.
+
 ---
 
 ## 3. Actions concrètes déjà réalisées / proposées
@@ -100,7 +107,15 @@ Pour régénérer les rapports : `python run_coverage.py` puis `python run_metri
 
 ---
 
-## 4. Commandes utiles
+## 4. Règles pour réduire la taille et décomposer
+
+- **Tables de dispatch** : remplacer les longues chaînes `if kind == A: ... elif kind == B: ...` par un dictionnaire `{ Kind.A: handler_a, ... }` et une fonction qui fait `return handlers.get(kind)(...)`.
+- **Formateurs / étapes** : une grosse fonction qui fait « décoder → essai JSON → essai regex → repli » → extraire des fonctions `_étape_1`, `_étape_2` réutilisables et une fonction publique qui les enchaîne.
+- **Mapping d’en-têtes / colonnes** : définir une liste de `(motifs, nom_logique)` et une fonction `_match(normalized_key)` au lieu d’un if/elif par colonne.
+- **Connexions / ports** : factoriser `open`/`close`/`verify` dans des helpers `_safe_open(conn, label)`, `_safe_close(conn)`, `_verify_xxx(conn, ...)` pour éviter la répétition par équipement.
+- **Objectif par fichier** : &lt; 200 SLOC si possible ; &lt; 150 lignes pour un module « métier » ; classes &lt; 80 lignes, méthodes &lt; 30 lignes.
+
+## 5. Commandes utiles
 
 ```bash
 # Couverture
@@ -114,3 +129,5 @@ python serve_metrics.py
 # Seuil de couverture (exemple 75 %)
 pytest tests -v --cov=config --cov=core --cov=ui.bode_csv_viewer --cov-report=term-missing --cov-fail-under=75
 ```
+
+(Voir section 2.4 pour les refactorings déjà appliqués.)

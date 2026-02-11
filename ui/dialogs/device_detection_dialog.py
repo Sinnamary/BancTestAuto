@@ -4,7 +4,7 @@ Lance la détection dans un thread, affiche le résultat et le log série détai
 
 REMOVE_AFTER_PHASE5: Dialogue actuel 2 équipements. Remplacer par un dialogue 4 équipements
 utilisant core.detection.run_detection et BenchDetectionResult, puis supprimer ce fichier.
-Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+Voir docs/DEVELOPPEMENT.md.
 """
 from PyQt6.QtWidgets import (
     QDialog,

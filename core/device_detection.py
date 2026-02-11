@@ -6,7 +6,7 @@ avec MainWindow et DetectionWorker. La logique est dans core.detection.
 REMOVE_AFTER_PHASE5: Façade de compatibilité. Une fois l'UI migrée vers core.detection
 et ConnectionController, supprimer ce module et remplacer les appels par
 core.detection.run_detection, update_config_from_detection, list_serial_ports.
-Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+Voir docs/DEVELOPPEMENT.md.
 """
 from typing import Optional
 

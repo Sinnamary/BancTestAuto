@@ -4,7 +4,7 @@ Barre de statut de connexion — 4 équipements (Phase 3).
 Deux lignes centrées : (1) 4 pastilles (libellés courts), (2) boutons d’action.
 Séparateur connexions/onglets géré dans MainWindow.
 
-Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+Voir docs/DEVELOPPEMENT.md.
 """
 from PyQt6.QtWidgets import (
     QWidget,

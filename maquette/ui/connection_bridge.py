@@ -3,7 +3,7 @@ Pont de connexion série (2 équipements : multimètre, générateur).
 
 Isole la logique connexion actuelle pour permettre plus tard de la remplacer
 par le ConnectionController / BenchConnectionState (Phase 3).
-Voir docs/EVOLUTION_4_EQUIPEMENTS.md (Phase 1bis).
+Voir docs/DEVELOPPEMENT.md.
 """
 from __future__ import annotations
 

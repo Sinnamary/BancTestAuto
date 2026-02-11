@@ -15,4 +15,4 @@ Pour toute **évolution d’interface** (barre de connexion, pastilles, dialogue
 
 Fichiers concernés (tagués UI_CHANGES_VIA_MAQUETTE / OBSOLETE_AFTER_MIGRATION dans le code) : `ui/main_window.py`, `ui/widgets/connection_status.py`, `ui/dialogs/serial_config_dialog.py`, `ui/dialogs/device_detection_dialog.py`, etc.
 
-Référence : `docs/EVOLUTION_4_EQUIPEMENTS.md` (Règles de travail), `docs/PLAN_MAQUETTE_UI.md`.
+Référence : `docs/DEVELOPPEMENT.md`.

@@ -99,7 +99,7 @@ L’UI de la maquette est une **copie** de `ui/` du programme principal, avec de
 
 - **Copier l’UI programme → maquette :** `python tools/sync_ui_to_maquette.py` (depuis la racine du projet). À lancer après toute modification de l’UI dans le programme principal.
 - **Reporter les changements maquette → programme :** à la main (fichiers modifiés dans `maquette/ui/` recopiés vers `ui/`).
-- **Plan détaillé :** [docs/PLAN_MAQUETTE_UI.md](../docs/PLAN_MAQUETTE_UI.md).
+- **Référence :** [docs/DEVELOPPEMENT.md](../docs/DEVELOPPEMENT.md) (arborescence et rôles des modules).
 
 ---
 

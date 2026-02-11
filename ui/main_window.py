@@ -3,7 +3,7 @@ Fenêtre principale : menu, barre de connexion, onglets.
 Connectée au config et au core (connexions série, FilterTest).
 
 UI_CHANGES_VIA_MAQUETTE: Les évolutions d'interface (barre 4 équipements, connexion globale,
-menus, onglets) se font dans la maquette ; valider puis reporter vers ui/. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+menus, onglets) se font dans la maquette ; valider puis reporter vers ui/. Voir docs/DEVELOPPEMENT.md.
 
 OBSOLETE_AFTER_MIGRATION: La logique connexion 2 équipements (bridge, _reconnect_serial,
 _update_connection_status) sera remplacée par ConnectionController, BenchConnectionState (Phase 3).

@@ -3,7 +3,7 @@ Coordinateur de détection : exécute les détecteurs par type d'équipement,
 en excluant les ports déjà attribués et les ports en erreur grave (timeout, accès refusé).
 Retourne un BenchDetectionResult.
 """
-from typing import List, Optional, Set
+from typing import Callable, List, Optional, Set, Union
 
 import serial.tools.list_ports
 
@@ -15,6 +15,13 @@ from .fy6900 import detect_fy6900
 from .rs305p import detect_rs305p
 
 logger = get_logger(__name__)
+
+# Détecteurs série : (ports_disponibles, log_lines, unusable_ports) -> SerialDetectionResult | None
+_SERIAL_DETECTORS: dict[EquipmentKind, Callable[..., Optional[SerialDetectionResult]]] = {
+    EquipmentKind.MULTIMETER: detect_owon,
+    EquipmentKind.GENERATOR: detect_fy6900,
+    EquipmentKind.POWER_SUPPLY: detect_rs305p,
+}
 
 
 def list_serial_ports() -> List[str]:
@@ -66,16 +73,7 @@ def run_detection(
             log_lines.append(f"# Phase — {kind.value} (ports: {available})")
             logger.debug("run_detection: lancement détection %s sur %d port(s)", kind.value, len(available))
 
-        if kind == EquipmentKind.MULTIMETER:
-            r = detect_owon(available, log_lines, unusable_ports=unusable_ports)
-        elif kind == EquipmentKind.GENERATOR:
-            r = detect_fy6900(available, log_lines, unusable_ports=unusable_ports)
-        elif kind == EquipmentKind.POWER_SUPPLY:
-            r = detect_rs305p(available, log_lines, unusable_ports=unusable_ports)
-        elif kind == EquipmentKind.OSCILLOSCOPE:
-            r = _detect_oscilloscope_usb(log_lines)
-        else:
-            r = None
+        r = _run_detector_for_kind(kind, available, log_lines, unusable_ports)
 
         if r is not None:
             results[kind] = r
@@ -91,6 +89,21 @@ def run_detection(
     log_lines.append("# Détection terminée")
     logger.debug("run_detection: fin — results=%s, used_ports=%s", list(results.keys()), used_ports)
     return BenchDetectionResult(results=results, log_lines=log_lines)
+
+
+def _run_detector_for_kind(
+    kind: EquipmentKind,
+    available: List[str],
+    log_lines: List[str],
+    unusable_ports: Set[str],
+) -> Optional[Union[SerialDetectionResult, UsbDetectionResult]]:
+    """Délègue au détecteur approprié (série ou USB). Réutilisable et réduit la complexité cyclomatique."""
+    if kind == EquipmentKind.OSCILLOSCOPE:
+        return _detect_oscilloscope_usb(log_lines)
+    detector = _SERIAL_DETECTORS.get(kind)
+    if detector is not None:
+        return detector(available, log_lines, unusable_ports=unusable_ports)
+    return None
 
 
 # Mots-clés pour identifier un oscilloscope USB (nom produit ou description)

@@ -8,6 +8,7 @@ import pytest
 
 from core.device_detection import list_serial_ports, update_config_ports, detect_devices
 from core.detection.result import SerialDetectionResult
+from core.equipment import EquipmentKind
 
 
 class TestListSerialPorts:
@@ -58,14 +59,18 @@ class TestDetectDevices:
             assert isinstance(log_lines, list)
 
     def test_returns_ports_when_mocks_identify(self):
+        mock_owon = MagicMock(return_value=SerialDetectionResult(port="COM3", baudrate=115200))
+        mock_fy = MagicMock(return_value=SerialDetectionResult(port="COM4", baudrate=115200))
+        detectors = {
+            EquipmentKind.MULTIMETER: mock_owon,
+            EquipmentKind.GENERATOR: mock_fy,
+            EquipmentKind.POWER_SUPPLY: MagicMock(return_value=None),
+        }
         with patch("core.detection.runner.list_serial_ports", return_value=["COM3", "COM4"]):
-            with patch("core.detection.runner.detect_owon") as mock_owon:
-                with patch("core.detection.runner.detect_fy6900") as mock_fy:
-                    mock_owon.return_value = SerialDetectionResult(port="COM3", baudrate=115200)
-                    mock_fy.return_value = SerialDetectionResult(port="COM4", baudrate=115200)
-                    m, m_baud, g, g_baud, log_lines = detect_devices()
-                    assert m == "COM3"
-                    assert m_baud == 115200
-                    assert g == "COM4"
-                    assert g_baud == 115200
-                    assert isinstance(log_lines, list)
+            with patch("core.detection.runner._SERIAL_DETECTORS", detectors):
+                m, m_baud, g, g_baud, log_lines = detect_devices()
+                assert m == "COM3"
+                assert m_baud == 115200
+                assert g == "COM4"
+                assert g_baud == 115200
+                assert isinstance(log_lines, list)
