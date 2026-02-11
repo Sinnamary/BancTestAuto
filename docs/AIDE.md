@@ -1,6 +1,6 @@
 # Aide — Banc de test automatique
 
-Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur de signaux FeelTech FY6900** et une **alimentation Rockseed RS305P**, de configurer des mesures, d’enregistrer des données et de caractériser un filtre au format Bode.
+Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur FeelTech FY6900**, une **alimentation Rockseed RS305P** et un **oscilloscope Hanmatek DOS1102**, de configurer des mesures, d’enregistrer des données, de caractériser un filtre au format Bode et de calculer les composants de filtres (RC, RLC, Pont de Wien, etc.).
 
 ---
 
@@ -10,14 +10,16 @@ Bienvenue dans l’aide du **Banc de test automatique**. Cette application perme
 2. [Connexion des équipements](#connexion-des-équipements)
 3. [Onglet Multimètre](#onglet-multimètre)
 4. [Onglet Générateur](#onglet-générateur)
-5. [Onglet Enregistrement](#onglet-enregistrement)
+5. [Onglet Oscilloscope](#onglet-oscilloscope)
 6. [Onglet Banc filtre](#onglet-banc-filtre)
-7. [Onglet Alimentation](#onglet-alimentation)
-8. [Onglet Terminal série](#onglet-terminal-série)
-9. [Configuration et thème](#configuration-et-thème)
-10. [Raccourcis clavier](#raccourcis-clavier)
-11. [Fichiers et export](#fichiers-et-export)
-12. [Dépannage](#dépannage)
+7. [Onglet Calcul filtre](#onglet-calcul-filtre)
+8. [Onglet Enregistrement](#onglet-enregistrement)
+9. [Onglet Alimentation](#onglet-alimentation)
+10. [Onglet Terminal série](#onglet-terminal-série)
+11. [Configuration et thème](#configuration-et-thème)
+12. [Raccourcis clavier](#raccourcis-clavier)
+13. [Fichiers et export](#fichiers-et-export)
+14. [Dépannage](#dépannage)
 
 ---
 
@@ -41,15 +43,17 @@ En haut de la fenêtre, **quatre pastilles** indiquent (Multimètre, Générateu
 - **Vert** : équipement détecté et connecté (modèle et port affichés).
 - **Rouge** : non connecté ou non détecté.
 
-**Boutons** : **Détecter** (en premier, mis en avant) lance la détection des 4 équipements ; **Connecter tout** relit la config et ouvre les connexions ; **Déconnecter tout** ferme toutes les connexions. Il n'y a plus de bouton Paramètres : les ports se modifient via `config.json` ou Fichier → Ouvrir config.
+**Boutons** : **Détecter** lance la détection des 4 équipements ; **Connecter tout** relit la config et ouvre les connexions ; **Déconnecter tout** ferme toutes les connexions. Les ports et la configuration série se modifient via `config.json` ou **Fichier → Ouvrir config...**.
 
 ### Détection automatique
 
 - **Menu : Outils → Détecter les équipements** (ou bouton Détecter).
-- L’application parcourt les ports COM disponibles et envoie des commandes de test :
+- L’application parcourt les ports COM et les périphériques USB :
   - **Multimètre OWON** : commande SCPI `*IDN?` ; si la réponse contient « OWON » ou « XDM », le port est retenu.
   - **Générateur FY6900** : test du protocole FeelTech ; si la réponse est cohérente, le port est retenu.
-- Les champs **Port multimètre** et **Port générateur** dans la configuration sont alors mis à jour. Pensez à **sauvegarder la configuration** (Fichier → Sauvegarder config) pour conserver les ports au prochain lancement.
+  - **Alimentation RS305P** : test Modbus RTU ; le port est retenu si l’appareil répond.
+  - **Oscilloscope DOS1102** : détection sur port COM ou en USB (WinUSB/PyUSB, VID/PID dans `config.json`).
+- Les champs de configuration (ports, oscilloscope USB, etc.) sont mis à jour. Pensez à **Sauvegarder config** (Fichier → Sauvegarder config) pour conserver les réglages au prochain lancement.
 
 ### Configuration série
 
@@ -57,7 +61,7 @@ Les ports et débits sont dans **`config/config.json`**. Pour modifier :
 
 Éditez le fichier ou **Fichier → Ouvrir config...** puis **Sauvegarder config**.
 - Débits typiques : OWON 115200, FY6900 115200, RS305P 9600.  l’OWON (ou 115200 selon modèle), 115200 pour le FY6900.
-Après détection : **Mettre à jour config (en mémoire)** puis **Sauvegarder config** pour écrire les ports trouvés.
+Après détection : **Sauvegarder config** pour écrire les ports trouvés dans `config.json`.
 
 ---
 
@@ -106,6 +110,19 @@ Pilotage du **générateur FeelTech FY6900** : choix de la **voie (1 ou 2)**, fo
 
 ---
 
+## Onglet Oscilloscope
+
+Pilotage de l’**oscilloscope Hanmatek DOS1102**. L’onglet **utilise la connexion déjà établie** par la barre (bouton **Connecter tout**) : aucun bloc « Connexion série » dédié dans l’onglet. L’oscilloscope peut être connecté en **série (port COM)** ou en **USB (WinUSB/PyUSB)** ; en mode USB, utilisez **Rafraîchir USB** puis sélectionnez le périphérique dans la liste.
+
+- **Canaux** : couplage (DC, AC, GND), échelle (V/div), position, offset, sonde (1X, 10X…), inversion.
+- **Acquisition / Trigger** : mode d’acquisition, type de trigger, réglages.
+- **Mesures** : requêtes par canal (fréquence, période, RMS, crête à crête, etc.) ou inter-canal (déphasage pour Bode).
+- **Forme d’onde** : récupération des courbes (HEAD?, CH1?/CH2?) et affichage tension vs temps.
+
+Voir [Commandes Hanmatek DOS1102](COMMANDES_HANMATEK_DOS1102.md) pour le détail des commandes SCPI.
+
+---
+
 ## Onglet Terminal série
 
 L'onglet **n'a pas de connexion propre** : il utilise la connexion d'un équipement **déjà connecté** via la barre (Connecter tout). Choisissez l'équipement dans la liste déroulante (Multimètre, Générateur, Alimentation, Oscilloscope) : seuls les équipements connectés sont proposés. Envoi et réception se font sur la connexion de l'équipement sélectionné. Cases à cocher **CR** et **LF** pour la fin de chaîne. Tous les échanges TX/RX sont enregistrés dans le fichier **`serial_AAAA-MM-JJ_HH-MM-SS.log`** (dossier `logs/`), avec l'équipement indiqué une fois au changement de sélection.
@@ -130,11 +147,25 @@ Boutons : **Démarrer**, **Arrêter**, **Mettre en pause**, **Charger un fichier
 
 Caractérisation d’un **filtre au format Bode** (réponse en fréquence).
 
-- **Principe** : le générateur FY6900 envoie une sinusoïde à tension fixe (Ue) sur l’entrée du filtre ; le multimètre mesure la tension de sortie (Us). Le logiciel balaie les fréquences et calcule le gain (Us/Ue) en dB.
+- **Principe** : le générateur FY6900 envoie une sinusoïde à tension fixe (Ue) sur l’entrée du filtre ; la tension de sortie (Us) est mesurée par le **multimètre** ou par l’**oscilloscope**, au choix. Le logiciel balaie les fréquences et calcule le gain (Us/Ue) en dB (et éventuellement la phase en degrés si l’oscilloscope est utilisé).
+- **Choix de l’instrument** : le banc filtre peut utiliser soit le **multimètre OWON**, soit l’**oscilloscope Hanmatek DOS1102**. Avec le multimètre, la bande passante utile pour la mesure RMS est limitée ; le multimètre ne permet pas de mesurer la **phase**, donc seul le gain (courbe Bode gain) est disponible. Avec l’oscilloscope, la bande passante en fréquence est de **100 MHz** et le logiciel peut enregistrer la **phase** (Ch1 = Ue, Ch2 = Us) pour tracer le **diagramme Bode complet** (gain + phase). Voir [Cahier des charges visualisation Bode](CAHIER_DES_CHARGES_VISUALISATION_BODE.md).
 - **Configuration** : voie du générateur (1 ou 2), **f_min**, **f_max**, nombre de points, échelle **lin** ou **log**, délai de stabilisation (ms), tension Ue (V RMS).
-- **Résultats** : tableau (fréquence, Us, gain linéaire, gain dB) et **graphique Bode** (gain dB vs fréquence, axe fréquentiel lin ou log). Export CSV et export du graphique possible.
+- **Résultats** : tableau (fréquence, Us, gain linéaire, gain dB ; et phase en ° si oscilloscope) et **graphique Bode** (gain dB vs fréquence ; avec phase si le CSV contient `Phase_deg`). Export CSV et export du graphique possible.
 
 Au démarrage d’un balayage, la configuration générateur (forme d’onde, amplitude, offset) est appliquée depuis `config.json` pour un état reproductible.
+
+---
+
+## Onglet Calcul filtre
+
+Onglet **calcul de composants** pour les filtres électroniques : à partir des valeurs de **R**, **L**, **C** (et paramètres spécifiques), le logiciel calcule les **fréquences de coupure** et paramètres associés.
+
+- **Types de filtres** : RC passe-bas, CR passe-haut, Pont de Wien, RLC (résonance, facteur de qualité), Double T.
+- **Unités** : résistance (Ω, kΩ, MΩ), inductance (pH à H), capacité (pF à F).
+- **Schémas** : un schéma par type de filtre (SVG) pour visualiser le montage.
+- **Paramètres avancés** : par exemple Pont de Wien avec R1, R2, C1, C2 distincts.
+
+Les formules utilisent le module `core/filter_calculator.py` et les utilitaires Bode (`core/bode_utils.py`). Utile pour dimensionner un filtre avant de le caractériser avec l’onglet **Banc filtre**.
 
 ---
 
@@ -198,8 +229,10 @@ Les raccourcis agissent sur l’onglet **Multimètre** lorsqu’il est actif.
 
 ## Fichiers et export
 
+- **Fichier → Ouvrir config...** : charger un fichier de configuration JSON.
+- **Fichier → Ouvrir CSV Banc filtre...** : ouvrir un fichier CSV de courbe Bode (banc filtre) dans le visualiseur dédié (courbes, fréquence de coupure, export).
 - **Configuration** : JSON (config.json ou « Enregistrer sous »).
-- **Historique multimètre** : CSV (Export CSV).
+- **Historique multimètre** : CSV (Export CSV, onglet Multimètre).
 - **Enregistrement** : CSV horodatés dans le dossier configuré (ex. `./logs`).
 - **Banc filtre** : CSV des points (f, Us, gain) et export du graphique Bode.
 
@@ -237,7 +270,10 @@ Tous les exports CSV et graphiques sont adaptés à une utilisation ultérieure 
 - **Cahier des charges** : `docs/CAHIER_DES_CHARGES.md`
 - **Banc de test filtre** : `docs/BANC_TEST_FILTRE.md`
 - **Guide de développement** : `docs/DEVELOPPEMENT.md`
-- **Commandes RS305P** : `docs/COMMANDES_RS305P.md`
+- **Commandes OWON (multimètre)** : `docs/COMMANDES_OWON.md`
+- **Commandes FY6900 (générateur)** : `docs/COMMANDES_FY6900.md`
+- **Commandes RS305P (alimentation)** : `docs/COMMANDES_RS305P.md`
+- **Commandes Hanmatek DOS1102 (oscilloscope)** : `docs/COMMANDES_HANMATEK_DOS1102.md`
 - **README** : `README.md` à la racine du projet
 
 ---
