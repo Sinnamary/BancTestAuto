@@ -1,6 +1,13 @@
 """
 Fenêtre principale : menu, barre de connexion, onglets.
 Connectée au config et au core (connexions série, FilterTest).
+
+UI_CHANGES_VIA_MAQUETTE: Les évolutions d'interface (barre 4 équipements, connexion globale,
+menus, onglets) se font dans la maquette ; valider puis reporter vers ui/. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+
+OBSOLETE_AFTER_MIGRATION: La logique connexion 2 équipements (_multimeter_conn, _generator_conn,
+_reconnect_serial, _update_connection_status, _on_detect_clicked, _on_detection_result_5) sera
+remplacée par ConnectionController, BenchConnectionState et la barre 4 équipements (Phase 3).
 """
 from pathlib import Path
 

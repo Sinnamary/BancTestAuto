@@ -1,6 +1,12 @@
 """
 Barre de statut de connexion (multimètre + générateur).
 Branchée sur les classes série après intégration.
+
+UI_CHANGES_VIA_MAQUETTE: Évolutions d'interface (4 pastilles, connexion/déconnexion globale)
+→ faire dans la maquette, puis reporter. Voir docs/EVOLUTION_4_EQUIPEMENTS.md.
+
+OBSOLETE_AFTER_MIGRATION: La barre actuelle (2 pastilles) sera remplacée par 4 pastilles
+(Multimètre, Générateur, Alimentation, Oscilloscope) + boutons connexion/déconnexion globale.
 """
 from PyQt6.QtWidgets import (
     QWidget,

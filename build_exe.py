@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Script de construction de l'exécutable BancTestAuto avec PyInstaller.
 
 À lancer depuis la racine du projet, avec l'environnement virtuel activé :

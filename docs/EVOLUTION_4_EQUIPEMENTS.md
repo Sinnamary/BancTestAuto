@@ -5,6 +5,14 @@ Voir aussi : [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md), [DEVELOPPEMENT.md](
 
 ---
 
+## Règles de travail
+
+- **Modifications d’interface (UI)** : les évolutions d’interface (barre 4 équipements, connexion/déconnexion globale, dialogues de détection ou de config, etc.) se font **dans la maquette** ; après validation, reporter les changements vers `ui/` du programme principal. Ne pas modifier directement les fichiers sous `ui/` pour ces évolutions. Voir [PLAN_MAQUETTE_UI.md](PLAN_MAQUETTE_UI.md).
+- **Logique métier** : les modifications de logique (détection, état, contrôleur, config) restent dans le programme principal (`core/`, `config/`).
+- **Synchronisation UI programme → maquette** : après changement de l’UI dans le programme (correctifs, recopie depuis maquette), lancer `python tools/sync_ui_to_maquette.py` pour realigner la maquette.
+
+---
+
 ## Objectif
 
 - **4 équipements** en haut de fenêtre : Multimètre, Générateur, Alimentation, Oscilloscope (pastilles + état).
@@ -74,21 +82,47 @@ Contrainte Phase 1 : modules et classes **réutilisables** (détection, état, c
 
 ---
 
-## Modules à supprimer après toutes les phases (nettoyage)
+## Fichiers et classes tagués (nettoyage et évolution UI)
 
-Les modules suivants sont **marqués pour suppression** une fois la migration terminée (Phase 5). Ils sont tagués dans le code par un en-tête `# REMOVE_AFTER_PHASE5`.
+### Tag REMOVE_AFTER_PHASE5 (suppression après migration)
+
+Les modules suivants sont **marqués pour suppression** une fois la migration terminée (Phase 5). Tagués dans le code par `# REMOVE_AFTER_PHASE5`.
 
 | Module | Raison |
 |--------|--------|
-| **`core/device_detection.py`** | Façade de compatibilité (API `detect_devices`, `update_config_ports`). Une fois l’UI migrée vers `core.detection` et `ConnectionController`, supprimer ce fichier et remplacer les appels par `core.detection.run_detection`, `update_config_from_detection`, `list_serial_ports`. |
-| **`ui/workers/detection_worker.py`** | Worker actuel : tuple `(m_port, m_baud, g_port, g_baud, log_lines)`. Remplacer par un worker basé sur `run_detection(..., log_lines)` et `BenchDetectionResult`, ou intégrer la détection dans un flux commun. Puis supprimer ce worker. |
-| **`ui/dialogs/device_detection_dialog.py`** | Dialogue actuel « 2 équipements ». Remplacé par un dialogue 4 équipements utilisant `run_detection` et `BenchDetectionResult`. Supprimer après mise en place du nouveau dialogue. |
-| **`maquette/ui/dialogs/device_detection_dialog.py`** | Squelette 2 équipements. Aligner sur le dialogue 4 équipements de l’app principale ou supprimer si la maquette est fusionnée. |
+| **`core/device_detection.py`** | Façade de compatibilité (API `detect_devices`, `update_config_ports`). Une fois l’UI migrée vers `core.detection` et `ConnectionController`, supprimer et remplacer les appels par `core.detection.run_detection`, `update_config_from_detection`, `list_serial_ports`. |
+| **`ui/workers/detection_worker.py`** | Worker actuel : tuple `(m_port, m_baud, g_port, g_baud, log_lines)`. Remplacer par un worker basé sur `run_detection` et `BenchDetectionResult`. Puis supprimer. |
+| **`ui/dialogs/device_detection_dialog.py`** | Dialogue actuel « 2 équipements ». Remplacé par un dialogue 4 équipements. Supprimer après mise en place du nouveau. |
+| **`maquette/ui/dialogs/device_detection_dialog.py`** | Squelette 2 équipements. Aligner sur le dialogue 4 équipements ou supprimer. |
 
-**À mettre à jour (sans suppression)** : `ui/main_window.py`, `ui/widgets/connection_status.py`, `ui/dialogs/serial_form.py` (changer les imports de `core.device_detection` vers `core.detection` ou contrôleur au moment du nettoyage).
+### Tag OBSOLETE_AFTER_MIGRATION (remplacé après migration)
 
-Pour lister tous les modules tagués pour suppression :  
-`grep -r "REMOVE_AFTER_PHASE5" --include="*.py" .`
+Code qui **ne sera plus valide** après la migration (Phase 3–5) : à remplacer par le contrôleur, la barre 4 équipements, etc. Tagué dans le code par `# OBSOLETE_AFTER_MIGRATION`.
+
+| Fichier / classe | Élément obsolète |
+|------------------|------------------|
+| **`ui/main_window.py`** | Connexion 2 équipements : `_multimeter_conn`, `_generator_conn`, `_scpi`, `_fy6900` ; `_reconnect_serial()`, `_update_connection_status()` (2 pastilles) ; `_on_detect_clicked()`, `_on_detection_result_5()` (détection tuple). Remplacer par `ConnectionController`, `BenchConnectionState`, barre 4 équipements. |
+| **`ui/widgets/connection_status.py`** | Classe **ConnectionStatusBar** actuelle : 2 pastilles (multimètre, générateur). Remplacer par 4 pastilles + boutons connexion/déconnexion globale. |
+
+### Tag UI_CHANGES_VIA_MAQUETTE (ne pas modifier l’UI ici)
+
+Fichiers pour lesquels **toute évolution d’interface** doit se faire **dans la maquette** ; ne pas modifier ici sauf pour reporter des changements déjà validés dans la maquette. Tagué par `# UI_CHANGES_VIA_MAQUETTE`.
+
+| Fichier | Règle |
+|---------|--------|
+| **`ui/main_window.py`** | Évolutions d’interface (barre, menu, onglets) → faire dans la maquette, puis reporter. |
+| **`ui/widgets/connection_status.py`** | Nouvelle barre 4 équipements, boutons globaux → concevoir dans la maquette. |
+| **`ui/dialogs/serial_config_dialog.py`** | Évolution vers 4 équipements (onglets ou formulaire) → faire dans la maquette. |
+
+**À mettre à jour au nettoyage (sans tag UI)** : `ui/dialogs/serial_form.py` (changer imports `core.device_detection` → `core.detection` au moment du nettoyage).
+
+### Commandes grep
+
+```bash
+grep -r "REMOVE_AFTER_PHASE5" --include="*.py" .
+grep -r "OBSOLETE_AFTER_MIGRATION" --include="*.py" .
+grep -r "UI_CHANGES_VIA_MAQUETTE" --include="*.py" .
+```
 
 ---
 
