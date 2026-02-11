@@ -65,17 +65,23 @@ Pour régénérer les rapports : `python run_coverage.py` puis `python run_metri
 - **`ui/bode_csv_viewer/csv_loader.py`** : CC_max 22.  
   **Piste** : parser en étapes (header, colonnes, lignes) avec des fonctions plus petites.
 
-### 2.3 Bonnes pratiques
+### 2.3 Bonnes pratiques et objectifs cibles (plan de refactorisation)
 
-- **MI &gt; 65** et **CC_max ≤ 10** par fonction : cible pour les nouveaux fichiers.
-- Réduire la taille des fonctions (idéalement &lt; 50 lignes) et le nombre de branches par fonction.
+- **MI > 65** et **CC_max ≤ 10** par fonction : cible pour les nouveaux fichiers.
+- **SLOC < 250** par fichier lorsque possible (objectif par phase).
+- Réduire la taille des fonctions (idéalement < 50 lignes) et le nombre de branches par fonction.
+- Voir `docs/REFACTORING_PLAN.md` pour le suivi des phases et les métriques avant/après.
 
 ### 2.4 Refactorings réalisés (réduction taille / complexité)
 
 - **core/detection/runner.py** : table de dispatch `_SERIAL_DETECTORS` + `_run_detector_for_kind()` au lieu d’une longue chaîne if/elif → **CC_max 22 → 18**, logique par type d’équipement centralisée.
 - **core/dos1102_measurements.py** : extraction de `_raw_to_text`, `_format_json_dict`, `_format_key_value_pairs`, `_format_long_comma_text` ; `format_meas_general_response` orchestre → **CC_max 21 → 8**, formateurs réutilisables.
 - **ui/bode_csv_viewer/csv_loader.py** : table `_COLUMN_MATCHES` + `_normalize_header_cell` / `_column_name_for_key` au lieu d’un long if/elif dans `BodeCsvColumnMap` → **CC_max 22 → 18**, **CC_tot 67 → 50**.
-- **ui/connection_bridge.py** : helpers réutilisables `_safe_open`, `_safe_close`, `_verify_serial_idn`, `_verify_generator_off` ; `_open_ports`, `_verify_connections`, `close` délèguent → **CC_tot 122 → 114**, **sloc 304 → 283**, moins de duplication.
+- **ui/connection_bridge.py** (Phase 2) : `_create_multimeter_connection`, `_create_generator_connection`, `_create_power_supply_connection`, `_create_oscilloscope_connection` ; `_verify_power_supply`, `_verify_oscilloscope` ; `reconnect()` et `_verify_connections()` allégés → **CC_max 29 → 17** (idem maquette).
+- **ui/main_window.py** (Phase 3) : `main_window_menus.py`, `main_window_central.py` (build_central_widget) → **SLOC 512 → 439**.
+- **ui/bode_csv_viewer/dialog.py** (Phase 4) : `dialog_actions.py` → **SLOC 305 → 252**, **MI 26 → 33**.
+- **ui/bode_csv_viewer/plot_widget.py** (Phase 4) : `plot_refresh.py` (refresh_bode_plot) → **SLOC 273 → 241**, **MI 28 → 31**.
+- **core/dos1102_usb_connection.py** (Phase 6) : `core/dos1102_usb_backend.py` (get_usb_backend, list_usb_devices, is_usb_timeout_error, is_usb_device_error) ; read/readline utilisent les helpers → **CC_max 18 → 15**, **SLOC 285 → 217** ; **dos1102_usb_backend.py** (73 SLOC, MI=65, CC_max=9).
 
 ---
 

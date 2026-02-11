@@ -23,13 +23,18 @@ from PyQt6.QtWidgets import (
 )
 
 from .model import BodeCsvDataset
-from .csv_loader import BodeCsvFileLoader
 from .plot_widget import BodeCsvPlotWidget
 from .view_state import BodeViewOptions
 from .cutoff import Cutoff3DbFinder
-from .smoothing import has_savgol
 from .formatters import format_freq_hz
+from .smoothing import has_savgol
 from .panel_y_axis import build_y_axis_panel
+from .dialog_actions import (
+    load_csv,
+    apply_bode_viewer_config_to_dialog,
+    get_bode_viewer_state_from_dialog,
+    format_info_panel_text,
+)
 from .panel_display import build_display_panel
 from .panel_search import build_search_panel
 from .panel_scale import build_scale_panel
@@ -57,7 +62,7 @@ class BodeCsvViewerDialog(QDialog):
         self._config: Optional[dict] = config  # config mutable : on y écrit bode_viewer à la fermeture
         self._dataset: BodeCsvDataset = dataset if dataset is not None else BodeCsvDataset([])
         if csv_path and dataset is None:
-            self._load_csv(csv_path)
+            self._dataset = load_csv(csv_path)
         self._options = BodeViewOptions.default()
         self._build_ui()
         # Appliquer la config bode_viewer si fournie (sauvegardée via Fichier → Sauvegarder config)
@@ -115,56 +120,16 @@ class BodeCsvViewerDialog(QDialog):
 
     def _apply_bode_viewer_config(self, d: dict[str, Any]) -> None:
         """Applique la section bode_viewer de la config aux widgets (chargement)."""
-        if not d:
-            return
-        self._background_combo.setCurrentIndex(0 if d.get("plot_background_dark", True) else 1)
-        color = d.get("curve_color", "#e0c040")
-        for i in range(self._curve_color_combo.count()):
-            if self._curve_color_combo.itemData(i) == color:
-                self._curve_color_combo.setCurrentIndex(i)
-                break
-        self._grid_cb.setChecked(d.get("grid_visible", True))
-        self._grid_minor_cb.setChecked(d.get("grid_minor_visible", False))
-        sw = int(d.get("smooth_window", 0))
-        self._smooth_cb.setChecked(sw > 0)
-        for i in range(self._smooth_combo.count()):
-            if self._smooth_combo.itemData(i) == sw:
-                self._smooth_combo.setCurrentIndex(i)
-                break
-        else:
-            if self._smooth_combo.count():
-                self._smooth_combo.setCurrentIndex(min(1, self._smooth_combo.count() - 1))
-        use_savgol = d.get("smooth_savgol", False)
-        for i in range(self._smooth_method_combo.count()):
-            if self._smooth_method_combo.itemData(i) is use_savgol:
-                self._smooth_method_combo.setCurrentIndex(i)
-                break
-        self._raw_cb.setChecked(d.get("show_raw_curve", False))
-        self._peaks_cb.setChecked(d.get("peaks_visible", False))
-        y_lin = bool(d.get("y_linear", False))
-        self._y_linear.setChecked(y_lin)
-        self._y_db.setChecked(not y_lin)
-        self._apply_options()
+        apply_bode_viewer_config_to_dialog(self, d)
 
     def _get_bode_viewer_state(self) -> dict[str, Any]:
         """Retourne l'état actuel des options (pour sauvegarde dans config)."""
-        use_savgol = self._smooth_method_combo.currentData() is True
-        return {
-            "plot_background_dark": self._background_combo.currentData() is True,
-            "curve_color": self._curve_color_combo.currentData() or "#e0c040",
-            "grid_visible": self._grid_cb.isChecked(),
-            "grid_minor_visible": self._grid_minor_cb.isChecked(),
-            "smooth_window": self._smooth_combo.currentData() if self._smooth_cb.isChecked() else 0,
-            "show_raw_curve": self._raw_cb.isChecked(),
-            "smooth_savgol": use_savgol,
-            "y_linear": self._y_linear.isChecked(),
-            "peaks_visible": self._peaks_cb.isChecked(),
-        }
+        return get_bode_viewer_state_from_dialog(self)
 
     def _save_bode_viewer_to_config(self) -> None:
         """Écrit les options actuelles dans config[\"bode_viewer\"] (persistées par Fichier → Sauvegarder config)."""
         if self._config is not None:
-            self._config["bode_viewer"] = self._get_bode_viewer_state()
+            self._config["bode_viewer"] = get_bode_viewer_state_from_dialog(self)
 
     def accept(self) -> None:
         self._save_bode_viewer_to_config()
@@ -173,10 +138,6 @@ class BodeCsvViewerDialog(QDialog):
     def reject(self) -> None:
         self._save_bode_viewer_to_config()
         super().reject()
-
-    def _load_csv(self, path: str) -> None:
-        loader = BodeCsvFileLoader()
-        self._dataset = loader.load(path)
 
     def _on_y_changed(self) -> None:
         self._options.y_linear = self._y_linear.isChecked()
@@ -219,22 +180,7 @@ class BodeCsvViewerDialog(QDialog):
 
     def _update_info_panel(self) -> None:
         """Affiche fc (-3 dB), gain max et nombre de points pour l'étude de la courbe."""
-        if not self._dataset or self._dataset.is_empty():
-            self._info_label.setText("")
-            return
-        n = self._dataset.count
-        gains_db = self._dataset.gains_db()
-        g_max = max(gains_db) if gains_db else 0.0
-        finder = Cutoff3DbFinder()
-        cutoffs = finder.find_all(self._dataset)
-        if cutoffs:
-            fc_str = "  |  ".join(
-                f"fc{' ' + str(k + 1) if len(cutoffs) > 1 else ''} = {format_freq_hz(r.fc_hz)}"
-                for k, r in enumerate(cutoffs)
-            )
-        else:
-            fc_str = "fc — (pas de coupure -3 dB)"
-        self._info_label.setText(f"  {fc_str}  |  G_max = {g_max:.2f} dB  |  N = {n} points")
+        self._info_label.setText(format_info_panel_text(self._dataset))
 
     def _on_adjust_view(self) -> None:
         self._plot.auto_range()

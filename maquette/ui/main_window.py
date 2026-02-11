@@ -13,18 +13,12 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QTabWidget,
-    QFrame,
     QMessageBox,
     QFileDialog,
     QApplication,
 )
-from PyQt6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut
 
-from ui.widgets import ConnectionStatusBar
-from ui.views import MeterView, GeneratorView, LoggingView, FilterTestView, FilterCalculatorView, PowerSupplyView, SerialTerminalView, OscilloscopeView
 from ui.dialogs import (
     DeviceDetectionDialog,
     DeviceDetectionDialog4,
@@ -36,6 +30,8 @@ from ui.dialogs import (
 from ui.bode_csv_viewer import open_viewer as open_bode_csv_viewer
 from ui.theme_loader import get_theme_stylesheet
 from ui.connection_bridge import MainWindowConnectionBridge
+from ui.main_window_menus import build_file_menu, build_tools_menu, build_config_menu, build_help_menu
+from ui.main_window_central import build_central_widget
 
 # Import core et config (optionnel si non disponibles)
 try:
@@ -111,89 +107,13 @@ class MainWindow(QMainWindow):
         self._update_connection_status()
 
     def _build_menu(self):
-        menubar = self.menuBar()
-        file_menu = menubar.addMenu("Fichier")
-        file_menu.addAction("Ouvrir config...", self._on_open_config)
-        file_menu.addAction("Ouvrir CSV Banc filtre...", self._on_open_bode_csv)
-        file_menu.addAction("Sauvegarder config", self._on_save_config)
-        file_menu.addAction("Enregistrer config sous...", self._on_save_config_as)
-        file_menu.addSeparator()
-        file_menu.addAction("Voir config JSON (lecture seule)", self._on_view_config)
-        file_menu.addAction("Lire le dernier log", self._on_view_latest_log)
-        file_menu.addSeparator()
-        file_menu.addAction("Quitter", self.close)
-        tools_menu = menubar.addMenu("Outils")
-        tools_menu.addAction("Détecter les équipements...", self._on_detect_devices)
-
-        config_menu = menubar.addMenu("Configuration")
-        # Sous-menu Thème (clair / foncé)
-        theme_menu = config_menu.addMenu("Thème")
-        self._theme_group = QActionGroup(self)
-        self._theme_group.setExclusive(True)
-        self._theme_actions = {}
-        for label, theme_id in (("Clair", "light"), ("Foncé", "dark")):
-            action = QAction(label, self, checkable=True)
-            action.triggered.connect(lambda checked, t=theme_id: self._on_theme(t))
-            self._theme_group.addAction(action)
-            theme_menu.addAction(action)
-            self._theme_actions[theme_id] = action
-        self._update_theme_menu()
-        config_menu.addSeparator()
-        log_level_menu = config_menu.addMenu("Niveau de log")
-        self._log_level_group = QActionGroup(self)
-        self._log_level_group.setExclusive(True)
-        for level in ("DEBUG", "INFO", "WARNING", "ERROR"):
-            action = QAction(level, self, checkable=True)
-            action.triggered.connect(lambda checked, l=level: self._on_log_level(l))
-            self._log_level_group.addAction(action)
-            log_level_menu.addAction(action)
-        self._log_level_actions = {a.text(): a for a in self._log_level_group.actions()}
-        self._update_log_level_menu()
-
-        help_menu = menubar.addMenu("Aide")
-        help_menu.addAction("Manuel", QKeySequence("F1"), self._on_help)
-        help_menu.addSeparator()
-        help_menu.addAction("A propos...", self._on_about)
-        sub_owon = help_menu.addMenu("Multimètre OWON")
-        sub_owon.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_OWON.md"))
-        sub_fy6900 = help_menu.addMenu("Générateur FY6900")
-        sub_fy6900.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_FY6900.md"))
-        sub_rs305p = help_menu.addMenu("Alimentation RS305P")
-        sub_rs305p.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_RS305P.md"))
-        sub_dos1102 = help_menu.addMenu("Oscilloscope DOS1102")
-        sub_dos1102.addAction("Commandes (documentation)", lambda: self._on_help_doc("COMMANDES_HANMATEK_DOS1102.md"))
+        build_file_menu(self)
+        build_tools_menu(self)
+        build_config_menu(self)
+        build_help_menu(self)
 
     def _build_central(self):
-        central = QWidget()
-        layout = QVBoxLayout(central)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        self._connection_bar = ConnectionStatusBar(self)
-        layout.addWidget(self._connection_bar)
-
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        separator.setStyleSheet("background-color: #555; max-height: 1px; margin: 2px 8px;")
-        separator.setFixedHeight(1)
-        layout.addWidget(separator)
-
-        self._tabs = QTabWidget()
-        self._tabs.addTab(MeterView(), "Multimètre")
-        self._tabs.addTab(GeneratorView(), "Générateur")
-        self._oscilloscope_view = OscilloscopeView()
-        self._tabs.addTab(self._oscilloscope_view, "Oscilloscope")
-        self._filter_test_view = FilterTestView()
-        self._tabs.addTab(self._filter_test_view, "Banc filtre")
-        self._tabs.addTab(FilterCalculatorView(), "Calcul filtre")
-        self._tabs.addTab(LoggingView(), "Enregistrement")
-        self._power_supply_view = PowerSupplyView()
-        self._tabs.addTab(self._power_supply_view, "Alimentation")
-        self._serial_terminal_view = SerialTerminalView()
-        self._tabs.addTab(self._serial_terminal_view, "Terminal série")
-        layout.addWidget(self._tabs)
-
+        central = build_central_widget(self)
         self.setCentralWidget(central)
 
     def _build_statusbar(self):

@@ -22,6 +22,7 @@ from .plot_range import compute_data_range, apply_view_range, read_view_range
 from .plot_style import apply_axis_fonts, apply_background_style, BG_DARK, BG_LIGHT
 from .viewbox_phase import PhaseOverlay
 from .zoom_mode import ZoomModeController
+from .plot_refresh import refresh_bode_plot
 
 logger = get_logger(__name__)
 
@@ -194,40 +195,7 @@ class BodeCsvPlotWidget(QWidget):
 
     def _refresh(self) -> None:
         logger.debug("Bode plot _refresh: entrée | dataset=%s show_gain=%s show_phase=%s", self._dataset is not None and not self._dataset.is_empty(), self._show_gain, self._show_phase)
-        if not self._dataset or self._dataset.is_empty():
-            logger.debug("Bode plot _refresh: dataset vide → courbes vidées")
-            self._curves.clear()
-            self._phase_overlay.clear_phase_data()
-            self._cutoff_viz.set_level(None)
-            self._cutoff_viz.set_cutoff_frequencies([])
-            self._peaks_overlay.update(None, self._y_linear)
-            return
-        self._curves.set_curve_visible(self._show_gain)
-        self._curves.set_data(
-            self._dataset,
-            y_linear=self._y_linear,
-            smooth_window=self._smooth_window,
-            show_raw=self._show_raw,
-            smooth_savgol_flag=self._smooth_savgol,
-        )
-        has_phase = self._dataset.has_phase()
-        if has_phase:
-            freqs = self._dataset.freqs_hz()
-            phases = self._dataset.phases_deg()
-            ys_phase = [(p if p is not None else 0.0) for p in phases]
-            logger.debug(
-                "Bode plot _refresh PHASE: freqs [%.6g, %.6g] (%d pts) | phase ° [%.6g, %.6g]",
-                min(freqs), max(freqs), len(freqs), min(ys_phase), max(ys_phase),
-            )
-            self._phase_overlay.set_visible(self._show_phase)
-            self._phase_overlay.set_phase_data(freqs, ys_phase)
-        else:
-            self._phase_overlay.clear_phase_data()
-        self._cutoff_viz.set_level(None)
-        self._cutoff_viz.set_cutoff_frequencies([])
-        self._peaks_overlay.update(self._dataset, self._y_linear)
-        self._cutoff_viz.update_label_position()
-        logger.debug("Bode plot _refresh: sortie")
+        refresh_bode_plot(self)
 
     def get_data_range(self) -> Optional[Tuple[float, float, float, float]]:
         if not self._dataset or self._dataset.is_empty():

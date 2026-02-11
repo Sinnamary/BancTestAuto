@@ -9,6 +9,12 @@ import threading
 from typing import List, Optional, Tuple
 
 from .app_logger import get_logger
+from .dos1102_usb_backend import (
+    get_usb_backend,
+    list_usb_devices,
+    is_usb_timeout_error,
+    is_usb_device_error,
+)
 
 logger = get_logger(__name__)
 
@@ -18,81 +24,6 @@ logger = get_logger(__name__)
 USB_READ_TIMEOUT = 5000
 USB_WRITE_TIMEOUT = 2000
 READ_CHUNK_SIZE = 256
-
-
-def _get_usb_backend():
-    """
-    Retourne un backend libusb utilisable par PyUSB (sous Windows le "default"
-    ne charge souvent pas libusb, donc find() voit 0 périphérique).
-    Essaie libusb1 puis libusb0. Retourne None si aucun backend disponible.
-    """
-    try:
-        import usb.backend.libusb1
-        backend = usb.backend.libusb1.get_backend()
-        if backend is not None:
-            logger.debug("Backend USB: libusb1 (libusb-1.0)")
-            return backend
-    except Exception as e:
-        logger.debug("Backend libusb1 non disponible: %s", e)
-    try:
-        import usb.backend.libusb0
-        backend = usb.backend.libusb0.get_backend()
-        if backend is not None:
-            logger.debug("Backend USB: libusb0")
-            return backend
-    except Exception as e:
-        logger.debug("Backend libusb0 non disponible: %s", e)
-    return None
-
-
-def list_usb_devices() -> List[Tuple[int, int, str]]:
-    """
-    Liste les périphériques USB accessibles (PyUSB / libusb).
-    Retourne une liste de (idVendor, idProduct, description).
-    description peut être "VID:PID" ou "VID:PID — Product" si disponible.
-    """
-    logger.debug("list_usb_devices: démarrage")
-    try:
-        import usb.core
-    except ImportError as e:
-        logger.warning("PyUSB non installé : pip install pyusb — %s", e)
-        return []
-
-    backend = _get_usb_backend()
-    if backend is None:
-        logger.warning(
-            "Aucun backend libusb disponible. Sous Windows : installez libusb-1.0 "
-            "(ex. libusb-1.0.dll dans le PATH ou via Zadig / libusb-win32). "
-            "PyUSB ne peut pas voir les périphériques WinUSB sans ce backend."
-        )
-        return []
-    logger.debug("list_usb_devices: utilisation backend %s", type(backend).__name__)
-
-    result = []
-    try:
-        devs = usb.core.find(find_all=True, backend=backend)
-        dev_list = list(devs)
-        logger.debug("list_usb_devices: find(find_all=True) a retourné %d périphérique(s)", len(dev_list))
-        for dev in dev_list:
-            vid, pid = dev.idVendor, dev.idProduct
-            desc = f"{vid:04x}:{pid:04x}"
-            try:
-                if dev.iProduct:
-                    try:
-                        s = usb.util.get_string(dev, dev.iProduct)
-                        if s:
-                            desc = f"{desc} — {s}"
-                    except Exception as get_str_err:
-                        logger.debug("list_usb_devices: get_string pour %04x:%04x: %s", vid, pid, get_str_err)
-            except Exception:
-                pass
-            logger.debug("list_usb_devices: trouvé %04x:%04x — %s", vid, pid, desc)
-            result.append((vid, pid, desc))
-        logger.info("Rafraîchissement USB : %d périphérique(s) trouvé(s)", len(result))
-    except Exception as e:
-        logger.exception("list_usb_devices: erreur %s", e)
-        logger.debug("list_usb_devices: traceback ci-dessus")
-    return result
 
 
 class Dos1102UsbConnection:
@@ -128,7 +59,7 @@ class Dos1102UsbConnection:
         with self._lock:
             if self._dev is not None:
                 return
-            backend = _get_usb_backend()
+            backend = get_usb_backend()
             if backend is None:
                 raise OSError(
                     "Backend libusb introuvable. Installez libusb-1.0 (sous Windows : libusb-1.0.dll, ou via Zadig)."
@@ -237,30 +168,16 @@ class Dos1102UsbConnection:
                 try:
                     chunk = self._ep_in.read(chunk_size, timeout=timeout)
                 except Exception as e:
-                    # Même logique que readline() : sous libusb0, timeout → 'timeout error' ;
-                    # sous libusb1/Windows → "[Errno 10060] Operation timed out".
-                    # On traite comme "pas de données reçues" pour garder le thread de lecture actif.
-                    msg = str(e)
-                    if "timeout error" in msg or "Operation timed out" in msg or "10060" in msg:
+                    if is_usb_timeout_error(e):
                         logger.debug(
                             "USB read: timeout (%d ms) sans données (demande=%d octets, chunk=%d)",
-                            timeout,
-                            size,
-                            chunk_size,
+                            timeout, size, chunk_size,
                         )
                         break
-                    if (
-                        "reaping request failed" in msg
-                        or "périphérique attaché au système ne fonctionne pas correctement" in msg
-                        or "device not functioning" in msg
-                    ):
-                        # Erreur périphérique / pipe cassé : on log en erreur mais on
-                        # arrête proprement la lecture pour que l'application puisse
-                        # continuer et réinitialiser la connexion si besoin.
+                    if is_usb_device_error(e):
                         logger.error(
                             "USB read: erreur périphérique (%s), arrêt de la lecture (demande=%d octets)",
-                            msg,
-                            size,
+                            str(e), size,
                         )
                         break
                     logger.exception("USB read(%d) erreur (non-timeout): %s", size, e)
@@ -296,32 +213,16 @@ class Dos1102UsbConnection:
                     try:
                         chunk = self._ep_in.read(READ_CHUNK_SIZE, timeout=self._read_timeout)
                     except Exception as e:
-                        # Sous libusb0, un timeout remonte souvent comme USBError avec
-                        # le message 'timeout error' mais errno=None. Sous libusb1
-                        # (WinUSB), on obtient typiquement "[Errno 10060] Operation timed out".
-                        # Dans les deux cas, on traite cela comme "pas de données reçues"
-                        # plutôt que comme une erreur fatale pour laisser la couche
-                        # protocole décider quoi faire.
-                        msg = str(e)
-                        if "timeout error" in msg or "Operation timed out" in msg:
+                        if is_usb_timeout_error(e):
                             logger.warning(
                                 "USB readline: timeout (%d ms) sans données (endpoint 0x%02x)",
-                                self._read_timeout,
-                                self._ep_in.bEndpointAddress,
+                                self._read_timeout, self._ep_in.bEndpointAddress,
                             )
                             break
-                        if (
-                            "reaping request failed" in msg
-                            or "périphérique attaché au système ne fonctionne pas correctement" in msg
-                            or "device not functioning" in msg
-                        ):
-                            # Erreur périphérique / pipe cassé : on log en erreur mais on
-                            # arrête proprement la lecture pour que l'application puisse
-                            # continuer et éventuellement rouvrir la connexion.
+                        if is_usb_device_error(e):
                             logger.error(
                                 "USB readline: erreur périphérique (%s), arrêt de la lecture (endpoint 0x%02x)",
-                                msg,
-                                self._ep_in.bEndpointAddress,
+                                str(e), self._ep_in.bEndpointAddress,
                             )
                             break
                         logger.exception("USB readline erreur (non-timeout): %s", e)

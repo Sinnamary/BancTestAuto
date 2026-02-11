@@ -105,6 +105,74 @@ def _verify_generator_off(conn: Any, fy6900: Any) -> bool:
         return False
 
 
+def _verify_power_supply(conn: Any) -> bool:
+    """Vérifie que l'alimentation répond. Pour l'instant pas de protocole dédié dans le bridge."""
+    if not conn:
+        return True
+    return bool(getattr(conn, "is_open", lambda: False)())
+
+
+def _verify_oscilloscope(conn: Any) -> bool:
+    """Vérifie que l'oscilloscope USB répond. Pour l'instant on considère ouvert = OK."""
+    if not conn:
+        return True
+    return bool(getattr(conn, "is_open", lambda: False)())
+
+
+def _create_multimeter_connection(config: dict) -> tuple:
+    """Crée la connexion multimètre + SCPI + Measurement. Retourne (conn, scpi, measurement)."""
+    if not SerialConnection or not get_serial_multimeter_config:
+        return (None, None, None)
+    sm = get_serial_multimeter_config(config) or {}
+    if not sm:
+        return (None, None, None)
+    conn = SerialConnection(**sm)
+    scpi = ScpiProtocol(conn) if ScpiProtocol else None
+    measurement = Measurement(scpi) if Measurement and scpi else None
+    return (conn, scpi, measurement)
+
+
+def _create_generator_connection(config: dict) -> tuple:
+    """Crée la connexion générateur + Fy6900Protocol. Retourne (conn, fy6900)."""
+    if not SerialConnection or not get_serial_generator_config:
+        return (None, None)
+    sg = get_serial_generator_config(config) or {}
+    if not sg:
+        return (None, None)
+    conn = SerialConnection(**sg)
+    fy6900 = Fy6900Protocol(conn) if Fy6900Protocol else None
+    return (conn, fy6900)
+
+
+def _create_power_supply_connection(config: dict) -> Any:
+    """Crée la connexion alimentation (RS305P) si configurée. Sinon None."""
+    if not SerialConnection or not get_serial_power_supply_config:
+        return None
+    sp = get_serial_power_supply_config(config) or {}
+    if not sp:
+        return None
+    conn = SerialConnection(**sp)
+    logger.debug("Bridge: alimentation configurée sur %s @ %s bauds", sp.get("port", "?"), sp.get("baudrate"))
+    return conn
+
+
+def _create_oscilloscope_connection(config: dict) -> Any:
+    """Crée la connexion oscilloscope USB (DOS1102) si configurée. Sinon None."""
+    if not Dos1102UsbConnection or not get_usb_oscilloscope_config:
+        return None
+    usb_cfg = get_usb_oscilloscope_config(config) or {}
+    vid = usb_cfg.get("vendor_id")
+    pid = usb_cfg.get("product_id")
+    if not isinstance(vid, int) or not isinstance(pid, int) or vid == 0 or pid == 0:
+        return None
+    return Dos1102UsbConnection(
+        vid,
+        pid,
+        read_timeout_ms=usb_cfg.get("read_timeout_ms", 5000),
+        write_timeout_ms=usb_cfg.get("write_timeout_ms", 2000),
+    )
+
+
 class ConnectionBridgeState:
     """État exposé par le bridge pour la barre de statut (4 équipements)."""
 
@@ -175,49 +243,18 @@ class MainWindowConnectionBridge:
         self.close()
         if not all([SerialConnection, ScpiProtocol, Measurement, Fy6900Protocol, FilterTest, FilterTestConfig]):
             return
-        sm = (get_serial_multimeter_config(config) or {}) if get_serial_multimeter_config else {}
-        sg = (get_serial_generator_config(config) or {}) if get_serial_generator_config else {}
-        ft_cfg = (get_filter_test_config(config) or {}) if get_filter_test_config else {}
 
-        # Le fichier serial_*.log est réservé au terminal série (voir SerialTerminalView).
+        self._multimeter_conn, self._scpi, self._measurement = _create_multimeter_connection(config)
+        self._generator_conn, self._fy6900 = _create_generator_connection(config)
+        self._power_supply_conn = _create_power_supply_connection(config)
+        self._oscilloscope_conn = _create_oscilloscope_connection(config)
 
-        self._multimeter_conn = SerialConnection(**sm)
-        self._generator_conn = SerialConnection(**sg)
-
-        # Alimentation (RS305P) — optionnel
-        sp = (get_serial_power_supply_config(config) or {}) if get_serial_power_supply_config else {}
-        if sp and SerialConnection:
-            self._power_supply_conn = SerialConnection(**sp)
-            logger.debug("Bridge: alimentation configurée sur %s @ %s bauds", sp.get("port", "?"), sp.get("baudrate"))
-        else:
-            self._power_supply_conn = None
-            if not sp:
+        if not get_serial_power_supply_config or not (get_serial_power_supply_config(config) or {}):
+            if self._power_supply_conn is None:
                 logger.debug("Bridge: pas de config serial_power_supply — alimentation non connectée")
 
-        # Oscilloscope USB (DOS1102) — optionnel
-        usb_cfg = (get_usb_oscilloscope_config(config) or {}) if get_usb_oscilloscope_config else {}
-        vid = usb_cfg.get("vendor_id")
-        pid = usb_cfg.get("product_id")
-        if (
-            Dos1102UsbConnection
-            and isinstance(vid, int)
-            and isinstance(pid, int)
-            and vid != 0
-            and pid != 0
-        ):
-            self._oscilloscope_conn = Dos1102UsbConnection(
-                vid,
-                pid,
-                read_timeout_ms=usb_cfg.get("read_timeout_ms", 5000),
-                write_timeout_ms=usb_cfg.get("write_timeout_ms", 2000),
-            )
-        else:
-            self._oscilloscope_conn = None
-
-        self._scpi = ScpiProtocol(self._multimeter_conn)
-        self._measurement = Measurement(self._scpi)
-        self._fy6900 = Fy6900Protocol(self._generator_conn)
         # Source de mesure banc filtre : switchable multimètre / oscilloscope (Phase 3)
+        ft_cfg = (get_filter_test_config(config) or {}) if get_filter_test_config else {}
         multimeter_adapter = MultimeterBodeAdapter(self._measurement) if MultimeterBodeAdapter else None
         measure_source = None
         if multimeter_adapter is not None and SwitchableBodeMeasureSource is not None:
@@ -258,11 +295,15 @@ class MainWindowConnectionBridge:
         _safe_open(self._oscilloscope_conn, "oscilloscope USB")
 
     def _verify_connections(self) -> None:
-        """Vérifie que les appareils répondent (IDN? / FY6900) via helpers réutilisables."""
+        """Vérifie que les appareils répondent via helpers réutilisables ; ferme si échec."""
         if not _verify_serial_idn(self._multimeter_conn, self._scpi) and self._multimeter_conn and self._multimeter_conn.is_open():
             self._multimeter_conn.close()
         if not _verify_generator_off(self._generator_conn, self._fy6900) and self._generator_conn and self._generator_conn.is_open():
             self._generator_conn.close()
+        if not _verify_power_supply(self._power_supply_conn) and self._power_supply_conn and self._power_supply_conn.is_open():
+            self._power_supply_conn.close()
+        if not _verify_oscilloscope(self._oscilloscope_conn) and self._oscilloscope_conn and getattr(self._oscilloscope_conn, "is_open", lambda: False)():
+            self._oscilloscope_conn.close()
 
     def get_state(self) -> ConnectionBridgeState:
         """Retourne l'état des 4 connexions pour la barre de statut."""

@@ -15,7 +15,7 @@
 </head>
 <body>
   <h1>Métriques de code (radon)</h1>
-  <p class="summary">Racine : C:\pa\CursorAI\BancTestAuto — 233 fichiers — SLOC : 19661 — LLOC : 18260</p>
+  <p class="summary">Racine : C:\pa\CursorAI\BancTestAuto — 256 fichiers — SLOC : 20033 — LLOC : 18637</p>
   <table>
     <thead>
       <tr><th>Fichier</th><th>SLOC</th><th>LLOC</th><th>MI</th><th>CC max</th><th>CC total</th></tr>
@@ -46,7 +46,8 @@
     <tr><td>core\dos1102_commands.py</td><td>88</td><td>47</td><td>100.0</td><td>1</td><td>10</td></tr>
     <tr><td>core\dos1102_measurements.py</td><td>73</td><td>83</td><td>61.2</td><td>8</td><td>38</td></tr>
     <tr><td>core\dos1102_protocol.py</td><td>152</td><td>171</td><td>51.5</td><td>10</td><td>57</td></tr>
-    <tr><td>core\dos1102_usb_connection.py</td><td>285</td><td>233</td><td>38.6</td><td>18</td><td>80</td></tr>
+    <tr><td>core\dos1102_usb_backend.py</td><td>73</td><td>71</td><td>65.0</td><td>9</td><td>20</td></tr>
+    <tr><td>core\dos1102_usb_connection.py</td><td>217</td><td>174</td><td>40.6</td><td>15</td><td>58</td></tr>
     <tr><td>core\dos1102_waveform.py</td><td>81</td><td>86</td><td>63.1</td><td>8</td><td>28</td></tr>
     <tr><td>core\equipment.py</td><td>30</td><td>22</td><td>100.0</td><td>1</td><td>4</td></tr>
     <tr><td>core\equipment_state.py</td><td>40</td><td>55</td><td>69.3</td><td>9</td><td>29</td></tr>
@@ -84,27 +85,32 @@
     <tr><td>maquette\main_maquette.py</td><td>30</td><td>31</td><td>80.7</td><td>6</td><td>6</td></tr>
     <tr><td>maquette\ui\__init__.py</td><td>0</td><td>0</td><td>100.0</td><td>0</td><td>0</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\__init__.py</td><td>20</td><td>18</td><td>92.1</td><td>4</td><td>4</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\csv_loader.py</td><td>87</td><td>94</td><td>40.3</td><td>22</td><td>67</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\csv_loader.py</td><td>90</td><td>94</td><td>45.3</td><td>18</td><td>50</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\cutoff.py</td><td>59</td><td>65</td><td>61.6</td><td>8</td><td>25</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\dialog.py</td><td>285</td><td>250</td><td>26.6</td><td>11</td><td>77</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\dialog.py</td><td>252</td><td>211</td><td>33.2</td><td>11</td><td>60</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\dialog_actions.py</td><td>68</td><td>62</td><td>56.2</td><td>11</td><td>22</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\formatters.py</td><td>6</td><td>11</td><td>93.1</td><td>4</td><td>4</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\model.py</td><td>32</td><td>43</td><td>75.4</td><td>2</td><td>17</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\panel_buttons.py</td><td>19</td><td>21</td><td>100.0</td><td>1</td><td>1</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\panel_display.py</td><td>70</td><td>66</td><td>51.8</td><td>8</td><td>8</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\panel_scale.py</td><td>54</td><td>46</td><td>56.7</td><td>1</td><td>1</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\panel_scale.py</td><td>60</td><td>49</td><td>56.1</td><td>1</td><td>1</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\panel_search.py</td><td>31</td><td>27</td><td>63.0</td><td>1</td><td>1</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\panel_y_axis.py</td><td>14</td><td>16</td><td>100.0</td><td>1</td><td>1</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\plot_curves.py</td><td>65</td><td>62</td><td>61.9</td><td>6</td><td>16</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\plot_canvas.py</td><td>20</td><td>22</td><td>95.9</td><td>2</td><td>2</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\plot_curves.py</td><td>80</td><td>74</td><td>56.0</td><td>7</td><td>19</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\plot_cutoff_viz.py</td><td>143</td><td>154</td><td>50.2</td><td>10</td><td>43</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\plot_grid.py</td><td>65</td><td>68</td><td>62.7</td><td>8</td><td>24</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\plot_hover.py</td><td>75</td><td>69</td><td>61.2</td><td>6</td><td>17</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\plot_peaks.py</td><td>60</td><td>49</td><td>67.3</td><td>7</td><td>17</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\plot_range.py</td><td>67</td><td>43</td><td>69.3</td><td>7</td><td>16</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\plot_range.py</td><td>68</td><td>44</td><td>69.0</td><td>7</td><td>16</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\plot_refresh.py</td><td>38</td><td>31</td><td>81.7</td><td>6</td><td>6</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\plot_style.py</td><td>70</td><td>65</td><td>64.5</td><td>5</td><td>19</td></tr>
-    <tr><td>maquette\ui\bode_csv_viewer\plot_widget.py</td><td>255</td><td>235</td><td>32.8</td><td>10</td><td>62</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\plot_widget.py</td><td>241</td><td>213</td><td>30.8</td><td>12</td><td>69</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\smoothing.py</td><td>41</td><td>48</td><td>69.1</td><td>4</td><td>17</td></tr>
     <tr><td>maquette\ui\bode_csv_viewer\view_state.py</td><td>29</td><td>29</td><td>100.0</td><td>2</td><td>3</td></tr>
-    <tr><td>maquette\ui\connection_bridge.py</td><td>298</td><td>256</td><td>26.7</td><td>26</td><td>119</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\viewbox_phase.py</td><td>99</td><td>96</td><td>54.8</td><td>7</td><td>26</td></tr>
+    <tr><td>maquette\ui\bode_csv_viewer\zoom_mode.py</td><td>35</td><td>30</td><td>100.0</td><td>5</td><td>11</td></tr>
+    <tr><td>maquette\ui\connection_bridge.py</td><td>311</td><td>288</td><td>21.6</td><td>17</td><td>139</td></tr>
     <tr><td>maquette\ui\dialogs\__init__.py</td><td>21</td><td>12</td><td>100.0</td><td>0</td><td>0</td></tr>
     <tr><td>maquette\ui\dialogs\about_dialog.py</td><td>171</td><td>135</td><td>53.3</td><td>9</td><td>20</td></tr>
     <tr><td>maquette\ui\dialogs\device_detection_dialog.py</td><td>129</td><td>107</td><td>59.1</td><td>4</td><td>16</td></tr>
@@ -115,7 +121,9 @@
     <tr><td>maquette\ui\dialogs\serial_form.py</td><td>56</td><td>44</td><td>79.0</td><td>4</td><td>10</td></tr>
     <tr><td>maquette\ui\dialogs\view_config_dialog.py</td><td>42</td><td>38</td><td>73.7</td><td>7</td><td>13</td></tr>
     <tr><td>maquette\ui\dialogs\view_log_dialog.py</td><td>70</td><td>65</td><td>61.9</td><td>4</td><td>14</td></tr>
-    <tr><td>maquette\ui\main_window.py</td><td>508</td><td>471</td><td>0.7</td><td>28</td><td>212</td></tr>
+    <tr><td>maquette\ui\main_window.py</td><td>439</td><td>399</td><td>3.0</td><td>28</td><td>212</td></tr>
+    <tr><td>maquette\ui\main_window_central.py</td><td>45</td><td>33</td><td>100.0</td><td>1</td><td>1</td></tr>
+    <tr><td>maquette\ui\main_window_menus.py</td><td>52</td><td>64</td><td>100.0</td><td>4</td><td>7</td></tr>
     <tr><td>maquette\ui\oscilloscope\__init__.py</td><td>14</td><td>8</td><td>100.0</td><td>0</td><td>0</td></tr>
     <tr><td>maquette\ui\oscilloscope\acquisition_trigger_panel.py</td><td>93</td><td>81</td><td>61.1</td><td>7</td><td>21</td></tr>
     <tr><td>maquette\ui\oscilloscope\channels_panel.py</td><td>137</td><td>124</td><td>58.6</td><td>9</td><td>19</td></tr>
@@ -152,11 +160,22 @@
     <tr><td>serve_htmlcov.py</td><td>37</td><td>38</td><td>79.8</td><td>3</td><td>3</td></tr>
     <tr><td>serve_metrics.py</td><td>37</td><td>38</td><td>78.8</td><td>3</td><td>3</td></tr>
     <tr><td>tests\__init__.py</td><td>0</td><td>0</td><td>100.0</td><td>0</td><td>0</td></tr>
+    <tr><td>tests\bode_csv_viewer\__init__.py</td><td>0</td><td>0</td><td>100.0</td><td>0</td><td>0</td></tr>
+    <tr><td>tests\bode_csv_viewer\conftest.py</td><td>15</td><td>18</td><td>77.2</td><td>2</td><td>3</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_csv_loader.py</td><td>86</td><td>73</td><td>34.8</td><td>5</td><td>44</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_cutoff.py</td><td>53</td><td>51</td><td>48.4</td><td>4</td><td>31</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_dialog.py</td><td>240</td><td>227</td><td>18.2</td><td>7</td><td>89</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_formatters.py</td><td>11</td><td>12</td><td>62.3</td><td>4</td><td>13</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_model.py</td><td>38</td><td>38</td><td>44.6</td><td>7</td><td>34</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_plot_range.py</td><td>59</td><td>56</td><td>37.9</td><td>6</td><td>40</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_plot_style.py</td><td>89</td><td>84</td><td>45.0</td><td>5</td><td>35</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_plot_widget.py</td><td>215</td><td>202</td><td>26.2</td><td>5</td><td>68</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_smoothing.py</td><td>40</td><td>37</td><td>47.5</td><td>3</td><td>26</td></tr>
+    <tr><td>tests\bode_csv_viewer\test_view_state.py</td><td>14</td><td>15</td><td>58.4</td><td>7</td><td>18</td></tr>
     <tr><td>tests\conftest.py</td><td>37</td><td>41</td><td>76.4</td><td>1</td><td>3</td></tr>
     <tr><td>tests\test_app_logger.py</td><td>92</td><td>102</td><td>48.1</td><td>4</td><td>51</td></tr>
     <tr><td>tests\test_app_paths.py</td><td>30</td><td>31</td><td>72.3</td><td>3</td><td>20</td></tr>
     <tr><td>tests\test_bode_calc.py</td><td>21</td><td>23</td><td>76.4</td><td>3</td><td>23</td></tr>
-    <tr><td>tests\test_bode_csv_viewer.py</td><td>845</td><td>787</td><td>0.0</td><td>7</td><td>401</td></tr>
     <tr><td>tests\test_bode_utils.py</td><td>65</td><td>69</td><td>52.6</td><td>4</td><td>47</td></tr>
     <tr><td>tests\test_config_settings.py</td><td>128</td><td>130</td><td>39.5</td><td>5</td><td>76</td></tr>
     <tr><td>tests\test_connection_controller_impl.py</td><td>82</td><td>57</td><td>60.2</td><td>3</td><td>13</td></tr>
@@ -190,7 +209,8 @@
     <tr><td>ui\bode_csv_viewer\__init__.py</td><td>20</td><td>18</td><td>92.1</td><td>4</td><td>4</td></tr>
     <tr><td>ui\bode_csv_viewer\csv_loader.py</td><td>90</td><td>94</td><td>45.3</td><td>18</td><td>50</td></tr>
     <tr><td>ui\bode_csv_viewer\cutoff.py</td><td>59</td><td>65</td><td>61.6</td><td>8</td><td>25</td></tr>
-    <tr><td>ui\bode_csv_viewer\dialog.py</td><td>305</td><td>258</td><td>26.2</td><td>11</td><td>79</td></tr>
+    <tr><td>ui\bode_csv_viewer\dialog.py</td><td>252</td><td>211</td><td>33.2</td><td>11</td><td>60</td></tr>
+    <tr><td>ui\bode_csv_viewer\dialog_actions.py</td><td>68</td><td>62</td><td>56.2</td><td>11</td><td>22</td></tr>
     <tr><td>ui\bode_csv_viewer\formatters.py</td><td>6</td><td>11</td><td>93.1</td><td>4</td><td>4</td></tr>
     <tr><td>ui\bode_csv_viewer\model.py</td><td>32</td><td>43</td><td>75.4</td><td>2</td><td>17</td></tr>
     <tr><td>ui\bode_csv_viewer\panel_buttons.py</td><td>19</td><td>21</td><td>100.0</td><td>1</td><td>1</td></tr>
@@ -205,13 +225,14 @@
     <tr><td>ui\bode_csv_viewer\plot_hover.py</td><td>75</td><td>69</td><td>61.2</td><td>6</td><td>17</td></tr>
     <tr><td>ui\bode_csv_viewer\plot_peaks.py</td><td>60</td><td>49</td><td>67.3</td><td>7</td><td>17</td></tr>
     <tr><td>ui\bode_csv_viewer\plot_range.py</td><td>68</td><td>44</td><td>69.0</td><td>7</td><td>16</td></tr>
+    <tr><td>ui\bode_csv_viewer\plot_refresh.py</td><td>38</td><td>31</td><td>81.7</td><td>6</td><td>6</td></tr>
     <tr><td>ui\bode_csv_viewer\plot_style.py</td><td>70</td><td>65</td><td>64.5</td><td>5</td><td>19</td></tr>
-    <tr><td>ui\bode_csv_viewer\plot_widget.py</td><td>273</td><td>236</td><td>28.3</td><td>12</td><td>75</td></tr>
+    <tr><td>ui\bode_csv_viewer\plot_widget.py</td><td>241</td><td>213</td><td>30.8</td><td>12</td><td>69</td></tr>
     <tr><td>ui\bode_csv_viewer\smoothing.py</td><td>41</td><td>48</td><td>69.1</td><td>4</td><td>17</td></tr>
     <tr><td>ui\bode_csv_viewer\view_state.py</td><td>29</td><td>29</td><td>100.0</td><td>2</td><td>3</td></tr>
     <tr><td>ui\bode_csv_viewer\viewbox_phase.py</td><td>99</td><td>96</td><td>54.8</td><td>7</td><td>26</td></tr>
     <tr><td>ui\bode_csv_viewer\zoom_mode.py</td><td>35</td><td>30</td><td>100.0</td><td>5</td><td>11</td></tr>
-    <tr><td>ui\connection_bridge.py</td><td>283</td><td>246</td><td>28.3</td><td>29</td><td>114</td></tr>
+    <tr><td>ui\connection_bridge.py</td><td>311</td><td>288</td><td>21.6</td><td>17</td><td>139</td></tr>
     <tr><td>ui\dialogs\__init__.py</td><td>21</td><td>12</td><td>100.0</td><td>0</td><td>0</td></tr>
     <tr><td>ui\dialogs\about_dialog.py</td><td>171</td><td>135</td><td>53.3</td><td>9</td><td>20</td></tr>
     <tr><td>ui\dialogs\device_detection_dialog.py</td><td>129</td><td>107</td><td>59.1</td><td>4</td><td>16</td></tr>
@@ -222,7 +243,9 @@
     <tr><td>ui\dialogs\serial_form.py</td><td>56</td><td>44</td><td>79.0</td><td>4</td><td>10</td></tr>
     <tr><td>ui\dialogs\view_config_dialog.py</td><td>42</td><td>38</td><td>73.7</td><td>7</td><td>13</td></tr>
     <tr><td>ui\dialogs\view_log_dialog.py</td><td>70</td><td>65</td><td>61.9</td><td>4</td><td>14</td></tr>
-    <tr><td>ui\main_window.py</td><td>512</td><td>475</td><td>0.5</td><td>28</td><td>215</td></tr>
+    <tr><td>ui\main_window.py</td><td>439</td><td>399</td><td>3.0</td><td>28</td><td>212</td></tr>
+    <tr><td>ui\main_window_central.py</td><td>45</td><td>33</td><td>100.0</td><td>1</td><td>1</td></tr>
+    <tr><td>ui\main_window_menus.py</td><td>52</td><td>64</td><td>100.0</td><td>4</td><td>7</td></tr>
     <tr><td>ui\oscilloscope\__init__.py</td><td>14</td><td>8</td><td>100.0</td><td>0</td><td>0</td></tr>
     <tr><td>ui\oscilloscope\acquisition_trigger_panel.py</td><td>93</td><td>81</td><td>61.1</td><td>7</td><td>21</td></tr>
     <tr><td>ui\oscilloscope\channels_panel.py</td><td>137</td><td>124</td><td>58.6</td><td>9</td><td>19</td></tr>
