@@ -1,4 +1,5 @@
 """Panneau Échelles / Zoom — F min/max, Gain min/max, Appliquer, Zoom zone."""
+from core.app_logger import get_logger
 from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
@@ -53,6 +54,11 @@ def build_scale_panel(parent, on_apply_scale, on_zoom_zone_toggled) -> QGroupBox
         "Décoché : glisser = déplacer la vue. Molette = zoom toujours actif."
     )
     parent._zoom_zone_cb.toggled.connect(on_zoom_zone_toggled)
+    logger = get_logger(__name__)
+    logger.debug(
+        "Bode panel_scale: Zoom zone case créée, checked=%s, connect(toggled)=%s",
+        parent._zoom_zone_cb.isChecked(), on_zoom_zone_toggled,
+    )
     layout.addWidget(parent._zoom_zone_cb)
     layout.addStretch()
     return gb

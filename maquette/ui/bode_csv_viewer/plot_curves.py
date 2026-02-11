@@ -7,8 +7,11 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
+from core.app_logger import get_logger
 from .model import BodeCsvDataset
 from .smoothing import MovingAverageSmoother, smooth_savgol
+
+logger = get_logger(__name__)
 
 
 class BodeCurveDrawer:
@@ -48,6 +51,7 @@ class BodeCurveDrawer:
     ) -> None:
         freqs = dataset.freqs_hz()
         if not freqs:
+            logger.debug("BodeCurveDrawer.set_data: pas de fréquences, courbe gain vidée")
             self._curve.setData([], [])
             self._raw_curve.setData([], [])
             self._raw_curve.setVisible(False)
@@ -56,6 +60,11 @@ class BodeCurveDrawer:
             ys = dataset.gains_linear()
         else:
             ys = dataset.gains_db()
+        logger.debug(
+            "BodeCurveDrawer.set_data: courbe GAIN | freqs Hz: [%.6g, %.6g] (%d pts) | Y: [%.6g, %.6g] | smooth=%s",
+            min(freqs), max(freqs), len(freqs), min(ys), max(ys),
+            f"fenêtre={smooth_window}" if smooth_window > 0 else "non",
+        )
         if smooth_window > 0:
             if smooth_savgol_flag:
                 ys_smooth = smooth_savgol(ys, smooth_window)
@@ -73,6 +82,15 @@ class BodeCurveDrawer:
             self._curve.setData(freqs, ys)
             self._raw_curve.setData([], [])
             self._raw_curve.setVisible(False)
+        logger.debug("BodeCurveDrawer.set_data: setData(gain) appliqué")
+
+    def set_accept_mouse(self, accept: bool) -> None:
+        """Accepte ou non les événements souris (False = laisser zoom/pan au ViewBox)."""
+        from PyQt6.QtCore import Qt
+        btn = Qt.MouseButton.NoButton if not accept else (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton)
+        self._curve.setAcceptedMouseButtons(btn)
+        self._raw_curve.setAcceptedMouseButtons(btn)
+        logger.debug("BodeCurveDrawer.set_accept_mouse: accept=%s → acceptedMouseButtons=%s", accept, btn)
 
     def clear(self) -> None:
         self._curve.setData([], [])

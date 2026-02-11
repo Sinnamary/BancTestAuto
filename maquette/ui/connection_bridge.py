@@ -62,6 +62,49 @@ except ImportError:
 logger = get_logger(__name__)
 
 
+def _safe_open(connection: Any, label: str) -> None:
+    """Ouvre une connexion série ou USB ; log un warning en cas d'erreur. Réutilisable."""
+    if not connection:
+        return
+    try:
+        connection.open()
+        logger.debug("Bridge: %s ouvert", label)
+    except Exception as e:
+        logger.warning("Bridge: échec ouverture %s — %s", label, e)
+
+
+def _safe_close(connection: Any) -> None:
+    """Ferme une connexion sans propager d'exception. Réutilisable."""
+    if not connection:
+        return
+    try:
+        connection.close()
+    except Exception:
+        pass
+
+
+def _verify_serial_idn(conn: Any, scpi: Any, keywords: tuple = ("OWON", "XDM")) -> bool:
+    """Vérifie qu'un appareil série répond à *IDN? et que la réponse contient un mot-clé."""
+    if not conn or not conn.is_open() or not scpi:
+        return False
+    try:
+        r = scpi.idn()
+        return bool(r and any(kw in r.upper() for kw in keywords))
+    except Exception:
+        return False
+
+
+def _verify_generator_off(conn: Any, fy6900: Any) -> bool:
+    """Vérifie que le générateur répond (set_output(False))."""
+    if not conn or not conn.is_open() or not fy6900:
+        return False
+    try:
+        fy6900.set_output(False)
+        return True
+    except Exception:
+        return False
+
+
 class ConnectionBridgeState:
     """État exposé par le bridge pour la barre de statut (4 équipements)."""
 
@@ -174,8 +217,13 @@ class MainWindowConnectionBridge:
         self._scpi = ScpiProtocol(self._multimeter_conn)
         self._measurement = Measurement(self._scpi)
         self._fy6900 = Fy6900Protocol(self._generator_conn)
+        # Source de mesure banc filtre : switchable multimètre / oscilloscope (Phase 3)
         multimeter_adapter = MultimeterBodeAdapter(self._measurement) if MultimeterBodeAdapter else None
-        measure_source = SwitchableBodeMeasureSource(multimeter_adapter, self._make_oscilloscope_bode_source) if (multimeter_adapter and SwitchableBodeMeasureSource) else multimeter_adapter
+        measure_source = None
+        if multimeter_adapter is not None and SwitchableBodeMeasureSource is not None:
+            measure_source = SwitchableBodeMeasureSource(multimeter_adapter, self._make_oscilloscope_bode_source)
+        elif multimeter_adapter is not None:
+            measure_source = multimeter_adapter
         self._filter_test = None
         if FilterTest and measure_source is not None:
             self._filter_test = FilterTest(
@@ -191,6 +239,8 @@ class MainWindowConnectionBridge:
                     ue_rms=ft_cfg.get("ue_rms", 1.0),
                 ),
             )
+        elif FilterTest and not measure_source:
+            logger.warning("Bridge: MultimeterBodeAdapter non disponible, banc filtre désactivé")
 
         if DataLogger:
             self._data_logger = DataLogger()
@@ -201,54 +251,17 @@ class MainWindowConnectionBridge:
         self._verify_connections()
 
     def _open_ports(self) -> None:
-        """Ouvre les ports série et la connexion USB oscilloscope."""
-        try:
-            if self._multimeter_conn:
-                self._multimeter_conn.open()
-        except Exception:
-            pass
-        try:
-            if self._generator_conn:
-                self._generator_conn.open()
-        except Exception:
-            pass
-        try:
-            if self._power_supply_conn:
-                self._power_supply_conn.open()
-                logger.debug("Bridge: alimentation ouverte")
-        except Exception as e:
-            logger.warning("Bridge: échec ouverture alimentation — %s", e)
-        try:
-            if self._oscilloscope_conn:
-                self._oscilloscope_conn.open()
-                logger.debug("Bridge: oscilloscope USB ouvert")
-        except Exception as e:
-            logger.warning("Bridge: échec ouverture oscilloscope USB — %s", e)
+        """Ouvre les ports série et la connexion USB oscilloscope (délègue à _safe_open)."""
+        _safe_open(self._multimeter_conn, "multimètre")
+        _safe_open(self._generator_conn, "générateur")
+        _safe_open(self._power_supply_conn, "alimentation")
+        _safe_open(self._oscilloscope_conn, "oscilloscope USB")
 
     def _verify_connections(self) -> None:
-        """Vérifie que les appareils répondent (IDN? / FY6900)."""
-        if not self._multimeter_conn or not self._scpi:
-            return
-        multimeter_ok = False
-        if self._multimeter_conn.is_open():
-            try:
-                r = self._scpi.idn()
-                multimeter_ok = r and ("OWON" in r.upper() or "XDM" in r.upper())
-            except Exception:
-                pass
-        if not multimeter_ok and self._multimeter_conn.is_open():
+        """Vérifie que les appareils répondent (IDN? / FY6900) via helpers réutilisables."""
+        if not _verify_serial_idn(self._multimeter_conn, self._scpi) and self._multimeter_conn and self._multimeter_conn.is_open():
             self._multimeter_conn.close()
-
-        if not self._generator_conn or not self._fy6900:
-            return
-        generator_ok = False
-        if self._generator_conn.is_open():
-            try:
-                self._fy6900.set_output(False)
-                generator_ok = True
-            except Exception:
-                pass
-        if not generator_ok and self._generator_conn.is_open():
+        if not _verify_generator_off(self._generator_conn, self._fy6900) and self._generator_conn and self._generator_conn.is_open():
             self._generator_conn.close()
 
     def get_state(self) -> ConnectionBridgeState:
@@ -275,31 +288,15 @@ class MainWindowConnectionBridge:
         )
 
     def close(self) -> None:
-        """Ferme les 4 connexions (multimètre, générateur, alimentation, oscilloscope)."""
-        if self._multimeter_conn:
-            try:
-                self._multimeter_conn.close()
-            except Exception:
-                pass
-            self._multimeter_conn = None
-        if self._generator_conn:
-            try:
-                self._generator_conn.close()
-            except Exception:
-                pass
-            self._generator_conn = None
-        if self._power_supply_conn:
-            try:
-                self._power_supply_conn.close()
-            except Exception:
-                pass
-            self._power_supply_conn = None
-        if self._oscilloscope_conn:
-            try:
-                self._oscilloscope_conn.close()
-            except Exception:
-                pass
-            self._oscilloscope_conn = None
+        """Ferme les 4 connexions (multimètre, générateur, alimentation, oscilloscope) via _safe_close."""
+        _safe_close(self._multimeter_conn)
+        self._multimeter_conn = None
+        _safe_close(self._generator_conn)
+        self._generator_conn = None
+        _safe_close(self._power_supply_conn)
+        self._power_supply_conn = None
+        _safe_close(self._oscilloscope_conn)
+        self._oscilloscope_conn = None
         self._scpi = None
         self._measurement = None
         self._fy6900 = None
@@ -310,6 +307,7 @@ class MainWindowConnectionBridge:
     # Accesseurs pour les vues (MainWindow appelle après reconnect puis _inject_views)
 
     def _make_oscilloscope_bode_source(self) -> Any:
+        """Crée la source Bode oscilloscope si l'oscillo est connecté (pour SwitchableBodeMeasureSource)."""
         if not self._oscilloscope_conn or not getattr(self._oscilloscope_conn, "is_open", lambda: False)():
             return None
         if OscilloscopeBodeSource is None or Dos1102Protocol is None:

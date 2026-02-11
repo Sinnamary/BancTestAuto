@@ -54,6 +54,10 @@ def apply_view_range(
         x_hi = math.log10(min(float(x_max), 1e308))
     else:
         x_lo, x_hi = float(x_min), float(x_max)
+    logger.debug(
+        "Bode plot_range apply_view_range: entrée Hz x=%.6g..%.6g y=%.6g..%.6g | vue (setRange) xRange=(%.6g, %.6g) yRange=(%.6g, %.6g)",
+        x_min, x_max, y_min, y_max, x_lo, x_hi, float(y_min), float(y_max),
+    )
     vb.setRange(
         xRange=(x_lo, x_hi),
         yRange=(float(y_min), float(y_max)),
@@ -61,10 +65,7 @@ def apply_view_range(
         update=True,
         disableAutoRange=True,
     )
-    logger.debug(
-        "Bode plot_range apply_view_range: x=%.6g..%.6g Hz, y=%.6g..%.6g",
-        x_min, x_max, y_min, y_max,
-    )
+    logger.debug("Bode plot_range apply_view_range: setRange exécuté")
 
 
 def read_view_range(

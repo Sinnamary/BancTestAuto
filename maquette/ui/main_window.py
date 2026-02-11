@@ -523,6 +523,11 @@ class MainWindow(QMainWindow):
                 usb_cfg["vendor_id"] = int(vid)
                 usb_cfg["product_id"] = int(pid)
                 self._config["usb_oscilloscope"] = usb_cfg
+        # Banc filtre : paramètres et source de mesure (multimètre / oscilloscope)
+        if self._filter_test_view and hasattr(self._filter_test_view, "get_filter_test_config"):
+            ft = dict(self._config.get("filter_test") or {})
+            ft.update(self._filter_test_view.get_filter_test_config())
+            self._config["filter_test"] = ft
         # Alimentation : port géré par config/détection, pas par l'onglet
 
     def _on_save_config(self):
