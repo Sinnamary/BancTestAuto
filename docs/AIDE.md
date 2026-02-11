@@ -1,4 +1,4 @@
-# Aide — Banc de test automatique
+﻿# Aide — Banc de test automatique
 
 Bienvenue dans l’aide du **Banc de test automatique**. Cette application permet de piloter un **multimètre OWON** (XDM1041/XDM2041) et un **générateur de signaux FeelTech FY6900** et une **alimentation Rockseed RS305P**, de configurer des mesures, d’enregistrer des données et de caractériser un filtre au format Bode.
 
@@ -55,11 +55,9 @@ En haut de la fenêtre, **quatre pastilles** indiquent (Multimètre, Générateu
 
 Les ports et débits sont dans **`config/config.json`**. Pour modifier :
 
-- **Port** : COM3, COM4, etc. (Windows) ou /dev/ttyUSB0, etc. (Linux).
-- **Débit** : 9600 pour l’OWON (ou 115200 selon modèle), 115200 pour le FY6900.
-- **Timeouts** : lecture et écriture (en secondes).
-
-Les changements sont pris en compte après validation. Enregistrez la config pour les conserver.
+Éditez le fichier ou **Fichier → Ouvrir config...** puis **Sauvegarder config**.
+- Débits typiques : OWON 115200, FY6900 115200, RS305P 9600.  l’OWON (ou 115200 selon modèle), 115200 pour le FY6900.
+Après détection : **Mettre à jour config (en mémoire)** puis **Sauvegarder config** pour écrire les ports trouvés.
 
 ---
 
