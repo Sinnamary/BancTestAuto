@@ -84,6 +84,14 @@ class BodeCurveDrawer:
             self._raw_curve.setVisible(False)
         logger.debug("BodeCurveDrawer.set_data: setData(gain) appliqué")
 
+    def set_accept_mouse(self, accept: bool) -> None:
+        """Accepte ou non les événements souris (False = laisser zoom/pan au ViewBox)."""
+        from PyQt6.QtCore import Qt
+        btn = Qt.MouseButton.NoButton if not accept else (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton)
+        self._curve.setAcceptedMouseButtons(btn)
+        self._raw_curve.setAcceptedMouseButtons(btn)
+        logger.debug("BodeCurveDrawer.set_accept_mouse: accept=%s → acceptedMouseButtons=%s", accept, btn)
+
     def clear(self) -> None:
         self._curve.setData([], [])
         self._raw_curve.setData([], [])
