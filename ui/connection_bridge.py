@@ -132,20 +132,7 @@ class MainWindowConnectionBridge:
         sg = (get_serial_generator_config(config) or {}) if get_serial_generator_config else {}
         ft_cfg = (get_filter_test_config(config) or {}) if get_filter_test_config else {}
 
-        if SerialExchangeLogger and self._serial_exchange_logger is None:
-            log_dir = config.get("logging", {}).get("output_dir", "./logs")
-            self._serial_exchange_logger = SerialExchangeLogger(log_dir=log_dir)
-        if self._serial_exchange_logger:
-            sm = dict(sm)
-            sg = dict(sg)
-            sm["log_exchanges"] = True
-            sg["log_exchanges"] = True
-            sm["log_callback"] = self._serial_exchange_logger.get_callback(
-                "multimeter", port=sm.get("port"), baudrate=sm.get("baudrate")
-            )
-            sg["log_callback"] = self._serial_exchange_logger.get_callback(
-                "generator", port=sg.get("port"), baudrate=sg.get("baudrate")
-            )
+        # Le fichier serial_*.log est réservé au terminal série (voir SerialTerminalView).
 
         self._multimeter_conn = SerialConnection(**sm)
         self._generator_conn = SerialConnection(**sg)
@@ -347,17 +334,18 @@ class MainWindowConnectionBridge:
     def get_connected_equipment_for_terminal(self) -> list:
         """
         Retourne la liste des équipements connectés utilisables par le terminal série.
-        Chaque élément : (kind, display_name, connection) avec connection ayant read/write/is_open.
+        Chaque élément : (kind, display_name, connection, détail) avec détail = port (ex. COM17) ou libellé USB.
         """
         result = []
         if EquipmentKind is None or equipment_display_name is None:
             return result
+        state = self.get_state()
         if self._multimeter_conn and self._multimeter_conn.is_open():
-            result.append((EquipmentKind.MULTIMETER, equipment_display_name(EquipmentKind.MULTIMETER), self._multimeter_conn))
+            result.append((EquipmentKind.MULTIMETER, equipment_display_name(EquipmentKind.MULTIMETER), self._multimeter_conn, state.multimeter_port or "?"))
         if self._generator_conn and self._generator_conn.is_open():
-            result.append((EquipmentKind.GENERATOR, equipment_display_name(EquipmentKind.GENERATOR), self._generator_conn))
+            result.append((EquipmentKind.GENERATOR, equipment_display_name(EquipmentKind.GENERATOR), self._generator_conn, state.generator_port or "?"))
         if self._power_supply_conn and self._power_supply_conn.is_open():
-            result.append((EquipmentKind.POWER_SUPPLY, equipment_display_name(EquipmentKind.POWER_SUPPLY), self._power_supply_conn))
+            result.append((EquipmentKind.POWER_SUPPLY, equipment_display_name(EquipmentKind.POWER_SUPPLY), self._power_supply_conn, state.power_supply_port or "?"))
         if self._oscilloscope_conn and getattr(self._oscilloscope_conn, "is_open", lambda: False)():
-            result.append((EquipmentKind.OSCILLOSCOPE, equipment_display_name(EquipmentKind.OSCILLOSCOPE), self._oscilloscope_conn))
+            result.append((EquipmentKind.OSCILLOSCOPE, equipment_display_name(EquipmentKind.OSCILLOSCOPE), self._oscilloscope_conn, state.oscilloscope_label or "USB"))
         return result

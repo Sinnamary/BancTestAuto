@@ -12,8 +12,8 @@ Utilisation dans les modules :
 Le niveau (DEBUG, INFO, WARNING, ERROR) est lu dans config.json, section "logging", clé "level".
 Fichiers générés dans logging.output_dir :
   - app_YYYY-MM-DD_HH-MM-SS.log : log général (démarrage, détection, connexions, erreurs).
-  - serial_YYYY-MM-DD_HH-MM-SS.log : log des échanges série uniquement (TX/RX multimètre, générateur),
-    créé au premier échange après « Charger config ».
+  - serial_YYYY-MM-DD_HH-MM-SS.log : log des échanges de l’onglet Terminal série uniquement (TX/RX),
+    avec l’équipement connecté indiqué une fois au début du choix. Créé au premier choix d’équipement ou premier envoi/réception.
 
 En mode DEBUG, l'application enregistre en plus : commandes série envoyées/reçues (port, débit, données),
 commandes FY6900 et SCPI (TX/RX), détection des appareils (étape par étape), trames Modbus RS305P,

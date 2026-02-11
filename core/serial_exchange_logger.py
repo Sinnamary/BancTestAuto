@@ -1,6 +1,7 @@
 """
-Fichier de log des émissions/réceptions série : un fichier par lancement, horodaté.
-Créé au premier écrit ; chaque ligne : [timestamp] [origine] port baudrate [TX|RX] données.
+Fichier de log des émissions/réceptions série : uniquement l’onglet Terminal série.
+Un fichier par session, horodaté. Créé au premier écrit (choix d’un équipement ou premier TX/RX).
+Format : une ligne "# Équipement: Nom (port ou USB)" au début du choix d’équipement, puis [timestamp] [TX|RX] données.
 """
 from datetime import datetime
 from pathlib import Path
@@ -10,9 +11,9 @@ from typing import Optional
 
 class SerialExchangeLogger:
     """
-    Un fichier de log par session (lancement), nommé serial_YYYY-MM-DD_HH-MM-SS.log.
-    Thread-safe (un lock pour les écritures).
-    Chaque ligne inclut port et baudrate si fournis pour faciliter le diagnostic.
+    Un fichier de log par session, nommé serial_YYYY-MM-DD_HH-MM-SS.log.
+    Réservé au trafic de l’onglet Terminal série (TX/RX envoyés/reçus par l’utilisateur).
+    Thread-safe. L’équipement connecté est indiqué une fois au début du choix.
     """
 
     def __init__(self, log_dir: str = "logs"):
@@ -29,8 +30,15 @@ class SerialExchangeLogger:
         self._path = self._log_dir / f"serial_{now:%Y-%m-%d_%H-%M-%S}.log"
         self._file = open(self._path, "a", encoding="utf-8")
         self._file.write(f"# Session started {now.isoformat()}\n")
-        self._file.write("# Format: [HH:MM:SS.ms] [origin] port baudrate [TX|RX] data\n")
+        self._file.write("# Log Terminal série uniquement. Format: # Équipement: Nom (port/USB) puis [HH:MM:SS.ms] [TX|RX] data\n")
         self._file.flush()
+
+    def log_equipment(self, equipment_label: str) -> None:
+        """Écrit une ligne indiquant l’équipement connecté (une fois au début du choix dans le terminal)."""
+        with self._lock:
+            self._ensure_file()
+            self._file.write(f"# Équipement: {equipment_label}\n")
+            self._file.flush()
 
     def log(
         self,
@@ -40,14 +48,11 @@ class SerialExchangeLogger:
         port: Optional[str] = None,
         baudrate: Optional[int] = None,
     ) -> None:
-        """Enregistre une ligne : origin = 'multimeter'|'generator', direction = 'TX'|'RX'.
-        port et baudrate optionnels pour identifier la liaison."""
+        """Enregistre une ligne TX ou RX du terminal série. origin = libellé équipement, direction = 'TX'|'RX'."""
         with self._lock:
             self._ensure_file()
             ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-            port_str = str(port) if port else "-"
-            baud_str = str(baudrate) if baudrate is not None else "-"
-            line = f"[{ts}] [{origin}] {port_str} {baud_str} [{direction}] {data!r}\n"
+            line = f"[{ts}] [{direction}] {data!r}\n"
             self._file.write(line)
             self._file.flush()
 

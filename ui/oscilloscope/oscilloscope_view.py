@@ -1,17 +1,19 @@
 """
-Vue onglet Oscilloscope HANMATEK DOS1102 — composition des panels.
-Connexion et protocole gérés ici ; les panels sont réutilisables.
+Vue onglet Oscilloscope HANMATEK DOS1102 — panels acquisition, mesures, forme d'onde, canaux.
+Utilise la connexion déjà établie par le bridge (Connecter tout).
 """
+from __future__ import annotations
+
+from typing import Any, Optional
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QScrollArea,
     QFrame,
-    QMessageBox,
 )
 from PyQt6.QtCore import Qt
 
-from .connection_panel import OscilloscopeConnectionPanel
 from .acquisition_trigger_panel import OscilloscopeAcqTriggerPanel
 from .measurement_panel import OscilloscopeMeasurementPanel
 from .waveform_panel import OscilloscopeWaveformPanel
@@ -19,21 +21,43 @@ from .channels_panel import OscilloscopeChannelsPanel
 
 
 class OscilloscopeView(QWidget):
-    """Onglet Oscilloscope DOS1102 : connexion + panels acquisition, mesures, forme d'onde, canaux."""
-
-    DEFAULT_BAUD = 115200
+    """Onglet Oscilloscope DOS1102. Utilise la connexion du bridge si disponible."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._conn: Any = None
+        self._protocol: Any = None
+        self._panels: list[QWidget] = []
+        # Config USB (config.json) pour get_current_usb_device / sauvegarde
+        self._usb_vendor_id: Optional[int] = None
+        self._usb_product_id: Optional[int] = None
+        self._usb_read_timeout_ms: Optional[int] = None
+        self._usb_write_timeout_ms: Optional[int] = None
+        self._build_ui()
+
+    def set_connection(self, conn: Optional[Any]) -> None:
+        """Utilise la connexion fournie par le bridge (ou None si déconnecté)."""
         self._conn = None
         self._protocol = None
-        self._panels: list[QWidget] = []
-        # Config USB (PyUSB) pour le DOS1102 ; alimentée par config.json si présent.
-        self._usb_vendor_id: int | None = None
-        self._usb_product_id: int | None = None
-        self._usb_read_timeout_ms: int | None = None
-        self._usb_write_timeout_ms: int | None = None
-        self._build_ui()
+        if conn is not None and getattr(conn, "is_open", lambda: False)():
+            try:
+                from core.dos1102_protocol import Dos1102Protocol
+                self._conn = conn
+                self._protocol = Dos1102Protocol(conn)
+                self._protocol.idn()
+                self._update_panels_protocol(self._protocol)
+                self._update_panels_connected(True)
+            except Exception:
+                self._conn = None
+                self._protocol = None
+        if self._protocol is None:
+            self._update_panels_protocol(None)
+            self._update_panels_connected(False)
+            if hasattr(self, "_meas_panel") and self._meas_panel:
+                if hasattr(self._meas_panel, "set_result"):
+                    self._meas_panel.set_result("—")
+                if hasattr(self._meas_panel, "set_general_result"):
+                    self._meas_panel.set_general_result("—")
 
     def _build_ui(self) -> None:
         scroll = QScrollArea()
@@ -44,14 +68,6 @@ class OscilloscopeView(QWidget):
         content = QWidget()
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
-
-        self._conn_panel = OscilloscopeConnectionPanel(
-            self,
-            on_connect_serial=self._connect_serial,
-            on_connect_usb=self._connect_usb,
-            on_disconnect=self._disconnect,
-        )
-        layout.addWidget(self._conn_panel)
 
         self._acq_trig_panel = OscilloscopeAcqTriggerPanel(self)
         self._panels.append(self._acq_trig_panel)
@@ -85,98 +101,26 @@ class OscilloscopeView(QWidget):
             if hasattr(p, "set_connected"):
                 p.set_connected(connected)
 
-    def _connect_serial(self, port: str) -> None:
-        try:
-            from core.serial_connection import SerialConnection
-            from core.dos1102_protocol import Dos1102Protocol
-
-            self._conn = SerialConnection(
-                port=port,
-                baudrate=self.DEFAULT_BAUD,
-                timeout=2.0,
-                write_timeout=2.0,
-            )
-            self._conn.open()
-            self._protocol = Dos1102Protocol(self._conn)
-            self._on_connect_success()
-        except Exception as e:
-            self._cleanup_connection()
-            QMessageBox.warning(self, "Oscilloscope", f"Impossible de se connecter (série) : {e}")
-
-    def _connect_usb(self, vid: int, pid: int) -> None:
-        try:
-            from core.dos1102_usb_connection import Dos1102UsbConnection
-            from core.dos1102_protocol import Dos1102Protocol
-
-            # Timeouts : on utilise ceux de la config si présents, sinon ceux de Dos1102UsbConnection.
-            kwargs: dict = {}
-            if isinstance(self._usb_read_timeout_ms, int):
-                kwargs["read_timeout_ms"] = self._usb_read_timeout_ms
-            if isinstance(self._usb_write_timeout_ms, int):
-                kwargs["write_timeout_ms"] = self._usb_write_timeout_ms
-
-            self._conn = Dos1102UsbConnection(id_vendor=vid, id_product=pid, **kwargs)
-            self._conn.open()
-            self._protocol = Dos1102Protocol(self._conn)
-            self._on_connect_success()
-        except Exception as e:
-            self._cleanup_connection()
-            QMessageBox.warning(
-                self, "Oscilloscope",
-                f"Impossible de se connecter (USB) : {e}\n\n"
-                "Vérifiez le pilote WinUSB (Zadig).",
-            )
-
-    def _on_connect_success(self) -> None:
-        try:
-            idn = self._protocol.idn()
-            status = f"Connecté — {idn[:40]}" if idn else "Connecté"
-        except Exception:
-            status = "Connecté"
-        self._conn_panel.set_connected(True, status)
-        self._update_panels_protocol(self._protocol)
-        self._update_panels_connected(True)
-
-    def _cleanup_connection(self) -> None:
-        if self._conn:
-            try:
-                self._conn.close()
-            except Exception:
-                pass
-            self._conn = None
-        self._protocol = None
-        self._update_panels_protocol(None)
-
     def _disconnect(self) -> None:
-        if self._conn:
-            try:
-                self._conn.close()
-            except Exception:
-                pass
-            self._conn = None
+        """Réinitialise l'état sans fermer la connexion (gérée par le bridge)."""
+        self._conn = None
         self._protocol = None
-        self._conn_panel.set_connected(False, "Déconnecté")
         self._update_panels_protocol(None)
         self._update_panels_connected(False)
-        if hasattr(self._meas_panel, "set_result"):
-            self._meas_panel.set_result("—")
-        if hasattr(self._meas_panel, "set_general_result"):
-            self._meas_panel.set_general_result("—")
+        if hasattr(self, "_meas_panel") and self._meas_panel:
+            if hasattr(self._meas_panel, "set_result"):
+                self._meas_panel.set_result("—")
+            if hasattr(self._meas_panel, "set_general_result"):
+                self._meas_panel.set_general_result("—")
 
     def load_config(self, config: dict) -> None:
-        """Remplit les préférences USB depuis la config (connexion PyUSB uniquement)."""
-        # Ports série : uniquement pour les autres appareils ; l'oscilloscope est piloté en USB/PyUSB.
-        self._conn_panel.refresh_ports()
-
-        # Paramètres USB (PyUSB) : on ne change pas le mode automatiquement, mais on
-        # mémorise le périphérique préféré et les timeouts éventuels.
+        """Mémorise les paramètres USB (config.json) pour get_current_usb_device / sauvegarde."""
         usb_cfg = config.get("usb_oscilloscope") or {}
         vid = usb_cfg.get("vendor_id")
         pid = usb_cfg.get("product_id")
         if isinstance(vid, int) and isinstance(pid, int):
             self._usb_vendor_id = vid
             self._usb_product_id = pid
-            self._conn_panel.set_preferred_usb_device(vid, pid)
         rt = usb_cfg.get("read_timeout_ms")
         wt = usb_cfg.get("write_timeout_ms")
         if isinstance(rt, int):
@@ -184,20 +128,15 @@ class OscilloscopeView(QWidget):
         if isinstance(wt, int):
             self._usb_write_timeout_ms = wt
 
-    def get_current_serial_port(self) -> str | None:
-        """Port série actuellement sélectionné (mode Série uniquement), sinon None."""
-        if self._conn_panel.is_serial_mode():
-            port = self._conn_panel.get_port().strip()
-            return port or None
+    def get_current_serial_port(self) -> Optional[str]:
+        """Plus de port série dans l'onglet ; connexion via bridge (USB)."""
         return None
 
-    def get_current_usb_device(self) -> tuple[int, int] | None:
-        """Périphérique USB actuellement sélectionné (VID, PID), ou None si non sélectionné."""
-        return self._conn_panel.get_usb_selection()
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self._conn_panel.refresh_ports()
+    def get_current_usb_device(self) -> Optional[tuple[int, int]]:
+        """Périphérique USB depuis la config (détection / sauvegarde)."""
+        if isinstance(self._usb_vendor_id, int) and isinstance(self._usb_product_id, int):
+            return (self._usb_vendor_id, self._usb_product_id)
+        return None
 
     def closeEvent(self, event) -> None:
         self._disconnect()

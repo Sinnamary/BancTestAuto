@@ -100,6 +100,8 @@ class MainWindow(QMainWindow):
 
         if load_config:
             self._config = load_config()
+        log_dir = (self._config or {}).get("logging", {}).get("output_dir", "./logs")
+        self._serial_exchange_logger = SerialExchangeLogger(log_dir=log_dir) if SerialExchangeLogger else None
         self._build_menu()
         self._build_central()
         self._connect_connection_bar()
@@ -278,8 +280,11 @@ class MainWindow(QMainWindow):
             self._serial_terminal_view.set_connection_provider(
                 lambda: self._connection_bridge.get_connected_equipment_for_terminal()
             )
-        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
-            self._oscilloscope_view.load_config(self._config)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view:
+            if hasattr(self._oscilloscope_view, "load_config") and self._config:
+                self._oscilloscope_view.load_config(self._config)
+            if hasattr(self._oscilloscope_view, "set_connection"):
+                self._oscilloscope_view.set_connection(bridge.get_oscilloscope_conn())
 
     def _init_views_without_connections(self):
         """Initialise les vues sans créer ni ouvrir de connexion série (aucun port ouvert au démarrage)."""
@@ -296,12 +301,18 @@ class MainWindow(QMainWindow):
                 self._power_supply_view.set_connection(None)
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "load_config") and self._config:
             self._serial_terminal_view.load_config(self._config)
-        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "set_connection_provider"):
-            self._serial_terminal_view.set_connection_provider(
-                lambda: self._connection_bridge.get_connected_equipment_for_terminal()
-            )
-        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "load_config") and self._config:
-            self._oscilloscope_view.load_config(self._config)
+        if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view:
+            if hasattr(self._serial_terminal_view, "set_connection_provider"):
+                self._serial_terminal_view.set_connection_provider(
+                    lambda: self._connection_bridge.get_connected_equipment_for_terminal()
+                )
+            if hasattr(self._serial_terminal_view, "set_serial_exchange_logger") and getattr(self, "_serial_exchange_logger", None):
+                self._serial_terminal_view.set_serial_exchange_logger(self._serial_exchange_logger)
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view:
+            if hasattr(self._oscilloscope_view, "load_config") and self._config:
+                self._oscilloscope_view.load_config(self._config)
+            if hasattr(self._oscilloscope_view, "set_connection"):
+                self._oscilloscope_view.set_connection(None)
 
     def _reconnect_serial(self):
         """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Connecter tout / Détecter)."""
@@ -334,6 +345,8 @@ class MainWindow(QMainWindow):
             )
         if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(self._power_supply_view, "set_connection"):
             self._power_supply_view.set_connection(self._connection_bridge.get_power_supply_conn())
+        if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "set_connection"):
+            self._oscilloscope_view.set_connection(self._connection_bridge.get_oscilloscope_conn())
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
             self._serial_terminal_view.refresh_equipment_list()
 

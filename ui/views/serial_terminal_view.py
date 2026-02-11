@@ -1,8 +1,7 @@
 """
-Vue onglet Terminal série : uniquement un sélecteur d'équipement connecté.
-Pas de connexion propre : on utilise la connexion déjà ouverte par la barre (Multimètre,
-Générateur, Alimentation, Oscilloscope). Envoi/réception avec CR/LF en fin de chaîne.
-Phase 4 : UI et logique alignées sur la maquette.
+Vue onglet Terminal série : sélecteur d'équipement connecté, envoi/réception.
+Utilise la connexion déjà ouverte par la barre. Tous les TX/RX sont loggés dans serial_*.log
+avec l'équipement indiqué une fois au début du choix.
 """
 from typing import Callable, List, Tuple, Any, Optional
 
@@ -32,9 +31,11 @@ class SerialTerminalView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._connection_provider: Optional[Callable[[], List[Tuple[Any, str, Any]]]] = None
-        self._equipment_list: List[Tuple[Any, str, Any]] = []
+        self._connection_provider: Optional[Callable[[], List[Tuple[Any, str, Any, str]]]] = None
+        self._equipment_list: List[Tuple[Any, str, Any, str]] = []  # (kind, display_name, conn, detail)
         self._equipment_conn: Any = None
+        self._serial_exchange_logger: Any = None
+        self._last_logged_conn: Any = None  # connexion pour laquelle on a déjà écrit "# Équipement"
         self._read_timer = QTimer(self)
         self._read_timer.timeout.connect(self._poll_serial)
         self._build_ui()
@@ -103,10 +104,14 @@ class SerialTerminalView(QWidget):
         recv_layout.addWidget(clear_btn)
         layout.addWidget(recv_gb)
 
-    def set_connection_provider(self, provider: Optional[Callable[[], List[Tuple[Any, str, Any]]]]) -> None:
-        """Injecte le fournisseur de liste d'équipements connectés (kind, display_name, conn)."""
+    def set_connection_provider(self, provider: Optional[Callable[[], List[Tuple[Any, str, Any, str]]]]) -> None:
+        """Injecte le fournisseur de liste d'équipements connectés (kind, display_name, conn, détail)."""
         self._connection_provider = provider
         self._refresh_equipment_list()
+
+    def set_serial_exchange_logger(self, logger_instance: Any) -> None:
+        """Injecte le logger des échanges série (serial_*.log). Utilisé uniquement pour le trafic de cet onglet."""
+        self._serial_exchange_logger = logger_instance
 
     def refresh_equipment_list(self) -> None:
         """Rafraîchit la liste des équipements (appelé par la fenêtre après mise à jour des connexions)."""
@@ -120,7 +125,7 @@ class SerialTerminalView(QWidget):
             except Exception as e:
                 logger.debug("Terminal: refresh equipment list failed: %s", e)
         self._equipment_combo.clear()
-        for _kind, display_name, _conn in self._equipment_list:
+        for _kind, display_name, _conn, _detail in self._equipment_list:
             self._equipment_combo.addItem(display_name)
         if self._equipment_combo.count() > 0 and self._equipment_conn is None:
             self._equipment_combo.setCurrentIndex(0)
@@ -131,10 +136,20 @@ class SerialTerminalView(QWidget):
     def _on_equipment_selection_changed(self) -> None:
         idx = self._equipment_combo.currentIndex()
         if 0 <= idx < len(self._equipment_list):
-            _kind, _name, conn = self._equipment_list[idx]
+            _kind, display_name, conn, detail = self._equipment_list[idx]
             self._equipment_conn = conn if (conn and getattr(conn, "is_open", lambda: False)()) else None
+            if self._equipment_conn and self._serial_exchange_logger:
+                if self._equipment_conn is not self._last_logged_conn:
+                    self._last_logged_conn = self._equipment_conn
+                    equipment_label = f"{display_name} ({detail})"
+                    try:
+                        self._serial_exchange_logger.log_equipment(equipment_label)
+                    except Exception:
+                        pass
         else:
             self._equipment_conn = None
+            if len(self._equipment_list) == 0:
+                self._last_logged_conn = None
         self._update_equipment_status_label()
         self._send_btn.setEnabled(self._equipment_conn is not None)
         if self._equipment_conn and not self._read_timer.isActive():
@@ -175,6 +190,11 @@ class SerialTerminalView(QWidget):
             return
         try:
             conn.write(data)
+            if self._serial_exchange_logger:
+                try:
+                    self._serial_exchange_logger.log("terminal", "TX", data.decode("utf-8", errors="replace") or data.hex(" "))
+                except Exception:
+                    pass
             self._append_received(f"> {text}\n")
         except Exception as e:
             logger.debug("Terminal: write() erreur: %s", e, exc_info=True)
@@ -195,6 +215,11 @@ class SerialTerminalView(QWidget):
                         text = data.decode("utf-8", errors="replace")
                     except Exception:
                         text = data.hex(" ")
+                    if self._serial_exchange_logger:
+                        try:
+                            self._serial_exchange_logger.log("terminal", "RX", text)
+                        except Exception:
+                            pass
                     self._append_received(text)
         except Exception:
             pass
