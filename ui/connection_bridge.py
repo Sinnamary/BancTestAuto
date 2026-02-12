@@ -359,7 +359,13 @@ class MainWindowConnectionBridge:
         ft_cfg = (get_filter_test_config(self._last_config) or {}) if get_filter_test_config and self._last_config else {}
         ch_ue = int(ft_cfg.get("oscillo_channel_ue", 1))
         ch_us = int(ft_cfg.get("oscillo_channel_us", 2))
-        return OscilloscopeBodeSource(self._oscilloscope_protocol, channel_ue=ch_ue, channel_us=ch_us)
+        phase_skip_mv = ft_cfg.get("phase_skip_below_scale_ch2_mv", 20)
+        return OscilloscopeBodeSource(
+            self._oscilloscope_protocol,
+            channel_ue=ch_ue,
+            channel_us=ch_us,
+            phase_skip_below_scale_ch2_mv=phase_skip_mv,
+        )
 
     def get_multimeter_conn(self) -> Any:
         return self._multimeter_conn

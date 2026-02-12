@@ -92,6 +92,7 @@ DEFAULTS = {
         "measure_source": "multimeter",  # "multimeter" | "oscilloscope"
         "oscillo_channel_ue": 1,
         "oscillo_channel_us": 2,
+        "phase_skip_below_scale_ch2_mv": 20,  # calibre CH2 (mV/div) : en dessous on ne relève plus la phase (signal trop altéré)
     },
     "bode_viewer": {
         "plot_background_dark": True,

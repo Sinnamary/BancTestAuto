@@ -68,6 +68,10 @@ class BodeCsvViewerDialog(QDialog):
         # Appliquer la config bode_viewer si fournie (sauvegardée via Fichier → Sauvegarder config)
         if self._config:
             self._apply_bode_viewer_config(get_bode_viewer_config(self._config))
+        # Ouverture depuis « Résultat balayage » : désactiver le lissage pour que la courbe = tableau.
+        if not self._csv_path and self._dataset and not self._dataset.is_empty():
+            self._smooth_cb.setChecked(False)
+            self._apply_options()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)

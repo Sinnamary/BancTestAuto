@@ -5,6 +5,7 @@ Pour chaque voie : activation, couplage, échelle, position, offset, inversion,
 plus une colonne de commandes (Appliquer, Auto scale, Copier CH1→CH2).
 La logique réelle est pilotée via set_protocol().
 """
+import time
 from typing import Any, Optional
 
 from PyQt6.QtWidgets import (
@@ -140,16 +141,19 @@ class OscilloscopeChannelsPanel(QWidget):
         if not self._protocol:
             return
         try:
+            # Échelle en premier (certains DOS1102 n'appliquent l'échelle que si envoyée avant le couplage)
+            if hasattr(self._protocol, "set_ch_scale"):
+                self._protocol.set_ch_scale(1, self._ch1_scale.value())
+                time.sleep(0.05)
+                self._protocol.set_ch_scale(2, self._ch2_scale.value())
+                time.sleep(0.05)
             # Couplage
             if hasattr(self._protocol, "set_ch1_coupling"):
                 self._protocol.set_ch1_coupling(self._ch1_coup.currentText())
             if hasattr(self._protocol, "set_ch2_coupling"):
                 self._protocol.set_ch2_coupling(self._ch2_coup.currentText())
 
-            # Échelle / position / offset
-            if hasattr(self._protocol, "set_ch_scale"):
-                self._protocol.set_ch_scale(1, self._ch1_scale.value())
-                self._protocol.set_ch_scale(2, self._ch2_scale.value())
+            # Position / offset
             if hasattr(self._protocol, "set_ch_pos"):
                 self._protocol.set_ch_pos(1, self._ch1_position.value())
                 self._protocol.set_ch_pos(2, self._ch2_position.value())

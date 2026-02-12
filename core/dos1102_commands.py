@@ -23,9 +23,25 @@ CH2_COUP_DC = ":CH2:COUP DC"
 CH2_COUP_AC = ":CH2:COUP AC"
 CH2_COUP_GND = ":CH2:COUP GND"
 
-# Échelle / position / offset canal
+# Échelle verticale canal (amplitude) : commande SCAL avec unité (100mV, 1V, etc.)
+def _ch_scal_to_scope_format(v_per_div: float) -> str:
+    """Convertit un calibre V/div en chaîne acceptée par le DOS1102 (ex. 0.1 → "100mV", 1.0 → "1V")."""
+    v = float(v_per_div)
+    if v < 1.0:
+        mv = v * 1000.0
+        if abs(mv - round(mv)) < 1e-6:
+            return f"{int(mv)}mV"
+        return f"{mv}mV"
+    if abs(v - round(v)) < 1e-6:
+        return f"{int(v)}V"
+    return f"{v}V"
+
+
 def CH_SCA(ch: int, value):  # noqa: N802
-    return f":CH{ch}:SCA {value}"
+    """value : V/div (nombre) ou chaîne déjà formatée (ex. "100mV"). Envoie :CH<n>:SCAL <valeur>."""
+    if isinstance(value, (int, float)):
+        value = _ch_scal_to_scope_format(value)
+    return f":CH{ch}:SCAL {value}"
 
 def CH_POS(ch: int, value):  # noqa: N802
     return f":CH{ch}:POS {value}"
@@ -43,10 +59,35 @@ def CH_INV(ch: int, state: str):  # noqa: N802
     return f":CH{ch}:INV {state}"
 
 # Base de temps (horizontal)
+# Le DOS1102 : pour les ms uniquement, mettre un zéro (ex. 2.0ms, 10.0ms) ; ns/us sans .0 (500ns, 2us).
+def _hor_scal_to_scope_format(seconds: float) -> str:
+    """Convertit une base de temps en secondes en chaîne acceptée par le DOS1102 (ex. 0.002 → "2.0ms", 5e-7 → "500ns")."""
+    s = float(seconds)
+    if s >= 1.0:
+        return f"{int(s)}.0s" if s == int(s) else f"{s}s"  # ex. 1.0s, 2.0s
+    if s >= 1e-3:
+        ms = s * 1e3
+        # Uniquement 1, 2 et 5 ms avec .0 ; les autres sans (10ms, 20ms, 50ms, ...)
+        if abs(ms - 1.0) < 1e-6 or abs(ms - 2.0) < 1e-6 or abs(ms - 5.0) < 1e-6:
+            return f"{int(ms)}.0ms"
+        return f"{int(ms)}ms" if abs(ms - round(ms)) < 1e-6 else f"{ms}ms"
+    if s >= 1e-6:
+        us = s * 1e6
+        return f"{int(us)}us" if abs(us - round(us)) < 1e-6 else f"{us}us"  # ex. 1us, 10us
+    if s >= 1e-9:
+        ns = s * 1e9
+        return f"{int(ns)}ns" if abs(ns - round(ns)) < 1e-6 else f"{ns}ns"  # ex. 2ns, 500ns
+    return f"{s}s"
+
+
 def HOR_OFFS(value):  # noqa: N802
     return f":HOR:OFFS {value}"
 
+
 def HOR_SCAL(value):  # noqa: N802
+    """value : nombre (secondes) ou chaîne déjà formatée (ex. "10ms")."""
+    if isinstance(value, (int, float)):
+        value = _hor_scal_to_scope_format(value)
     return f":HOR:SCAL {value}"
 
 # Trigger

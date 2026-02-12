@@ -210,7 +210,8 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
     "points_per_decade": 10,
     "scale": "log",
     "settling_ms": 200,
-    "ue_rms": 1.0
+    "ue_rms": 1.0,
+    "phase_skip_below_scale_ch2_mv": 20
   }
 }
 ```
@@ -259,6 +260,7 @@ Les réglages servent de configuration initiale pour le pilotage individuel du m
 |             | scale           | Échelle fréquence                   | `"log"`, `"lin"`                    |
 |             | settling_ms     | Délai stabilisation après changement f | 100 – 1000                       |
 |             | ue_rms          | Tension entrée filtre (V RMS)       | 1.0                                 |
+|             | phase_skip_below_scale_ch2_mv | Calibre CH2 (mV/div) en dessous duquel la phase n'est pas relevée (oscillo) | 20 (0 = toujours relever) |
 
 - **Banc de test filtre — configuration connue :** au démarrage d’un balayage, le banc filtre **applique** la configuration générateur définie dans `config.json` (section `generator` : forme d’onde, amplitude crête, offset ; section `filter_test` : voie, `ue_rms` pour le niveau). Il **ne part pas** de la configuration précédente de l’équipement : on repart toujours d’un état connu et reproductible.
 - **Emplacement** : `config/config.json` ou à la racine du projet.

@@ -124,18 +124,24 @@ class FilterTest:
         total = len(freqs)
         results: list[BodePoint] = []
 
-        # Appliquer le premier stimulus (première fréquence, sortie ON), puis attendre 2 s de stabilisation
-        # des appareils et du filtre avant de lancer les mesures et le balayage.
+        # Stimulus et outil de mesure en place avant la temporisation de 2 s : fréquence, sortie ON, puis
+        # préparation outil de mesure (oscillo : base de temps + calibres), puis temporisation 2 s.
         if freqs:
             first_f = freqs[0]
             self._generator.set_frequency_hz(first_f, channel=ch)
             self._generator.set_output(True, channel=ch)
-            logger.debug("banc filtre: premier stimulus appliqué (f=%.4f Hz), attente 2 s stabilisation", first_f)
+            logger.debug("banc filtre: sortie générateur voie %d mise ON (f=%.4f Hz)", ch, first_f)
+            prepare_first = getattr(self._measure_source, "prepare_first_point", None)
+            if callable(prepare_first):
+                prepare_first(first_f)
+                logger.debug("banc filtre: outil de mesure prêt pour 1er point (stimulus + mesure en place)")
+            logger.debug("banc filtre: stimulus et outil de mesure en place, début temporisation 2 s")
             if on_stabilization_started:
                 on_stabilization_started()
             time.sleep(2.0)
             if on_stabilization_ended:
                 on_stabilization_ended()
+            logger.debug("banc filtre: fin temporisation 2 s, 1re mesure")
 
         prev_ue, prev_us = None, None
         for i, f_hz in enumerate(freqs):

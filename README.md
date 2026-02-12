@@ -199,7 +199,7 @@ Les réglages par défaut sont dans **`config/config.json`**. Principales sectio
 | `limits` | Taille de l'historique, options de débit série |
 | `logging` | Dossier de sortie (`output_dir`), niveau de log. Deux fichiers : `app_*.log` (général), `serial_*.log` (trafic Terminal série uniquement) |
 | `generator` | Voie, forme d’onde, fréquence, amplitude crête, offset (défauts + config. initiale banc filtre) pour l’onglet Générateur |
-| `filter_test` | Voie générateur (1 ou 2), f_min, f_max, points par décade, échelle, délai, tension Ue |
+| `filter_test` | Voie générateur (1 ou 2), f_min, f_max, points par décade, échelle, délai, tension Ue, seuil calibre CH2 pour la phase (phase_skip_below_scale_ch2_mv, mV/div) |
 | `usb_oscilloscope` | Connexion USB (PyUSB) oscilloscope DOS1102 : vendor_id, product_id, timeouts lecture/écriture |
 | `serial_power_supply` | Port, débit, timeouts pour l'alimentation RS305P (onglet Alimentation) |
 | `bode_viewer` | Options fenêtre graphique Bode (fond, couleur, quadrillage, lissage, etc.) ; sauvegardées à la fermeture du graphique |

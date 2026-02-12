@@ -18,7 +18,7 @@ DEFAULTS = {
     "limits": {"history_size": 100, "baudrate_options": [9600, 19200, 38400, 57600, 115200]},
     "logging": {"output_dir": "./logs", "level": "INFO", "default_interval_s": 5, "default_duration_min": 60, "duration_unlimited": False},
     "generator": {"default_channel": 1, "waveform": 0, "frequency_hz": 1000, "amplitude_v_peak": 1.414, "offset_v": 0},
-    "filter_test": {"generator_channel": 1, "f_min_hz": 10, "f_max_hz": 100000, "points_per_decade": 10, "scale": "log", "settling_ms": 200, "ue_rms": 1.0, "measure_source": "multimeter", "oscillo_channel_ue": 1, "oscillo_channel_us": 2},
+    "filter_test": {"generator_channel": 1, "f_min_hz": 10, "f_max_hz": 100000, "points_per_decade": 10, "scale": "log", "settling_ms": 200, "ue_rms": 1.0, "measure_source": "multimeter", "oscillo_channel_ue": 1, "oscillo_channel_us": 2, "phase_skip_below_scale_ch2_mv": 20},
     "bode_viewer": {"plot_background_dark": True, "curve_color": "#e0c040", "grid_visible": True},
 }
 

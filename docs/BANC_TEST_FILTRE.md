@@ -275,7 +275,8 @@ Exemple (structure complète dans le cahier des charges § 2.7) :
     "points_per_decade": 10,
     "scale": "log",
     "settling_ms": 200,
-    "ue_rms": 1.0
+    "ue_rms": 1.0,
+    "phase_skip_below_scale_ch2_mv": 20
   }
 }
 ```

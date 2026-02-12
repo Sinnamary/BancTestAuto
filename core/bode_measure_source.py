@@ -22,12 +22,12 @@ logger = get_logger(__name__)
 # Calibres verticaux DOS1102 (V/div) : du plus sensible au moins sensible pour maximiser la précision
 _OSC_V_SCALES_V_PER_DIV = (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0)
 
-# Base de temps DOS1102 (s/div) : 1-2-5 de 2 ns à 1 s pour adapter à la fréquence du générateur
+# Base de temps DOS1102 (s/div) : plage complète 2 ns à 1000 s (capacité de l'oscilloscope)
 _OSC_TIME_SCALES_S_PER_DIV = (
     2e-9, 5e-9, 10e-9, 20e-9, 50e-9, 100e-9, 200e-9, 500e-9,
     1e-6, 2e-6, 5e-6, 10e-6, 20e-6, 50e-6, 100e-6, 200e-6, 500e-6,
     1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3,
-    1.0,
+    1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0,
 )
 
 
@@ -192,6 +192,10 @@ class MultimeterBodeAdapter:
     def prepare_for_sweep(self) -> None:
         self._measurement.set_voltage_ac()
 
+    def prepare_first_point(self, freq_hz: float) -> None:
+        """Rien à faire pour le multimètre (pas de base de temps / calibres à régler)."""
+        pass
+
     def read_ue_us_phase(
         self,
         ue_nominal: float,
@@ -221,13 +225,41 @@ class OscilloscopeBodeSource:
         protocol: "Dos1102Protocol",
         channel_ue: int = 1,
         channel_us: int = 2,
+        phase_skip_below_scale_ch2_mv: float = 20,
     ) -> None:
         self._protocol = protocol
         self._channel_ue = channel_ue
         self._channel_us = channel_us
+        # Calibre CH2 (mV/div) en dessous duquel on ne relève plus la phase (lue depuis config filter_test)
+        self._phase_skip_below_scale_ch2_mv = float(phase_skip_below_scale_ch2_mv)
+        self._first_point_prepared = False
+
+    def prepare_first_point(self, freq_hz: float) -> None:
+        """
+        Met l'outil de mesure en condition pour le premier point (base de temps + calibres)
+        avant la temporisation de 2 s. Appelé après mise sous tension du générateur.
+        """
+        if freq_hz is None or freq_hz <= 0:
+            return
+        time_per_div = _time_scale_for_frequency(freq_hz)
+        self._protocol.set_hor_scale(time_per_div)
+        if time_per_div >= 1:
+            logger.debug("Oscilloscope prepare_first_point: base de temps %.2f s/div (f=%.2f Hz)", time_per_div, freq_hz)
+        elif time_per_div >= 1e-3:
+            logger.debug("Oscilloscope prepare_first_point: base de temps %.2f ms/div (f=%.2f Hz)", time_per_div * 1e3, freq_hz)
+        elif time_per_div >= 1e-6:
+            logger.debug("Oscilloscope prepare_first_point: base de temps %.2f µs/div (f=%.2f Hz)", time_per_div * 1e6, freq_hz)
+        else:
+            logger.debug("Oscilloscope prepare_first_point: base de temps %.2f ns/div (f=%.2f Hz)", time_per_div * 1e9, freq_hz)
+        scale_v = 0.5
+        self._protocol.set_ch_scale(self._channel_ue, scale_v)
+        self._protocol.set_ch_scale(self._channel_us, scale_v)
+        logger.debug("Oscilloscope prepare_first_point: échelle CH1=CH2=500 mV/div, outil de mesure prêt pour 1er point")
+        self._first_point_prepared = True
 
     def prepare_for_sweep(self) -> None:
         """Couplage AC sur les deux voies (Ue=CH1, Us=CH2) pour mesurer le signal sans offset DC."""
+        self._first_point_prepared = False
         self._protocol.set_ch1_coupling("AC")
         self._protocol.set_ch2_coupling("AC")
         logger.info("Oscilloscope: couplage CH1=AC, CH2=AC (début balayage)")
@@ -251,35 +283,45 @@ class OscilloscopeBodeSource:
         - :MEAS:CH2:CYCRms?     (RMS canal 2, Us) ; si invalide → PKPK?
         - :MEAS:CH2:RISEPHASEDELAY? (phase CH2 vs CH1 : le DOS1102 renvoie directement des degrés, ex. "RP : 26.352°")
         """
-        # Adapter la base de temps à la fréquence du générateur (~2–4 périodes à l'écran)
-        if freq_hz is not None and freq_hz > 0:
-            time_per_div = _time_scale_for_frequency(freq_hz)
-            self._protocol.set_hor_scale(time_per_div)
-            if time_per_div >= 1:
-                logger.info("Oscilloscope: base de temps %.2f s/div (f=%.2f Hz)", time_per_div, freq_hz)
-            elif time_per_div >= 1e-3:
-                logger.info("Oscilloscope: base de temps %.2f ms/div (f=%.2f Hz)", time_per_div * 1e3, freq_hz)
-            elif time_per_div >= 1e-6:
-                logger.info("Oscilloscope: base de temps %.2f µs/div (f=%.2f Hz)", time_per_div * 1e6, freq_hz)
-            else:
-                logger.info("Oscilloscope: base de temps %.2f ns/div (f=%.2f Hz)", time_per_div * 1e9, freq_hz)
-            time.sleep(0.05)
-        # Adapter les calibres pour précision max : sensibilité forte si tension faible, réduite si tension forte
-        if prev_ue is None and prev_us is None:
-            # Début des mesures : 500 mV/div sur les deux canaux
-            scale_v = 0.5
-            self._protocol.set_ch_scale(self._channel_ue, scale_v)
-            self._protocol.set_ch_scale(self._channel_us, scale_v)
-            logger.info("Oscilloscope: échelle CH1=CH2=500 mV/div (début balayage)")
+        # Adapter la base de temps et les calibres (sauf si déjà fait par prepare_first_point avant la temporisation 2 s)
+        if prev_ue is None and prev_us is None and self._first_point_prepared:
+            scale_ch2_v_per_div = 0.5
+            self._first_point_prepared = False
+            logger.debug("Oscilloscope: 1er point — base de temps et calibres déjà en place (prepare_first_point), lecture directe")
         else:
-            scale_ue = _scale_for_rms_voltage(prev_ue) if prev_ue is not None else 0.5
-            scale_us = _scale_for_rms_voltage(prev_us) if prev_us is not None else 0.5
-            self._protocol.set_ch_scale(self._channel_ue, scale_ue)
-            self._protocol.set_ch_scale(self._channel_us, scale_us)
-            logger.info("Oscilloscope: échelle CH1=%.2f V/div, CH2=%.2f V/div (Ue=%.3f V, Us=%.3f V)", scale_ue, scale_us, prev_ue or 0, prev_us or 0)
-            time.sleep(0.05)  # laisser l'oscilloscope appliquer les nouveaux calibres
+            if freq_hz is not None and freq_hz > 0:
+                time_per_div = _time_scale_for_frequency(freq_hz)
+                self._protocol.set_hor_scale(time_per_div)
+                if time_per_div >= 1:
+                    logger.info("Oscilloscope: base de temps %.2f s/div (f=%.2f Hz)", time_per_div, freq_hz)
+                elif time_per_div >= 1e-3:
+                    logger.info("Oscilloscope: base de temps %.2f ms/div (f=%.2f Hz)", time_per_div * 1e3, freq_hz)
+                elif time_per_div >= 1e-6:
+                    logger.info("Oscilloscope: base de temps %.2f µs/div (f=%.2f Hz)", time_per_div * 1e6, freq_hz)
+                else:
+                    logger.info("Oscilloscope: base de temps %.2f ns/div (f=%.2f Hz)", time_per_div * 1e9, freq_hz)
+                time.sleep(1.0)  # stabilisation au moins 1 s après changement de base de temps
+            if prev_ue is None and prev_us is None:
+                scale_v = 0.5
+                scale_ch2_v_per_div = 0.5
+                self._protocol.set_ch_scale(self._channel_ue, scale_v)
+                self._protocol.set_ch_scale(self._channel_us, scale_v)
+                logger.info("Oscilloscope: échelle CH1=CH2=500 mV/div (début balayage)")
+                time.sleep(1.0)  # stabilisation 1 s après calibres pour que la 1re lecture soit correcte
+            else:
+                scale_ue = _scale_for_rms_voltage(prev_ue) if prev_ue is not None else 0.5
+                scale_us = _scale_for_rms_voltage(prev_us) if prev_us is not None else 0.5
+                scale_ch2_v_per_div = scale_us
+                self._protocol.set_ch_scale(self._channel_ue, scale_ue)
+                self._protocol.set_ch_scale(self._channel_us, scale_us)
+                logger.info("Oscilloscope: échelle CH1=%.2f V/div, CH2=%.2f V/div (Ue=%.3f V, Us=%.3f V)", scale_ue, scale_us, prev_ue or 0, prev_us or 0)
+                time.sleep(0.05)  # laisser l'oscilloscope appliquer les nouveaux calibres
 
-        # Canal Ue (CH1) : RMS (CYCRms) puis PKPK si invalide ; tensions en V (mV → V si besoin)
+        # En dessous du calibre configuré (ex. 20 mV/div), ne pas relever la phase (signal trop altéré)
+        threshold_v = self._phase_skip_below_scale_ch2_mv / 1000.0
+        skip_phase = scale_ch2_v_per_div <= threshold_v
+
+        # Canal Ue (CH1) : RMS (CYCRms) puis PKPK puis TRUERMS si invalide ; tensions en V (mV → V si besoin)
         ue_rms_raw = self._protocol.meas_ch(self._channel_ue, "CYCRms")
         ue_rms = _parse_dos1102_voltage(ue_rms_raw)
         if ue_rms is None:
@@ -287,24 +329,42 @@ class OscilloscopeBodeSource:
             ue_pp = _parse_dos1102_voltage(ue_pp_raw)
             if ue_pp is not None and ue_pp > 0:
                 ue_rms = _pkpk_to_rms_sinusoidal(ue_pp)
+        if ue_rms is None:
+            ue_tr_raw = self._protocol.meas_ch(self._channel_ue, "TRUERMS")
+            ue_rms = _parse_dos1102_voltage(ue_tr_raw)
         period_s = _parse_dos1102_value(self._protocol.meas_ch(self._channel_ue, "PERiod"))
 
-        # Canal Us (CH2) : idem CYCRms puis PKPK ; tensions en V
+        # Canal Us (CH2) : idem CYCRms puis PKPK puis TRUERMS ; tensions en V
         us_rms_raw = self._protocol.meas_ch(self._channel_us, "CYCRms")
         us_rms = _parse_dos1102_voltage(us_rms_raw)
+        us_pp_raw = None
+        us_tr_raw = None
         if us_rms is None:
             us_pp_raw = self._protocol.meas_ch(self._channel_us, "PKPK")
             us_pp = _parse_dos1102_voltage(us_pp_raw)
             if us_pp is not None and us_pp >= 0:
                 us_rms = _pkpk_to_rms_sinusoidal(us_pp)
-        # Phase : le DOS1102 renvoie en général directement des degrés ("RP : 26.352°")
-        phase_raw = self._protocol.meas_ch(self._channel_us, "RISEPHASEDELAY")
-        phase_val, phase_in_degrees = _parse_dos1102_phase(phase_raw)
-        delay_s = None if phase_in_degrees else phase_val
+        if us_rms is None:
+            us_tr_raw = self._protocol.meas_ch(self._channel_us, "TRUERMS")
+            us_rms = _parse_dos1102_voltage(us_tr_raw)
+        if us_rms is None:
+            logger.warning(
+                "bode oscillo: CH2 (Us) tension non lue — CYCRms=%r, PKPK=%r, TRUERMS=%r. Vérifier couplage AC/DC et câblage CH2.",
+                us_rms_raw, us_pp_raw, us_tr_raw,
+            )
+        # Phase : ne pas relever si calibre CH2 <= 20 mV/div (signal trop altéré)
+        if skip_phase:
+            phase_val, phase_in_degrees, delay_s = None, False, None
+        else:
+            phase_raw = self._protocol.meas_ch(self._channel_us, "RISEPHASEDELAY")
+            phase_val, phase_in_degrees = _parse_dos1102_phase(phase_raw)
+            delay_s = None if phase_in_degrees else phase_val
 
         ue = float(ue_rms) if ue_rms is not None else ue_nominal
         us = float(us_rms) if us_rms is not None else 0.0
-        if phase_val is not None:
+        if skip_phase:
+            phase = None
+        elif phase_val is not None:
             if phase_in_degrees:
                 phase = phase_val  # DOS1102 renvoie directement des degrés
             elif period_s is not None and period_s > 0 and delay_s is not None:
@@ -371,6 +431,13 @@ class SwitchableBodeMeasureSource:
             self._oscilloscope_source.prepare_for_sweep()
         else:
             self._multimeter_source.prepare_for_sweep()
+
+    def prepare_first_point(self, freq_hz: float) -> None:
+        """Délègue à la source active (oscillo : base de temps + calibres ; multimètre : rien)."""
+        if self._current == self.SOURCE_OSCILLOSCOPE and self._oscilloscope_source is not None:
+            self._oscilloscope_source.prepare_first_point(freq_hz)
+        else:
+            self._multimeter_source.prepare_first_point(freq_hz)
 
     def read_ue_us_phase(
         self,

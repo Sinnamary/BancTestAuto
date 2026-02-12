@@ -54,7 +54,8 @@ class TestDos1102Helpers:
 
     def test_ch_sca(self):
         assert "CH1" in CMD.CH_SCA(1, 0.5)
-        assert "0.5" in CMD.CH_SCA(1, 0.5)
+        assert "SCAL" in CMD.CH_SCA(1, 0.5)
+        assert "500mV" in CMD.CH_SCA(1, 0.5)
 
     def test_ch_pos(self):
         assert "CH2" in CMD.CH_POS(2, 0)

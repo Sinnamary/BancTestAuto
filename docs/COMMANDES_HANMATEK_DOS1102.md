@@ -10,6 +10,7 @@ Référence des **commandes SCPI** utilisables pour piloter l’oscilloscope HAN
   - **Série (COM)** : port COM virtuel, débit typique **115200** ou **9600** bauds (pilote CDC/série).  
   - **USB (WinUSB/PyUSB)** : connexion directe USB sans port COM. Pilote **WinUSB** (ex. installé via [Zadig](https://zadig.akeo.ie/)), backend **libusb** et **PyUSB** (`pip install pyusb`). Dans l’onglet Oscilloscope, choisir le mode **USB (WinUSB/PyUSB)**, cliquer sur **Rafraîchir USB**, sélectionner le périphérique dans la liste puis **Connexion**.
 - **Terminaison** : les commandes doivent se terminer par un **retour à la ligne** (`\n`). Ne pas envoyer `\` + `n` en clair (échapper correctement en code).
+- **Test au terminal série** : dans l’onglet **Terminal série**, sélectionner **Oscilloscope** puis envoyer une commande par ligne (ex. `*IDN?`, `:CH1:COUP AC`, `:HOR:SCAL 10ms`). Les échanges sont enregistrés dans `logs/serial_*.log`.
 - **Identification et réinitialisation** :
 
 | Commande | Rôle | Notes |
@@ -39,18 +40,20 @@ Syntaxe observée sur DOS1102 (certaines variantes utilisent `CH1`/`CH2` au lieu
 | `:CH1:COUP AC` | Couplage voie 1 : AC | |
 | `:CH1:COUP GND` | Couplage voie 1 : GND | |
 | `:CH2:COUP DC` / `AC` / `GND` | Couplage voie 2 | Idem pour CH2. |
-| `:CH<n>:SCA <valeur>` | Échelle verticale (V/div) | n = 1 ou 2. |
-| `:CH<n>:POS <valeur>` | Position verticale | |
-| `:CH<n>:OFFS <valeur>` | Offset vertical | |
+| `:CH<n>:SCAL <valeur>` | Échelle verticale (amplitude, V/div) | n = 1 ou 2. **Format avec unité** : `100mV`, `500mV`, `1V`, `2V`, `5V`, etc. Ex. `:CH1:SCAL 100mV`. |
+| `:CH<n>:POS <valeur>` | Position verticale (div) | |
+| `:CH<n>:OFFS <valeur>` | Offset vertical (V) | |
 | `:CH<n>:PROBE 1X` / `10X` / `100X` / `1000X` | Rapport de sonde | |
 | `:CH<n>:INV OFF` / `ON` | Inversion de voie | |
 
 ### Base de temps (horizontal)
 
+Le DOS1102 attend la base de temps **avec unité**. **Pour les ms** : uniquement `1.0ms`, `2.0ms` et `5.0ms` avec un zéro ; les autres sans : `10ms`, `20ms`, `50ms`, etc. ns/us sans `.0` : `500ns`, `2us`. Secondes : `1.0s`.
+
 | Commande | Rôle | Notes |
 |----------|------|--------|
 | `:HOR:OFFS <valeur>` | Offset horizontal | Position du trigger. |
-| `:HOR:SCAL <valeur>` | Échelle horizontale | Temps/div (s ou ms). |
+| `:HOR:SCAL <valeur>` | Échelle horizontale (temps/div) | **Format ms** : `1.0ms`, `2.0ms`, `5.0ms` avec zéro ; `10ms`, `20ms`, `50ms` sans. ns/us : `500ns`, `2us`. Ex. `:HOR:SCAL 2.0ms`, `:HOR:SCAL 10ms`. |
 
 ### Trigger
 
@@ -90,15 +93,15 @@ Syntaxe observée sur DOS1102 (certaines variantes utilisent `CH1`/`CH2` au lieu
 
 ### Mesures inter-canal (différence de phase entre les deux voies)
 
-Pour un **diagramme de Bode phase** (φ en degrés en fonction de la fréquence), on utilise les mesures de **délai** entre CH1 et CH2, puis on calcule la phase à partir de la période :
+Pour un **diagramme de Bode phase** (φ en degrés en fonction de la fréquence) :
 
 | Mesure (sur CH2) | Commande typique | Rôle |
 |------------------|------------------|------|
-| Délai phase montée | `:MEAS:CH2:RISEPHASEDELAY?` | Délai de la montée CH2 par rapport à CH1 (en s) |
-| Délai montée | `:MEAS:CH2:RDELay?` | Idem (variante) |
-| Délai descente | `:MEAS:CH2:FDELay?` | Délai de la descente CH2 vs CH1 |
+| Délai phase montée | `:MEAS:CH2:RISEPHASEDELAY?` | Sur le DOS1102, la réponse est **directement en degrés** (ex. `RP : 26.352°`). |
+| Délai montée | `:MEAS:CH2:RDELay?` | Délai en secondes (variante) |
+| Délai descente | `:MEAS:CH2:FDELay?` | Délai en secondes |
 
-**Formule :** φ (°) = (délai / période) × 360. La période peut être lue avec `:MEAS:CH1:PERiod?` ou `:MEAS:CH2:PERiod?`.
+Si la commande renvoie un délai en secondes plutôt qu’en degrés, utiliser : φ (°) = (délai / période) × 360, avec la période lue via `:MEAS:CH1:PERiod?` ou `:MEAS:CH2:PERiod?`.
 
 L'application propose **« Toutes les mesures »** (par voie CH1, CH2, ou inter-canal) pour récupérer en une fois toutes les valeurs nécessaires au Bode phase.
 

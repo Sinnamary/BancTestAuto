@@ -46,8 +46,8 @@ class OscilloscopeAcqTriggerPanel(QWidget):
 
         self._timebase_spin = QDoubleSpinBox()
         self._timebase_spin.setDecimals(6)
-        self._timebase_spin.setMinimum(1e-9)
-        self._timebase_spin.setMaximum(1000.0)
+        self._timebase_spin.setMinimum(2e-9)   # 2 ns/div (min DOS1102)
+        self._timebase_spin.setMaximum(1000.0)  # 1000 s/div (max DOS1102)
         self._timebase_spin.setValue(1e-3)
         self._timebase_spin.setSuffix(" s/div")
         acq_layout.addRow("Base de temps :", self._timebase_spin)
