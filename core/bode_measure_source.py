@@ -5,6 +5,9 @@ l'oscilloscope (Ue Ch1, Us Ch2, phase Ch2 vs Ch1).
 """
 from __future__ import annotations
 
+import math
+import re
+import time
 from typing import TYPE_CHECKING, Callable, Optional, Protocol, Tuple
 
 from .app_logger import get_logger
@@ -16,6 +19,51 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Calibres verticaux DOS1102 (V/div) : du plus sensible au moins sensible pour maximiser la précision
+_OSC_V_SCALES_V_PER_DIV = (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0)
+
+# Base de temps DOS1102 (s/div) : 1-2-5 de 2 ns à 1 s pour adapter à la fréquence du générateur
+_OSC_TIME_SCALES_S_PER_DIV = (
+    2e-9, 5e-9, 10e-9, 20e-9, 50e-9, 100e-9, 200e-9, 500e-9,
+    1e-6, 2e-6, 5e-6, 10e-6, 20e-6, 50e-6, 100e-6, 200e-6, 500e-6,
+    1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3,
+    1.0,
+)
+
+
+def _time_scale_for_frequency(f_hz: float) -> float:
+    """
+    Retourne le time/div (s/div) adapté à la fréquence pour afficher ~2 à 4 périodes sur l'écran.
+    Choisit le calibre le plus proche dans la liste autorisée.
+    """
+    if f_hz <= 0:
+        return _OSC_TIME_SCALES_S_PER_DIV[-1]
+    period = 1.0 / f_hz
+    # ~3 périodes sur 10 divisions → time_per_div idéal = period * 0.3
+    ideal = period * 0.3
+    best = _OSC_TIME_SCALES_S_PER_DIV[0]
+    for s in _OSC_TIME_SCALES_S_PER_DIV:
+        if s >= ideal:
+            return s
+        best = s
+    return best
+
+
+def _scale_for_rms_voltage(v_rms: float) -> float:
+    """
+    Retourne le calibre (V/div) adapté à une tension RMS pour maximiser la précision.
+    Le signal crête-à-crête (2*sqrt(2)*V_rms) doit tenir dans l'écran (~8 div) sans saturer.
+    On choisit le calibre le plus sensible (plus petit) qui permet de ne pas clipser.
+    """
+    if v_rms <= 0:
+        return _OSC_V_SCALES_V_PER_DIV[0]
+    v_pp = 2.0 * math.sqrt(2.0) * v_rms
+    min_scale = v_pp / 8.0  # au moins 8 divisions pour le pic-à-pic
+    for s in _OSC_V_SCALES_V_PER_DIV:
+        if s >= min_scale:
+            return s
+    return _OSC_V_SCALES_V_PER_DIV[-1]
+
 
 def _parse_float(s: Optional[str]) -> Optional[float]:
     """Parse une chaîne en float (réponse SCPI). Retourne None si invalide."""
@@ -25,6 +73,84 @@ def _parse_float(s: Optional[str]) -> Optional[float]:
         return float(s.replace(",", "."))
     except (ValueError, TypeError):
         return None
+
+
+def _parse_dos1102_value(raw: Optional[str]) -> Optional[float]:
+    """
+    Parse une réponse DOS1102 au format "Label : value" (ex. "TR : 1.234", "T : 0.001").
+    Retourne le nombre extrait, ou None si invalide / "?".
+    """
+    if raw is None or not (s := str(raw).strip()):
+        return None
+    # Format "XX : value" ou "value" seul (ex. "Vpp : 2.266V", "T :   ?")
+    if ":" in s:
+        s = s.split(":")[-1].strip()
+    s = s.replace(",", ".")
+    # Retirer symboles et unités en fin (°, V, s, etc.) pour extraire le nombre
+    s = re.sub(r"[\u00b0°\s]*[A-Za-z]*\s*$", "", s).strip()
+    if not s or s == "?":
+        return None
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_dos1102_voltage(raw: Optional[str]) -> Optional[float]:
+    """
+    Parse une réponse DOS1102 contenant une tension et retourne la valeur en Volts.
+    L'oscilloscope envoie l'unité dans le log (ex. "TR : 673.7mV", "TR : 999.2mV") :
+    si la réponse contient "mV", on convertit en V (÷ 1000) pour le tableau.
+    Si "V" sans "mV" (ex. "2.266V") → valeur déjà en V. Si unité absente et valeur > 100, suppose mV.
+    """
+    val = _parse_dos1102_value(raw)
+    if val is None:
+        return None
+    s = (raw or "").strip()
+    if "mv" in s.lower():
+        return val / 1000.0
+    if "v" in s.lower():
+        return val  # déjà en V (ex. "2.266V")
+    # Unité absente : valeur > 100 typique de mV (ex. 775 mV)
+    if val > 100:
+        return val / 1000.0
+    return val
+
+
+def _pkpk_to_rms_sinusoidal(v_pp: float) -> float:
+    """Convertit tension crête-à-crête (V) en RMS pour un signal sinusoïdal : V_rms = V_pp / (2*sqrt(2))."""
+    return v_pp / (2.0 * math.sqrt(2.0))
+
+
+# Caractères pouvant indiquer des degrés (° peut arriver en \xb0 Latin-1 → \ufffd en UTF-8)
+_DEGREE_INDICATORS = ("\u00b0", "°", "\ufffd")
+
+
+def _parse_dos1102_phase(raw: Optional[str]) -> Tuple[Optional[float], bool]:
+    """
+    Parse la réponse à :MEAS:CH2:RISEPHASEDELAY?.
+    Le DOS1102 renvoie la phase directement en degrés (ex. "RP : 26.352°").
+    Le ° est parfois reçu en Latin-1 (\\xb0) et devient \\ufffd en UTF-8 : on le reconnaît quand même.
+    Retourne (valeur, is_degrees).
+    """
+    if raw is None or not (s := str(raw).strip()):
+        return None, False
+    if ":" in s:
+        s = s.split(":")[-1].strip()
+    s = s.replace(",", ".")
+    is_degrees = any(c in s for c in _DEGREE_INDICATORS)
+    # Extraire uniquement le nombre (évite float() sur "29.520\\ufffd" ou "29.520°")
+    num_match = re.search(r"[-+]?\d*\.?\d+", s)
+    if not num_match:
+        return None, False
+    try:
+        val = float(num_match.group())
+    except (ValueError, TypeError):
+        return None, False
+    # Valeur typique en degrés (-360..360) : considérer comme degrés si symbole présent ou plage cohérente
+    if not is_degrees and -360 <= val <= 360:
+        is_degrees = True
+    return val, is_degrees
 
 
 class BodeMeasureSource(Protocol):
@@ -38,10 +164,17 @@ class BodeMeasureSource(Protocol):
         """Configure la source avant le balayage (ex. mode tension AC)."""
         ...
 
-    def read_ue_us_phase(self, ue_nominal: float) -> Tuple[float, float, Optional[float]]:
+    def read_ue_us_phase(
+        self,
+        ue_nominal: float,
+        prev_ue: Optional[float] = None,
+        prev_us: Optional[float] = None,
+        freq_hz: Optional[float] = None,
+    ) -> Tuple[float, float, Optional[float]]:
         """
         Lit Ue (V RMS), Us (V RMS) et éventuellement la phase (deg, Ch2 vs Ch1).
-        Pour le multimètre, Ue = ue_nominal (non mesuré), phase = None.
+        prev_ue / prev_us : tensions du point précédent (optionnel) pour adapter les calibres.
+        freq_hz : fréquence du générateur (optionnel) pour adapter la base de temps de l'oscilloscope.
         Retourne (ue_rms, us_rms, phase_deg | None).
         """
         ...
@@ -59,12 +192,22 @@ class MultimeterBodeAdapter:
     def prepare_for_sweep(self) -> None:
         self._measurement.set_voltage_ac()
 
-    def read_ue_us_phase(self, ue_nominal: float) -> Tuple[float, float, Optional[float]]:
+    def read_ue_us_phase(
+        self,
+        ue_nominal: float,
+        prev_ue: Optional[float] = None,
+        prev_us: Optional[float] = None,
+        freq_hz: Optional[float] = None,
+    ) -> Tuple[float, float, Optional[float]]:
         raw = self._measurement.read_value()
         us = self._measurement.parse_float(raw)
         if us is None:
             us = 0.0
         return (ue_nominal, us, None)
+
+    def end_of_sweep(self) -> None:
+        """Rien à faire pour le multimètre."""
+        pass
 
 
 class OscilloscopeBodeSource:
@@ -84,27 +227,104 @@ class OscilloscopeBodeSource:
         self._channel_us = channel_us
 
     def prepare_for_sweep(self) -> None:
-        """Aucune config spécifique requise pour le sweep (mesures à la demande)."""
-        pass
+        """Couplage AC sur les deux voies (Ue=CH1, Us=CH2) pour mesurer le signal sans offset DC."""
+        self._protocol.set_ch1_coupling("AC")
+        self._protocol.set_ch2_coupling("AC")
+        logger.info("Oscilloscope: couplage CH1=AC, CH2=AC (début balayage)")
+        time.sleep(0.05)
 
-    def read_ue_us_phase(self, ue_nominal: float) -> Tuple[float, float, Optional[float]]:
+    def read_ue_us_phase(
+        self,
+        ue_nominal: float,
+        prev_ue: Optional[float] = None,
+        prev_us: Optional[float] = None,
+        freq_hz: Optional[float] = None,
+    ) -> Tuple[float, float, Optional[float]]:
         """
-        Lit CYCRms sur canal Ue, CYCRms sur canal Us, puis période (PERiod) sur canal Ue
-        et délai phase (RISEPHASEDELAY) sur canal Us pour calculer la phase.
+        Lit RMS (CYCRms puis TRUERMS en secours) et période sur chaque canal,
+        et phase (RISEPHASEDELAY sur CH2). Les réponses DOS1102 au format
+        "Label : value" ou "value°" sont parsées correctement.
+
+        Commandes SCPI envoyées à l'oscilloscope (une par mesure) :
+        - :MEAS:CH1:CYCRms?     (RMS canal 1, Ue) ; si invalide → PKPK? puis V_rms = V_pp/(2*sqrt(2))
+        - :MEAS:CH1:PERiod?     (période canal 1, pour phase)
+        - :MEAS:CH2:CYCRms?     (RMS canal 2, Us) ; si invalide → PKPK?
+        - :MEAS:CH2:RISEPHASEDELAY? (phase CH2 vs CH1 : le DOS1102 renvoie directement des degrés, ex. "RP : 26.352°")
         """
-        # CYCRms = RMS sur un cycle (sinusoïde → valeur efficace)
-        ue_rms = _parse_float(self._protocol.meas_ch(self._channel_ue, "CYCRms"))
-        us_rms = _parse_float(self._protocol.meas_ch(self._channel_us, "CYCRms"))
-        period_s = _parse_float(self._protocol.meas_ch(self._channel_ue, "PERiod"))
-        delay_s = _parse_float(self._protocol.meas_ch(self._channel_us, "RISEPHASEDELAY"))
+        # Adapter la base de temps à la fréquence du générateur (~2–4 périodes à l'écran)
+        if freq_hz is not None and freq_hz > 0:
+            time_per_div = _time_scale_for_frequency(freq_hz)
+            self._protocol.set_hor_scale(time_per_div)
+            if time_per_div >= 1:
+                logger.info("Oscilloscope: base de temps %.2f s/div (f=%.2f Hz)", time_per_div, freq_hz)
+            elif time_per_div >= 1e-3:
+                logger.info("Oscilloscope: base de temps %.2f ms/div (f=%.2f Hz)", time_per_div * 1e3, freq_hz)
+            elif time_per_div >= 1e-6:
+                logger.info("Oscilloscope: base de temps %.2f µs/div (f=%.2f Hz)", time_per_div * 1e6, freq_hz)
+            else:
+                logger.info("Oscilloscope: base de temps %.2f ns/div (f=%.2f Hz)", time_per_div * 1e9, freq_hz)
+            time.sleep(0.05)
+        # Adapter les calibres pour précision max : sensibilité forte si tension faible, réduite si tension forte
+        if prev_ue is None and prev_us is None:
+            # Début des mesures : 500 mV/div sur les deux canaux
+            scale_v = 0.5
+            self._protocol.set_ch_scale(self._channel_ue, scale_v)
+            self._protocol.set_ch_scale(self._channel_us, scale_v)
+            logger.info("Oscilloscope: échelle CH1=CH2=500 mV/div (début balayage)")
+        else:
+            scale_ue = _scale_for_rms_voltage(prev_ue) if prev_ue is not None else 0.5
+            scale_us = _scale_for_rms_voltage(prev_us) if prev_us is not None else 0.5
+            self._protocol.set_ch_scale(self._channel_ue, scale_ue)
+            self._protocol.set_ch_scale(self._channel_us, scale_us)
+            logger.info("Oscilloscope: échelle CH1=%.2f V/div, CH2=%.2f V/div (Ue=%.3f V, Us=%.3f V)", scale_ue, scale_us, prev_ue or 0, prev_us or 0)
+            time.sleep(0.05)  # laisser l'oscilloscope appliquer les nouveaux calibres
+
+        # Canal Ue (CH1) : RMS (CYCRms) puis PKPK si invalide ; tensions en V (mV → V si besoin)
+        ue_rms_raw = self._protocol.meas_ch(self._channel_ue, "CYCRms")
+        ue_rms = _parse_dos1102_voltage(ue_rms_raw)
+        if ue_rms is None:
+            ue_pp_raw = self._protocol.meas_ch(self._channel_ue, "PKPK")
+            ue_pp = _parse_dos1102_voltage(ue_pp_raw)
+            if ue_pp is not None and ue_pp > 0:
+                ue_rms = _pkpk_to_rms_sinusoidal(ue_pp)
+        period_s = _parse_dos1102_value(self._protocol.meas_ch(self._channel_ue, "PERiod"))
+
+        # Canal Us (CH2) : idem CYCRms puis PKPK ; tensions en V
+        us_rms_raw = self._protocol.meas_ch(self._channel_us, "CYCRms")
+        us_rms = _parse_dos1102_voltage(us_rms_raw)
+        if us_rms is None:
+            us_pp_raw = self._protocol.meas_ch(self._channel_us, "PKPK")
+            us_pp = _parse_dos1102_voltage(us_pp_raw)
+            if us_pp is not None and us_pp >= 0:
+                us_rms = _pkpk_to_rms_sinusoidal(us_pp)
+        # Phase : le DOS1102 renvoie en général directement des degrés ("RP : 26.352°")
+        phase_raw = self._protocol.meas_ch(self._channel_us, "RISEPHASEDELAY")
+        phase_val, phase_in_degrees = _parse_dos1102_phase(phase_raw)
+        delay_s = None if phase_in_degrees else phase_val
 
         ue = float(ue_rms) if ue_rms is not None else ue_nominal
         us = float(us_rms) if us_rms is not None else 0.0
-        phase = phase_deg_from_delay(delay_s, period_s) if (delay_s is not None and period_s is not None) else None
+        if phase_val is not None:
+            if phase_in_degrees:
+                phase = phase_val  # DOS1102 renvoie directement des degrés
+            elif period_s is not None and period_s > 0 and delay_s is not None:
+                phase = phase_deg_from_delay(delay_s, period_s)  # délai en s → °
+            elif -360 <= phase_val <= 360:
+                phase = phase_val  # valeur plausible en ° (ex. symbole ° perdu en encodage)
+            else:
+                phase = None
+        else:
+            phase = None
 
         if ue_rms is None or us_rms is None:
-            logger.debug("bode oscillo: Ue=%s Us=%s (période=%s, délai=%s) -> phase=%s", ue_rms, us_rms, period_s, delay_s, phase)
+            logger.debug("bode oscillo: Ue=%s Us=%s (période=%s, phase_raw=%s) -> phase=%s", ue_rms, us_rms, period_s, phase_raw, phase)
         return (ue, us, phase)
+
+    def end_of_sweep(self) -> None:
+        """En fin de balayage : repasse les deux canaux sur 5 V/div."""
+        self._protocol.set_ch_scale(self._channel_ue, 5.0)
+        self._protocol.set_ch_scale(self._channel_us, 5.0)
+        logger.info("Oscilloscope: échelle CH1=CH2=5 V/div (fin balayage)")
 
 
 class SwitchableBodeMeasureSource:
@@ -152,7 +372,20 @@ class SwitchableBodeMeasureSource:
         else:
             self._multimeter_source.prepare_for_sweep()
 
-    def read_ue_us_phase(self, ue_nominal: float) -> Tuple[float, float, Optional[float]]:
+    def read_ue_us_phase(
+        self,
+        ue_nominal: float,
+        prev_ue: Optional[float] = None,
+        prev_us: Optional[float] = None,
+        freq_hz: Optional[float] = None,
+    ) -> Tuple[float, float, Optional[float]]:
         if self._current == self.SOURCE_OSCILLOSCOPE and self._oscilloscope_source is not None:
-            return self._oscilloscope_source.read_ue_us_phase(ue_nominal)
-        return self._multimeter_source.read_ue_us_phase(ue_nominal)
+            return self._oscilloscope_source.read_ue_us_phase(ue_nominal, prev_ue, prev_us, freq_hz)
+        return self._multimeter_source.read_ue_us_phase(ue_nominal, prev_ue, prev_us, freq_hz)
+
+    def end_of_sweep(self) -> None:
+        """Délègue à la source active (oscillo : 5 V/div en fin ; multimètre : rien)."""
+        if self._current == self.SOURCE_OSCILLOSCOPE and self._oscilloscope_source is not None:
+            self._oscilloscope_source.end_of_sweep()
+        else:
+            self._multimeter_source.end_of_sweep()

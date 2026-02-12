@@ -2,7 +2,10 @@
 Protocole SCPI pour l'oscilloscope HANMATEK DOS1102.
 Envoi/réception sur une SerialConnection (USB virtuelle série).
 """
+from __future__ import annotations
+
 import json
+from typing import Callable, Optional
 
 from .serial_connection import SerialConnection
 from . import dos1102_commands as CMD
@@ -19,6 +22,11 @@ class Dos1102Protocol:
 
     def __init__(self, connection: SerialConnection):
         self._conn = connection
+        self._on_ch_scale_changed: Optional[Callable[[int, float], None]] = None
+
+    def set_on_ch_scale_changed(self, callback: Optional[Callable[[int, float], None]]) -> None:
+        """Enregistre un callback (ch, value_v_per_div) appelé à chaque set_ch_scale (pour synchroniser l'UI)."""
+        self._on_ch_scale_changed = callback
 
     def write(self, command: str) -> None:
         """Envoie une commande SCPI (termine par \\n si absent)."""
@@ -83,6 +91,11 @@ class Dos1102Protocol:
     # Échelle / position / offset
     def set_ch_scale(self, ch: int, value) -> None:
         self.write(CMD.CH_SCA(ch, value))
+        if self._on_ch_scale_changed is not None:
+            try:
+                self._on_ch_scale_changed(ch, float(value))
+            except Exception:
+                pass
 
     def set_ch_pos(self, ch: int, value) -> None:
         self.write(CMD.CH_POS(ch, value))

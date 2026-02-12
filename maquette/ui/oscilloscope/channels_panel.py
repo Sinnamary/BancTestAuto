@@ -177,6 +177,18 @@ class OscilloscopeChannelsPanel(QWidget):
             "Auto scale n'est pas encore implémenté dans cette version.",
         )
 
+    def set_scale_values(self, ch1_v_per_div: float, ch2_v_per_div: float) -> None:
+        """Met à jour l'affichage des échelles (sans envoyer à l'oscilloscope)."""
+        self._ch1_scale.setValue(ch1_v_per_div)
+        self._ch2_scale.setValue(ch2_v_per_div)
+
+    def set_ch_scale_display(self, ch: int, v_per_div: float) -> None:
+        """Met à jour l'affichage de l'échelle d'un seul canal."""
+        if ch == 1:
+            self._ch1_scale.setValue(v_per_div)
+        elif ch == 2:
+            self._ch2_scale.setValue(v_per_div)
+
     def _on_copy_ch1_to_ch2(self) -> None:
         """Recopie les paramètres de CH1 vers CH2 côté UI (sans re‑lire l'appareil)."""
         self._ch2_enable.setChecked(self._ch1_enable.isChecked())

@@ -204,7 +204,7 @@ class MainWindow(QMainWindow):
             if hasattr(self._oscilloscope_view, "load_config") and self._config:
                 self._oscilloscope_view.load_config(self._config)
             if hasattr(self._oscilloscope_view, "set_connection"):
-                self._oscilloscope_view.set_connection(bridge.get_oscilloscope_conn())
+                self._oscilloscope_view.set_connection(bridge.get_oscilloscope_conn(), bridge.get_oscilloscope_protocol())
 
     def _init_views_without_connections(self):
         """Initialise les vues sans créer ni ouvrir de connexion série (aucun port ouvert au démarrage)."""
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
             if hasattr(self._oscilloscope_view, "load_config") and self._config:
                 self._oscilloscope_view.load_config(self._config)
             if hasattr(self._oscilloscope_view, "set_connection"):
-                self._oscilloscope_view.set_connection(None)
+                self._oscilloscope_view.set_connection(None, None)
 
     def _reconnect_serial(self):
         """Ferme les ports, recrée les connexions, ouvre et vérifie les appareils (Connecter tout / Détecter)."""
@@ -266,7 +266,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_power_supply_view") and self._power_supply_view and hasattr(self._power_supply_view, "set_connection"):
             self._power_supply_view.set_connection(self._connection_bridge.get_power_supply_conn())
         if hasattr(self, "_oscilloscope_view") and self._oscilloscope_view and hasattr(self._oscilloscope_view, "set_connection"):
-            self._oscilloscope_view.set_connection(self._connection_bridge.get_oscilloscope_conn())
+            self._oscilloscope_view.set_connection(
+                self._connection_bridge.get_oscilloscope_conn(),
+                self._connection_bridge.get_oscilloscope_protocol(),
+            )
         if hasattr(self, "_serial_terminal_view") and self._serial_terminal_view and hasattr(self._serial_terminal_view, "refresh_equipment_list"):
             self._serial_terminal_view.refresh_equipment_list()
 

@@ -61,7 +61,7 @@ class FilterTestView(QWidget):
         row0.addWidget(self._source_hint_label)
         row0.addStretch()
         config_layout.addLayout(row0)
-        self._source_combo.currentIndexChanged.connect(self._update_source_hint_label)
+        self._source_combo.currentIndexChanged.connect(self._on_source_changed)
 
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("Voie générateur FY6900 :"))
@@ -134,8 +134,8 @@ class FilterTestView(QWidget):
 
         table_gb = QGroupBox("Résultats")
         table_layout = QVBoxLayout(table_gb)
-        self._results_table = QTableWidget(0, 4)
-        self._results_table.setHorizontalHeaderLabels(["f (Hz)", "Us (V)", "Us/Ue", "Gain (dB)"])
+        self._results_table = QTableWidget(0, 6)
+        self._update_results_table_columns()
         table_layout.addWidget(self._results_table)
         layout.addWidget(table_gb)
         layout.addStretch()
@@ -144,6 +144,11 @@ class FilterTestView(QWidget):
         self._stop_btn.clicked.connect(self._on_stop)
         self._export_csv_btn.clicked.connect(self._on_export_csv)
         self._view_graph_btn.clicked.connect(self._on_view_graph)
+
+    def _on_source_changed(self):
+        """Met à jour le libellé et les colonnes du tableau selon la source de mesure."""
+        self._update_source_hint_label()
+        self._update_results_table_columns()
 
     def _update_source_hint_label(self):
         """Met à jour le libellé explicatif selon la source de mesure choisie."""
@@ -154,6 +159,18 @@ class FilterTestView(QWidget):
             self._source_hint_label.setText("  → Ch1 = Ue (génération), Ch2 = Us (sortie filtre)")
         else:
             self._source_hint_label.setText("  → Ue = valeur générateur (non mesurée), Us = mesure multimètre")
+
+    def _update_results_table_columns(self):
+        """Avec oscilloscope : f, Ue (V), Us (V), Us/Ue, Gain (dB), Phase (°). Avec multimètre : 4 colonnes sans Ue ni Phase."""
+        source = self._source_combo.currentData() if hasattr(self, "_source_combo") else "multimeter"
+        if source == "oscilloscope":
+            self._results_table.setColumnCount(6)
+            self._results_table.setHorizontalHeaderLabels(
+                ["f (Hz)", "Ue (V)", "Us (V)", "Us/Ue", "Gain (dB)", "Phase (°)"]
+            )
+        else:
+            self._results_table.setColumnCount(4)
+            self._results_table.setHorizontalHeaderLabels(["f (Hz)", "Us (V)", "Us/Ue", "Gain (dB)"])
 
     def set_filter_test(self, filter_test):
         """Injection du banc filtre (FilterTest) depuis la fenêtre principale."""
@@ -220,6 +237,7 @@ class FilterTestView(QWidget):
             ue_rms=cfg_dict["ue_rms"],
         )
         self._filter_test.set_config(cfg)
+        self._update_results_table_columns()
         self._results_table.setRowCount(0)
         self._results = []
         self._view_graph_btn.setEnabled(False)
@@ -243,10 +261,28 @@ class FilterTestView(QWidget):
         self._results.append(point)
         row = self._results_table.rowCount()
         self._results_table.insertRow(row)
-        self._results_table.setItem(row, 0, QTableWidgetItem(f"{point.f_hz:.4g}"))
-        self._results_table.setItem(row, 1, QTableWidgetItem(f"{point.us_v:.6f}"))
-        self._results_table.setItem(row, 2, QTableWidgetItem(f"{point.gain_linear:.6f}"))
-        self._results_table.setItem(row, 3, QTableWidgetItem(f"{point.gain_db:.2f}"))
+        if self._results_table.columnCount() >= 6:
+            # Oscilloscope : f, Ue (V), Us (V), Us/Ue, Gain (dB), Phase (°)
+            self._results_table.setItem(row, 0, QTableWidgetItem(f"{point.f_hz:.4g}"))
+            ue_v = getattr(point, "ue_v", None)
+            self._results_table.setItem(
+                row, 1,
+                QTableWidgetItem(f"{ue_v:.6f}" if ue_v is not None else "—")
+            )
+            self._results_table.setItem(row, 2, QTableWidgetItem(f"{point.us_v:.6f}"))
+            self._results_table.setItem(row, 3, QTableWidgetItem(f"{point.gain_linear:.6f}"))
+            self._results_table.setItem(row, 4, QTableWidgetItem(f"{point.gain_db:.2f}"))
+            phase_deg = getattr(point, "phase_deg", None)
+            self._results_table.setItem(
+                row, 5,
+                QTableWidgetItem(f"{phase_deg:.2f}" if phase_deg is not None else "—")
+            )
+        else:
+            # Multimètre : f, Us, Us/Ue, Gain (dB)
+            self._results_table.setItem(row, 0, QTableWidgetItem(f"{point.f_hz:.4g}"))
+            self._results_table.setItem(row, 1, QTableWidgetItem(f"{point.us_v:.6f}"))
+            self._results_table.setItem(row, 2, QTableWidgetItem(f"{point.gain_linear:.6f}"))
+            self._results_table.setItem(row, 3, QTableWidgetItem(f"{point.gain_db:.2f}"))
 
     def _on_progress(self, current, total):
         self._progress.setMaximum(total)
@@ -288,14 +324,22 @@ class FilterTestView(QWidget):
         if not path:
             return
         has_phase = any(getattr(p, "phase_deg", None) is not None for p in self._results)
+        has_ue = any(getattr(p, "ue_v", None) is not None for p in self._results)
         with open(path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f, delimiter=";")
-            if has_phase:
-                w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB", "Ue_V", "Phase_deg"])
+            if has_phase or has_ue:
+                w.writerow(["f_Hz", "Ue_V", "Us_V", "Us_Ue", "Gain_dB", "Phase_deg"])
                 for p in self._results:
-                    ue_v = (p.us_v / p.gain_linear) if getattr(p, "gain_linear", 0) and p.gain_linear > 0 else ""
+                    ue_v = getattr(p, "ue_v", None)
+                    if ue_v is None and getattr(p, "gain_linear", 0) and p.gain_linear > 0:
+                        ue_v = p.us_v / p.gain_linear
                     phase_deg = getattr(p, "phase_deg", None)
-                    w.writerow([p.f_hz, p.us_v, p.gain_linear, p.gain_db, ue_v, phase_deg if phase_deg is not None else ""])
+                    w.writerow([
+                        p.f_hz,
+                        ue_v if ue_v is not None else "",
+                        p.us_v, p.gain_linear, p.gain_db,
+                        phase_deg if phase_deg is not None else "",
+                    ])
             else:
                 w.writerow(["f_Hz", "Us_V", "Us_Ue", "Gain_dB"])
                 for p in self._results:
@@ -313,7 +357,9 @@ class FilterTestView(QWidget):
         # Données déjà collectées : on les injecte directement dans le graphique (pas de dialogue d'ouverture de fichier)
         csv_points = []
         for p in self._results:
-            ue_v = (p.us_v / p.gain_linear) if p.gain_linear and p.gain_linear > 0 else None
+            ue_v = getattr(p, "ue_v", None)
+            if ue_v is None and p.gain_linear and p.gain_linear > 0:
+                ue_v = p.us_v / p.gain_linear
             phase_deg = getattr(p, "phase_deg", None)
             csv_points.append(BodeCsvPoint(
                 f_hz=p.f_hz, us_v=p.us_v, gain_linear=p.gain_linear, gain_db=p.gain_db,

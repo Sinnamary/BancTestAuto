@@ -227,6 +227,7 @@ class MainWindowConnectionBridge:
         self._generator_conn: Any = None
         self._power_supply_conn: Any = None
         self._oscilloscope_conn: Any = None
+        self._oscilloscope_protocol: Any = None
         self._scpi: Any = None
         self._measurement: Any = None
         self._fy6900: Any = None
@@ -248,6 +249,7 @@ class MainWindowConnectionBridge:
         self._generator_conn, self._fy6900 = _create_generator_connection(config)
         self._power_supply_conn = _create_power_supply_connection(config)
         self._oscilloscope_conn = _create_oscilloscope_connection(config)
+        self._oscilloscope_protocol = Dos1102Protocol(self._oscilloscope_conn) if self._oscilloscope_conn and Dos1102Protocol else None
 
         if not get_serial_power_supply_config or not (get_serial_power_supply_config(config) or {}):
             if self._power_supply_conn is None:
@@ -338,6 +340,7 @@ class MainWindowConnectionBridge:
         self._power_supply_conn = None
         _safe_close(self._oscilloscope_conn)
         self._oscilloscope_conn = None
+        self._oscilloscope_protocol = None
         self._scpi = None
         self._measurement = None
         self._fy6900 = None
@@ -351,12 +354,12 @@ class MainWindowConnectionBridge:
         """Crée la source Bode oscilloscope si l'oscillo est connecté (pour SwitchableBodeMeasureSource)."""
         if not self._oscilloscope_conn or not getattr(self._oscilloscope_conn, "is_open", lambda: False)():
             return None
-        if OscilloscopeBodeSource is None or Dos1102Protocol is None:
+        if OscilloscopeBodeSource is None or self._oscilloscope_protocol is None:
             return None
         ft_cfg = (get_filter_test_config(self._last_config) or {}) if get_filter_test_config and self._last_config else {}
         ch_ue = int(ft_cfg.get("oscillo_channel_ue", 1))
         ch_us = int(ft_cfg.get("oscillo_channel_us", 2))
-        return OscilloscopeBodeSource(Dos1102Protocol(self._oscilloscope_conn), channel_ue=ch_ue, channel_us=ch_us)
+        return OscilloscopeBodeSource(self._oscilloscope_protocol, channel_ue=ch_ue, channel_us=ch_us)
 
     def get_multimeter_conn(self) -> Any:
         return self._multimeter_conn
@@ -387,6 +390,10 @@ class MainWindowConnectionBridge:
 
     def get_oscilloscope_conn(self) -> Any:
         return self._oscilloscope_conn
+
+    def get_oscilloscope_protocol(self) -> Any:
+        """Protocole DOS1102 partagé (vue + balayage Bode) pour que l'écran Canaux reflète les calibres appliqués."""
+        return self._oscilloscope_protocol
 
     def get_connected_equipment_for_terminal(self) -> list:
         """

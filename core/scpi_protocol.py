@@ -20,7 +20,7 @@ class ScpiProtocol:
         cmd = command.strip()
         if not cmd.endswith("\n"):
             cmd += "\n"
-        logger.debug("SCPI TX: %s", cmd)
+        logger.debug("SCPI TX: %s", cmd.rstrip())
         self._conn.write(cmd.encode("utf-8"))
 
     def ask(self, command: str) -> str:

@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QFrame,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from .acquisition_trigger_panel import OscilloscopeAcqTriggerPanel
 from .measurement_panel import OscilloscopeMeasurementPanel
@@ -22,6 +22,8 @@ from .channels_panel import OscilloscopeChannelsPanel
 
 class OscilloscopeView(QWidget):
     """Onglet Oscilloscope DOS1102. Utilise la connexion du bridge si disponible."""
+
+    scale_changed_from_scope = pyqtSignal(int, float)  # ch, v_per_div (émission thread-safe depuis le balayage)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,16 +37,27 @@ class OscilloscopeView(QWidget):
         self._usb_write_timeout_ms: Optional[int] = None
         self._build_ui()
 
-    def set_connection(self, conn: Optional[Any]) -> None:
-        """Utilise la connexion fournie par le bridge (ou None si déconnecté)."""
+    def set_connection(self, conn: Optional[Any], protocol: Optional[Any] = None) -> None:
+        """Utilise la connexion et le protocole fournis par le bridge (ou None si déconnecté).
+        Si protocol est fourni, il est partagé avec le balayage Bode pour que l'écran Canaux reflète les calibres."""
+        old_protocol = self._protocol
         self._conn = None
         self._protocol = None
+        if old_protocol is not None and hasattr(old_protocol, "set_on_ch_scale_changed"):
+            old_protocol.set_on_ch_scale_changed(None)
         if conn is not None and getattr(conn, "is_open", lambda: False)():
             try:
-                from core.dos1102_protocol import Dos1102Protocol
-                self._conn = conn
-                self._protocol = Dos1102Protocol(conn)
-                self._protocol.idn()
+                if protocol is not None:
+                    self._conn = conn
+                    self._protocol = protocol
+                    self._protocol.idn()
+                    if hasattr(self._protocol, "set_on_ch_scale_changed"):
+                        self._protocol.set_on_ch_scale_changed(self._emit_scale_changed)
+                else:
+                    from core.dos1102_protocol import Dos1102Protocol
+                    self._conn = conn
+                    self._protocol = Dos1102Protocol(conn)
+                    self._protocol.idn()
                 self._update_panels_protocol(self._protocol)
                 self._update_panels_connected(True)
             except Exception:
@@ -58,6 +71,15 @@ class OscilloscopeView(QWidget):
                     self._meas_panel.set_result("—")
                 if hasattr(self._meas_panel, "set_general_result"):
                     self._meas_panel.set_general_result("—")
+
+    def _emit_scale_changed(self, ch: int, v_per_div: float) -> None:
+        """Appelé par le protocole (éventuellement depuis un autre thread) ; émet le signal pour mise à jour UI."""
+        self.scale_changed_from_scope.emit(ch, v_per_div)
+
+    def _on_scale_changed_from_scope(self, ch: int, v_per_div: float) -> None:
+        """Met à jour l'affichage des calibres dans le panneau Canaux (slot appelé dans le thread UI)."""
+        if hasattr(self, "_channels_panel") and self._channels_panel is not None:
+            self._channels_panel.set_ch_scale_display(ch, v_per_div)
 
     def _build_ui(self) -> None:
         scroll = QScrollArea()
@@ -84,6 +106,8 @@ class OscilloscopeView(QWidget):
         self._waveform_panel = OscilloscopeWaveformPanel(self)
         self._panels.append(self._waveform_panel)
         layout.addWidget(self._waveform_panel)
+
+        self.scale_changed_from_scope.connect(self._on_scale_changed_from_scope)
 
         layout.addStretch()
         scroll.setWidget(content)

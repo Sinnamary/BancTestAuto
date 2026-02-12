@@ -24,6 +24,7 @@ class BodePoint:
     gain_linear: float
     gain_db: float
     phase_deg: Optional[float] = None  # Optionnel (oscilloscope uniquement)
+    ue_v: Optional[float] = None  # Ue mesurée (V RMS) quand source = oscilloscope ; permet Us/Ue précis
 
 
 @dataclass
@@ -136,6 +137,7 @@ class FilterTest:
             if on_stabilization_ended:
                 on_stabilization_ended()
 
+        prev_ue, prev_us = None, None
         for i, f_hz in enumerate(freqs):
             if self._abort:
                 break
@@ -144,12 +146,13 @@ class FilterTest:
                 self._generator.set_frequency_hz(f_hz, channel=ch)
                 time.sleep(self._config.settling_ms / 1000.0)
 
-            ue_meas, us, phase_deg = self._measure_source.read_ue_us_phase(ue)
+            ue_meas, us, phase_deg = self._measure_source.read_ue_us_phase(ue, prev_ue=prev_ue, prev_us=prev_us, freq_hz=f_hz)
+            prev_ue, prev_us = ue_meas, us
             g_lin = gain_linear(us, ue_meas)
             g_db = gain_db(us, ue_meas)
             logger.debug("banc filtre point %d/%d: f=%.4f Hz, Ue=%.4f V, Us=%.4f V, gain_lin=%.4f, gain_dB=%.2f, phase=%s",
                          i + 1, total, f_hz, ue_meas, us, g_lin, g_db, phase_deg)
-            point = BodePoint(f_hz=f_hz, us_v=us, gain_linear=g_lin, gain_db=g_db, phase_deg=phase_deg)
+            point = BodePoint(f_hz=f_hz, us_v=us, gain_linear=g_lin, gain_db=g_db, phase_deg=phase_deg, ue_v=ue_meas)
             results.append(point)
             if on_point:
                 on_point(point, i, total)
@@ -157,5 +160,7 @@ class FilterTest:
                 on_progress(i + 1, total)
 
         self._generator.set_output(False, channel=self._config.generator_channel)
+        if hasattr(self._measure_source, "end_of_sweep"):
+            self._measure_source.end_of_sweep()
         logger.debug("banc filtre: balayage terminé, %d points", len(results))
         return results
