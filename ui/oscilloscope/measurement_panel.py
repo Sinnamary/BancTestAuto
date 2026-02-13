@@ -7,7 +7,11 @@ from typing import Any, Optional
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
     QGroupBox,
+    QHeaderView,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
@@ -15,6 +19,8 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QPushButton,
     QPlainTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
     QWidget,
 )
 
@@ -171,9 +177,154 @@ class OscilloscopeMeasurementPanel(QWidget):
         formatted = format_meas_general_response(raw)
         self._meas_general_text.setPlainText(formatted)
         self.set_result(formatted.split("\n")[0] if formatted else "—")
+        self._show_measurement_modal(CMD.MEAS_QUERY, formatted if formatted else raw or "—")
 
     def _on_meas_general_error(self, message: str) -> None:
         self._meas_general_text.setPlainText(f"Erreur : {message}")
+        self._show_measurement_modal(CMD.MEAS_QUERY, f"Erreur : {message}")
+
+    def _parse_result_to_rows(self, result: str) -> list[tuple[str, str, str]]:
+        """
+        Découpe le résultat formaté (lignes 'Nom: valeur' ou 'Nom: valeur,OFF/ON')
+        en triplets (paramètre, valeur, statut). Le suffixe ,OFF/,ON indique si la
+        mesure est désactivée/activée pour ce paramètre (convention DOS1102).
+        """
+        rows: list[tuple[str, str, str]] = []
+        for line in result.strip().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if ":" in line:
+                idx = line.index(":")
+                name, rest = line[:idx].strip(), line[idx + 1 :].strip()
+                # Séparer valeur et statut (ex. "15.13ms,OFF" -> valeur="15.13ms", statut="OFF")
+                if rest.endswith(",OFF"):
+                    value, status = rest[:-4].strip(), "OFF"
+                elif rest.endswith(",ON"):
+                    value, status = rest[:-3].strip(), "ON"
+                else:
+                    value, status = rest, "—"
+                rows.append((name, value, status))
+            else:
+                rows.append((line, "", "—"))
+        return rows
+
+    def _show_measurement_modal(self, command: str, result: str) -> None:
+        """Ouvre une fenêtre modale : commande mise en valeur et résultat en tableau."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Mesure terminée")
+        dlg.setMinimumWidth(420)
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(12)
+
+        # Bloc Commande (mis en valeur)
+        cmd_frame = QFrame(dlg)
+        cmd_frame.setObjectName("measModalCommandFrame")
+        cmd_layout = QVBoxLayout(cmd_frame)
+        cmd_layout.setContentsMargins(10, 8, 10, 8)
+        cmd_title = QLabel("Commande envoyée")
+        cmd_title.setObjectName("measModalCommandTitle")
+        cmd_layout.addWidget(cmd_title)
+        cmd_label = QLabel(command)
+        cmd_label.setObjectName("measModalCommandValue")
+        cmd_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        cmd_layout.addWidget(cmd_label)
+        layout.addWidget(cmd_frame)
+
+        # Bloc Résultat (tableau ou texte)
+        result_title = QLabel("Réponse")
+        result_title.setObjectName("measModalResultTitle")
+        layout.addWidget(result_title)
+        rows = self._parse_result_to_rows(result)
+        if rows:
+            table = QTableWidget(len(rows), 3)
+            table.setObjectName("measModalTable")
+            table.setHorizontalHeaderLabels(["Paramètre", "Valeur", "Statut"])
+            table.setColumnWidth(0, 160)
+            table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+            table.verticalHeader().setVisible(False)
+            table.setAlternatingRowColors(True)
+            table.setToolTip(
+                "Statut : ON = mesure affichée à l'écran, OFF = non affichée (la valeur est quand même lue par :MEAS?)."
+            )
+            for i, (name, value, status) in enumerate(rows):
+                table.setItem(i, 0, QTableWidgetItem(name))
+                table.setItem(i, 1, QTableWidgetItem(value))
+                status_item = QTableWidgetItem(status)
+                status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+                table.setItem(i, 2, status_item)
+            table.setMinimumHeight(min(220, 28 * len(rows) + 28))
+            layout.addWidget(table)
+        else:
+            result_edit = QPlainTextEdit(result)
+            result_edit.setObjectName("measModalResultText")
+            result_edit.setReadOnly(True)
+            result_edit.setMinimumHeight(120)
+            layout.addWidget(result_edit)
+
+        bbox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        bbox.accepted.connect(dlg.accept)
+        layout.addWidget(bbox)
+
+        # Style cohérent avec le thème (palette) : commande et tableau mis en valeur
+        dlg.setStyleSheet("""
+            QDialog {
+                font-size: 13px;
+            }
+            #measModalCommandFrame {
+                background-color: palette(midlight);
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+            }
+            #measModalCommandTitle {
+                font-weight: bold;
+                color: palette(text);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            #measModalCommandValue {
+                font-family: Consolas, "Courier New", monospace;
+                font-size: 14px;
+                font-weight: 600;
+                color: palette(link);
+            }
+            #measModalResultTitle {
+                font-weight: bold;
+                color: palette(text);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            #measModalTable {
+                background-color: palette(base);
+                gridline-color: palette(mid);
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+            }
+            #measModalTable::item {
+                padding: 4px 8px;
+            }
+            #measModalTable::item:hover {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+                font-weight: bold;
+            }
+            #measModalTable QHeaderView::section {
+                background-color: palette(midlight);
+                padding: 6px 8px;
+                border: none;
+                border-bottom: 2px solid palette(mid);
+                font-weight: bold;
+            }
+            #measModalResultText {
+                background-color: palette(base);
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+                padding: 6px;
+            }
+        """)
+        dlg.exec()
 
     def _on_meas_general_finished(self) -> None:
         QApplication.restoreOverrideCursor()
